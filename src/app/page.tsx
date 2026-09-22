@@ -9,6 +9,10 @@ import ChatHistorySidebar from '@/components/ChatHistorySidebar';
 import InteractiveChecklist from '@/components/InteractiveChecklist';
 import ICCrossReferenceModal from '@/components/ICCrossReferenceModal';
 import SourcesReferences from '@/components/SourcesReferences';
+import PanicLogAnalyzer from '@/components/PanicLogAnalyzer';
+import SafeInjectionCalculator from '@/components/SafeInjectionCalculator';
+import InteractiveBoardviewSimulator from '@/components/InteractiveBoardviewSimulator';
+import JobTicketGenerator from '@/components/JobTicketGenerator';
 import {
   DeviceSpecialty,
   PowerSupplyReadings,
@@ -16,9 +20,19 @@ import {
   DiagnosticMetrics,
   ReferenceSource,
 } from '@/lib/types';
-import { Menu, History } from 'lucide-react';
+import {
+  History,
+  Stethoscope,
+  AlertOctagon,
+  Flame,
+  Cpu,
+  FileText,
+} from 'lucide-react';
+
+type MasterTab = 'diagnosis' | 'panic-log' | 'safe-injection' | 'boardview' | 'ticket';
 
 export default function DahabFixAiConsole() {
+  const [activeTab, setActiveTab] = useState<MasterTab>('diagnosis');
   const [activeSessionId, setActiveSessionId] = useState<string>(() => `dahab_${Date.now()}`);
   const [sessions, setSessions] = useState<RepairSession[]>([]);
   const [specialty, setSpecialty] = useState<DeviceSpecialty>('mobile-repair');
@@ -65,7 +79,6 @@ export default function DahabFixAiConsole() {
       setMetrics(selected.metrics);
     }
 
-    // استرجاع آخر رد للذكاء الاصطناعي من الرسائل
     const lastAssistantMsg = [...selected.messages].reverse().find((m) => m.sender === 'assistant');
     if (lastAssistantMsg) {
       setOutput(lastAssistantMsg.text);
@@ -73,6 +86,7 @@ export default function DahabFixAiConsole() {
       setOutput('');
     }
 
+    setActiveTab('diagnosis');
     setIsSidebarOpen(false);
   };
 
@@ -87,6 +101,7 @@ export default function DahabFixAiConsole() {
     setOutput('');
     setMetrics(undefined);
     setSources([]);
+    setActiveTab('diagnosis');
     setIsSidebarOpen(false);
   };
 
@@ -200,7 +215,6 @@ export default function DahabFixAiConsole() {
         }
       }
 
-      // تحديث قائمة الجلسات بعد اكتمال الحفظ في ملف JSON
       setTimeout(fetchSessions, 600);
     } catch (err) {
       console.error(err);
@@ -223,6 +237,71 @@ export default function DahabFixAiConsole() {
         />
       </div>
 
+      {/* شريط الأدوات الهندسية الرئيسي (Master Engineering Tabs) */}
+      <div className="max-w-7xl mx-auto w-full px-3 md:px-4 mb-4">
+        <div className="bg-workshop-card border border-workshop-border rounded-2xl p-1.5 flex flex-wrap gap-1.5 shadow-lg">
+          <button
+            onClick={() => setActiveTab('diagnosis')}
+            className={`flex-1 min-w-[140px] py-2.5 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-2 ${
+              activeTab === 'diagnosis'
+                ? 'bg-gradient-to-r from-dahab-500 to-amber-600 text-slate-950 shadow-md'
+                : 'text-gray-400 hover:text-white hover:bg-gray-850'
+            }`}
+          >
+            <Stethoscope className="w-4 h-4" />
+            <span>🩺 الفحص والتشخيص الذكي</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('panic-log')}
+            className={`flex-1 min-w-[140px] py-2.5 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-2 ${
+              activeTab === 'panic-log'
+                ? 'bg-purple-600 text-white shadow-md'
+                : 'text-gray-400 hover:text-white hover:bg-gray-850'
+            }`}
+          >
+            <AlertOctagon className="w-4 h-4" />
+            <span>📱 محلل سجلات البانيك</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('safe-injection')}
+            className={`flex-1 min-w-[140px] py-2.5 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-2 ${
+              activeTab === 'safe-injection'
+                ? 'bg-amber-600 text-white shadow-md'
+                : 'text-gray-400 hover:text-white hover:bg-gray-850'
+            }`}
+          >
+            <Flame className="w-4 h-4" />
+            <span>⚡ حاسبة حقن الفولت</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('boardview')}
+            className={`flex-1 min-w-[140px] py-2.5 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-2 ${
+              activeTab === 'boardview'
+                ? 'bg-emerald-600 text-white shadow-md'
+                : 'text-gray-400 hover:text-white hover:bg-gray-850'
+            }`}
+          >
+            <Cpu className="w-4 h-4" />
+            <span>🔬 عارض البوردة والمخطط</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('ticket')}
+            className={`flex-1 min-w-[140px] py-2.5 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-2 ${
+              activeTab === 'ticket'
+                ? 'bg-sky-600 text-white shadow-md'
+                : 'text-gray-400 hover:text-white hover:bg-gray-850'
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            <span>🧾 كارت وفاتورة الصيانة</span>
+          </button>
+        </div>
+      </div>
+
       {/* زر فتح الذاكرة على الهواتف والشاشات الصغيرة */}
       <div className="lg:hidden px-4 mb-2 flex items-center justify-between">
         <button
@@ -236,39 +315,57 @@ export default function DahabFixAiConsole() {
 
       {/* جسم التطبيق: المحتوى + الشريط الجانبي */}
       <div className="flex-1 max-w-7xl mx-auto w-full px-3 md:px-4 pb-12 flex gap-5">
-        {/* العمود الرئيسي للتشخيص والتحليل */}
+        {/* العمود الرئيسي حسب التاب النشط */}
         <main className="flex-1 space-y-5 min-w-0">
-          {/* 1. نموذج إدخال العطل والقياسات والباور سبلاي */}
-          <DiagnosticForm
-            specialty={specialty}
-            setSpecialty={setSpecialty}
-            deviceModel={deviceModel}
-            setDeviceModel={setDeviceModel}
-            prompt={prompt}
-            setPrompt={setPrompt}
-            imageBase64={imageBase64}
-            setImageBase64={setImageBase64}
-            readings={readings}
-            setReadings={setReadings}
-            loading={loading}
-            onDiagnose={handleDiagnose}
-          />
+          {activeTab === 'diagnosis' && (
+            <>
+              {/* 1. نموذج إدخال العطل والقياسات والباور سبلاي والمساعد الصوتي */}
+              <DiagnosticForm
+                specialty={specialty}
+                setSpecialty={setSpecialty}
+                deviceModel={deviceModel}
+                setDeviceModel={setDeviceModel}
+                prompt={prompt}
+                setPrompt={setPrompt}
+                imageBase64={imageBase64}
+                setImageBase64={setImageBase64}
+                readings={readings}
+                setReadings={setReadings}
+                loading={loading}
+                onDiagnose={handleDiagnose}
+              />
 
-          {/* 2. مؤشر الفصل الحاسم بين الهاردوير والسوفتوير (يظهر عند اكتمال التحليل) */}
-          {metrics && (
-            <div className="animate-fadeIn">
-              <HardwareSoftwareIndicator metrics={metrics} />
-            </div>
+              {/* 2. مؤشر الفصل الحاسم بين الهاردوير والسوفتوير */}
+              {metrics && (
+                <div className="animate-fadeIn">
+                  <HardwareSoftwareIndicator metrics={metrics} />
+                </div>
+              )}
+
+              {/* 3. شاشة إخراج ومتابعة تدفق النتائج الهندسية */}
+              <ResultStreamViewer rawOutput={output} loading={loading} />
+
+              {/* 4. شيك ليست تفاعلية لنقاط الفحص والقياس أثناء الصيانة */}
+              <InteractiveChecklist />
+
+              {/* 5. مراجع المخططات وقنوات الصيانة الموازية */}
+              <SourcesReferences sources={sources} />
+            </>
           )}
 
-          {/* 3. شاشة إخراج ومتابعة تدفق النتائج الهندسية */}
-          <ResultStreamViewer rawOutput={output} loading={loading} />
+          {activeTab === 'panic-log' && <PanicLogAnalyzer />}
 
-          {/* 4. شيك ليست تفاعلية لنقاط الفحص والقياس أثناء الصيانة */}
-          <InteractiveChecklist />
+          {activeTab === 'safe-injection' && <SafeInjectionCalculator />}
 
-          {/* 5. مراجع المخططات وقنوات الصيانة الموازية */}
-          <SourcesReferences sources={sources} />
+          {activeTab === 'boardview' && <InteractiveBoardviewSimulator />}
+
+          {activeTab === 'ticket' && (
+            <JobTicketGenerator
+              deviceModel={deviceModel}
+              metrics={metrics}
+              rawDiagnosis={output}
+            />
+          )}
         </main>
 
         {/* الشريط الجانبي لذاكرة الجلسات السابقة المخزنة في ملفات JSON */}

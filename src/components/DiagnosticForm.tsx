@@ -15,6 +15,8 @@ import {
   Sliders,
   ChevronDown,
   ChevronUp,
+  Mic,
+  MicOff,
 } from 'lucide-react';
 
 interface DiagnosticFormProps {
@@ -88,6 +90,54 @@ export default function DiagnosticForm({
   onDiagnose,
 }: DiagnosticFormProps) {
   const [showAdvancedReadings, setShowAdvancedReadings] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+
+  // تفعيل المساعد الصوتي للورشة (Hands-Free Voice Assistant)
+  const toggleVoiceRecognition = () => {
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      alert('المتصفح الحالي لا يدعم التعرف الصوتي المباشر. يرجى استخدام متصفح Chrome أو Edge.');
+      return;
+    }
+
+    if (isListening) {
+      setIsListening(false);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'ar-EG';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event: any) => {
+        const speechText = event.results[0][0].transcript;
+        setPrompt(prompt ? `${prompt} ${speechText}` : speechText);
+        setIsListening(false);
+      };
+
+      recognition.onerror = (err: any) => {
+        console.error('Speech error:', err);
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.start();
+    } catch (e) {
+      console.error(e);
+      setIsListening(false);
+    }
+  };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -251,11 +301,33 @@ export default function DiagnosticForm({
       {/* 3. صندوق وصف العطل والبرومبت السريع */}
       <div className="space-y-2">
         <div className="flex justify-between items-center">
-          <label className="text-xs font-bold text-gray-300">
-            وصف العطل بالتفصيل أو قراءة الممانعات:
+          <label className="text-xs font-bold text-gray-300 flex items-center gap-2">
+            <span>وصف العطل بالتفصيل أو قراءة الممانعات:</span>
+            <button
+              type="button"
+              onClick={toggleVoiceRecognition}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition border ${
+                isListening
+                  ? 'bg-red-500/20 text-red-400 border-red-500 animate-pulse'
+                  : 'bg-dahab-500/15 text-dahab-300 border-dahab-500/30 hover:bg-dahab-500/25'
+              }`}
+              title="المساعد الصوتي للورشة: تحدث بصوتك دون لمس لوحة المفاتيح أثناء العمل"
+            >
+              {isListening ? (
+                <>
+                  <MicOff className="w-3.5 h-3.5 animate-bounce" />
+                  <span>جاري الاستماع لصوتك... (تحدث الآن)</span>
+                </>
+              ) : (
+                <>
+                  <Mic className="w-3.5 h-3.5 text-dahab-400" />
+                  <span>🎙️ تحدث بصوتك (Hands-Free)</span>
+                </>
+              )}
+            </button>
           </label>
           <span className="text-[10px] text-gray-500">
-            (يمكن كتابة اسم الآيسي، رمز الخط، أو كود الخطأ)
+            (يمكنك كتابة اسم الآيسي، رمز الخط، أو التحدث بالصوت)
           </span>
         </div>
 
