@@ -1,0 +1,56 @@
+[
+  {
+    "partNumber": "1610A1",
+    "category": "Charging / USB Tristar",
+    "deviceFamily": "Apple iPhone 5s",
+    "function": "متحكم الشحن والـ USB (Tristar IC)",
+    "compatibles": ["1610A2", "1610A3", "610A3B", "1612A1"],
+    "commonSymptoms": "سحب 0.20A إلى 0.45A على الباور سبلاي قبل الضغط على زر التشغيل، تفريغ سريع للبطارية، وهمي في نسبة الشحن.",
+    "diodeReadings": "مسار PP5V0_USB ممانعة 0.550V تقريباً، مسار PP_TRISTAR_PIN ممانعة 0.650V."
+  },
+  {
+    "partNumber": "1610A2",
+    "category": "Charging / USB Tristar",
+    "deviceFamily": "Apple iPhone 6 / 6 Plus",
+    "function": "متحكم الشحن والـ USB (Tristar IC)",
+    "compatibles": ["1610A3", "610A3B", "1612A1"],
+    "commonSymptoms": "شحن وهمي، الجهاز لا يشحن بعد استنزاف البطارية، لا يتعرف على الكمبيوتر في وضع DFU.",
+    "diodeReadings": "فحص مسارات الـ USB D+ و D- الممانعة المتوقعة 0.680V إلى 0.720V متطابقة."
+  },
+  {
+    "partNumber": "1610A3",
+    "category": "Charging / USB Tristar",
+    "deviceFamily": "Apple iPhone 6s / 6s Plus / SE",
+    "function": "متحكم الشحن والـ USB (Tristar IC)",
+    "compatibles": ["610A3B", "1612A1"],
+    "commonSymptoms": "استنزاف بطارية، سحب وهمي على التيستر، توقف عند الشحن 1% فقط.",
+    "diodeReadings": "تأكد من عدم وجود شورت على مسار PP3V0_TRISTAR."
+  },
+  {
+    "partNumber": "PM8150",
+    "category": "PMIC (Main Power IC)",
+    "deviceFamily": "Qualcomm Snapdragon 855 Devices (Xiaomi Mi 9, OnePlus 7, etc.)",
+    "function": "آيسي الباور الرئيسي لتوليد خطوط الـ S2, S3, S4, LDOs",
+    "compatibles": ["PM8150-002", "PM8150-102"],
+    "commonSymptoms": "موت الجهاز بالكامل، سحب 0.03A إلى 0.08A والتوقف عند الضغط على الباور (توقف عند مرحلة البوت الأولي).",
+    "diodeReadings": "قياس ممانعة ملفات البك المحيطة LDO/BUCK (لا تقل الممانعة عن 0.200V باستثناء ملفات المعالج والـ GPU 0.025V-0.080V طبيعي)."
+  },
+  {
+    "partNumber": "BQ25601",
+    "category": "Battery Charger / Power Path",
+    "deviceFamily": "Samsung Galaxy A Series / Redmi / Oppo",
+    "function": "آيسي الشحن ومسار التغذية VBUS إلى VPH_PWR",
+    "compatibles": ["BQ25601D", "BQ25618", "BQ25600 (مع مراجعة الأرجل)"],
+    "commonSymptoms": "الجهاز لا يشعر بالشاحن نهائياً، سخونة على الآيسي، شورت في خط VPH_PWR / VDD_MAIN وسحب كامل على الباور سبلاي.",
+    "diodeReadings": "رجل الـ PMID ممانعة 0.500V، رجل الـ SW يجب أن تقيس ممانعة الملف 0.380V-0.450V."
+  },
+  {
+    "partNumber": "ISL95855",
+    "category": "CPU VCORE PWM Controller",
+    "deviceFamily": "Laptop Motherboards (Intel 8th/9th/10th Gen)",
+    "function": "متحكم دائرة فولتية المعالج والـ GPU للابتوبات",
+    "compatibles": ["ISL95855CHRTZ", "ISL95855A"],
+    "commonSymptoms": "اللابتوب يضيء لمبة الباور لثوانٍ ثم ينطفئ، غياب فولتية الـ VCORE (0V على ملفات المعالج)، مع وجود فولتات 3.3V و 5V و RAM.",
+    "diodeReadings": "فحص رجل الـ VDD_5V ورجل الـ VR_ON المقفلة، يجب ألا تكون هناك ممانعة شورت لأرضي."
+  }
+]
