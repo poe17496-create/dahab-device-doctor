@@ -3,33 +3,42 @@
 @tailwind utilities;
 
 :root {
+  --foreground-rgb: 17, 24, 39;
+  --background-rgb: 248, 250, 252;
+}
+
+.dark {
   --foreground-rgb: 243, 244, 246;
-  --background-start-rgb: 11, 15, 23;
-  --background-end-rgb: 17, 24, 39;
+  --background-rgb: 11, 15, 23;
 }
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: #0B0F17;
+  background: rgb(var(--background-rgb));
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   direction: rtl;
   text-align: right;
   overflow-x: hidden;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-/* تخصيص شريط التمرير (Custom Scrollbar) للثيم الهندسي الداكن */
+/* تخصيص شريط التمرير (Custom Scrollbar) */
 ::-webkit-scrollbar {
   width: 7px;
   height: 7px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0B0F17;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1F2937;
+  background: #cbd5e1;
   border-radius: 9999px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #1F2937;
 }
 
 ::-webkit-scrollbar-thumb:hover {

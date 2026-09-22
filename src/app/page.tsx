@@ -7,12 +7,11 @@ import DiagnosticForm from '@/components/DiagnosticForm';
 import ResultStreamViewer from '@/components/ResultStreamViewer';
 import ChatHistorySidebar from '@/components/ChatHistorySidebar';
 import InteractiveChecklist from '@/components/InteractiveChecklist';
-import ICCrossReferenceModal from '@/components/ICCrossReferenceModal';
 import SourcesReferences from '@/components/SourcesReferences';
 import PanicLogAnalyzer from '@/components/PanicLogAnalyzer';
 import SafeInjectionCalculator from '@/components/SafeInjectionCalculator';
 import InteractiveBoardviewSimulator from '@/components/InteractiveBoardviewSimulator';
-import JobTicketGenerator from '@/components/JobTicketGenerator';
+import ICEncyclopediaTab from '@/components/ICEncyclopediaTab';
 import {
   DeviceSpecialty,
   PowerSupplyReadings,
@@ -26,10 +25,10 @@ import {
   AlertOctagon,
   Flame,
   Cpu,
-  FileText,
+  BookOpen,
 } from 'lucide-react';
 
-type MasterTab = 'diagnosis' | 'panic-log' | 'safe-injection' | 'boardview' | 'ticket';
+type MasterTab = 'diagnosis' | 'panic-log' | 'safe-injection' | 'boardview' | 'ic-encyclopedia';
 
 export default function DahabFixAiConsole() {
   const [activeTab, setActiveTab] = useState<MasterTab>('diagnosis');
@@ -45,7 +44,6 @@ export default function DahabFixAiConsole() {
   const [sources, setSources] = useState<ReferenceSource[]>([]);
   const [metrics, setMetrics] = useState<DiagnosticMetrics | undefined>(undefined);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isICModalOpen, setIsICModalOpen] = useState(false);
 
   // جلب الجلسات السابقة من ملفات JSON عند فتح المنظومة
   const fetchSessions = async () => {
@@ -203,7 +201,7 @@ export default function DahabFixAiConsole() {
         accumulatedText += chunkText;
         setOutput(accumulatedText);
 
-        // محاولة استخراج كود الميتريكس أثناء التدفق لعرض البادج فوراً
+        // استخراج كود الميتريكس أثناء التدفق
         const match = accumulatedText.match(/<<<DAHAB_DIAGNOSTIC_METRICS>>>([\s\S]*?)<<<END_DAHAB_METRICS>>>/);
         if (match && match[1]) {
           try {
@@ -225,79 +223,78 @@ export default function DahabFixAiConsole() {
   };
 
   return (
-    <div className="min-h-screen bg-workshop-bg flex flex-col font-sans">
+    <div className="min-h-screen bg-gray-50 dark:bg-workshop-bg text-gray-900 dark:text-gray-100 flex flex-col font-sans transition-colors duration-200">
       {/* هيدر المنظومة الرئيسي */}
       <div className="p-3 md:p-4 max-w-7xl mx-auto w-full">
         <ConsoleHeader
           sessionId={activeSessionId}
           onNewSession={handleNewSession}
-          onOpenICModal={() => setIsICModalOpen(true)}
           onExportJson={handleExportJson}
           sessionsCount={sessions.length}
         />
       </div>
 
-      {/* شريط الأدوات الهندسية الرئيسي (Master Engineering Tabs) */}
+      {/* شريط الأدوات الهندسية الخمس المنظمة (5 Pure Engineering Tabs) */}
       <div className="max-w-7xl mx-auto w-full px-3 md:px-4 mb-4">
-        <div className="bg-workshop-card border border-workshop-border rounded-2xl p-1.5 flex flex-wrap gap-1.5 shadow-lg">
+        <div className="bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border rounded-2xl p-1.5 flex flex-wrap gap-1.5 shadow-xl">
           <button
             onClick={() => setActiveTab('diagnosis')}
-            className={`flex-1 min-w-[140px] py-2.5 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-2 ${
+            className={`flex-1 min-w-[145px] py-3 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${
               activeTab === 'diagnosis'
-                ? 'bg-gradient-to-r from-dahab-500 to-amber-600 text-slate-950 shadow-md'
-                : 'text-gray-400 hover:text-white hover:bg-gray-850'
+                ? 'bg-gradient-to-r from-dahab-500 to-amber-600 text-slate-950 shadow-lg shadow-dahab-500/20'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-850'
             }`}
           >
             <Stethoscope className="w-4 h-4" />
-            <span>🩺 الفحص والتشخيص الذكي</span>
+            <span>🩺 كاشف ومحلل الأعطال الذكي</span>
           </button>
 
           <button
             onClick={() => setActiveTab('panic-log')}
-            className={`flex-1 min-w-[140px] py-2.5 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-2 ${
+            className={`flex-1 min-w-[145px] py-3 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${
               activeTab === 'panic-log'
-                ? 'bg-purple-600 text-white shadow-md'
-                : 'text-gray-400 hover:text-white hover:bg-gray-850'
+                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-600/20'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-850'
             }`}
           >
             <AlertOctagon className="w-4 h-4" />
-            <span>📱 محلل سجلات البانيك</span>
+            <span>📱 محلل سجلات البانيك (iOS/Android)</span>
           </button>
 
           <button
             onClick={() => setActiveTab('safe-injection')}
-            className={`flex-1 min-w-[140px] py-2.5 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-2 ${
+            className={`flex-1 min-w-[145px] py-3 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${
               activeTab === 'safe-injection'
-                ? 'bg-amber-600 text-white shadow-md'
-                : 'text-gray-400 hover:text-white hover:bg-gray-850'
+                ? 'bg-gradient-to-r from-amber-600 to-rose-600 text-white shadow-lg shadow-amber-600/20'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-850'
             }`}
           >
             <Flame className="w-4 h-4" />
-            <span>⚡ حاسبة حقن الفولت</span>
+            <span>⚡ حاسبة حقن الفولت والحرارة</span>
           </button>
 
           <button
             onClick={() => setActiveTab('boardview')}
-            className={`flex-1 min-w-[140px] py-2.5 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-2 ${
+            className={`flex-1 min-w-[145px] py-3 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${
               activeTab === 'boardview'
-                ? 'bg-emerald-600 text-white shadow-md'
-                : 'text-gray-400 hover:text-white hover:bg-gray-850'
+                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-600/20'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-850'
             }`}
           >
             <Cpu className="w-4 h-4" />
-            <span>🔬 عارض البوردة والمخطط</span>
+            <span>🔬 معمل البوردفيو والمسارات</span>
           </button>
 
           <button
-            onClick={() => setActiveTab('ticket')}
-            className={`flex-1 min-w-[140px] py-2.5 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-2 ${
-              activeTab === 'ticket'
-                ? 'bg-sky-600 text-white shadow-md'
-                : 'text-gray-400 hover:text-white hover:bg-gray-850'
+            onClick={() => setActiveTab('ic-encyclopedia')}
+            className={`flex-1 min-w-[145px] py-3 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${
+              activeTab === 'ic-encyclopedia'
+                ? 'bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow-lg shadow-sky-600/20'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-850'
             }`}
           >
-            <FileText className="w-4 h-4" />
-            <span>🧾 كارت وفاتورة الصيانة</span>
+            <BookOpen className="w-4 h-4" />
+            <span>🧰 موسوعة بدائل وتوافق الآيسيهات</span>
           </button>
         </div>
       </div>
@@ -306,10 +303,10 @@ export default function DahabFixAiConsole() {
       <div className="lg:hidden px-4 mb-2 flex items-center justify-between">
         <button
           onClick={() => setIsSidebarOpen(true)}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-workshop-card border border-workshop-border text-xs font-bold text-dahab-400"
+          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border text-xs font-bold text-dahab-600 dark:text-dahab-400"
         >
           <History className="w-4 h-4" />
-          <span>سجل الأجهزة في الـ JSON ({sessions.length})</span>
+          <span>سجل أجهزة الـ JSON ({sessions.length})</span>
         </button>
       </div>
 
@@ -359,13 +356,7 @@ export default function DahabFixAiConsole() {
 
           {activeTab === 'boardview' && <InteractiveBoardviewSimulator />}
 
-          {activeTab === 'ticket' && (
-            <JobTicketGenerator
-              deviceModel={deviceModel}
-              metrics={metrics}
-              rawDiagnosis={output}
-            />
-          )}
+          {activeTab === 'ic-encyclopedia' && <ICEncyclopediaTab />}
         </main>
 
         {/* الشريط الجانبي لذاكرة الجلسات السابقة المخزنة في ملفات JSON */}
@@ -379,12 +370,6 @@ export default function DahabFixAiConsole() {
           onClose={() => setIsSidebarOpen(false)}
         />
       </div>
-
-      {/* نافذة بدائل الآيسيهات وممانعات القياس المرجعية */}
-      <ICCrossReferenceModal
-        isOpen={isICModalOpen}
-        onClose={() => setIsICModalOpen(false)}
-      />
     </div>
   );
 }
