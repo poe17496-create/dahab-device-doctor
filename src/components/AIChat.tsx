@@ -1,16 +1,13 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Paperclip, BookOpen, Cpu, FileText, Volume2, VolumeX, Mic } from 'lucide-react';
+import { Send, Paperclip, Volume2, VolumeX, Mic, Cpu } from 'lucide-react';
 
 interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
-  sources?: string[];
-  schematics?: string[];
-  relatedTools?: string[];
 }
 
 export default function AIChat() {
@@ -20,7 +17,6 @@ export default function AIChat() {
       role: 'assistant',
       content: 'مرحباً! أنا مساعدك الذكي في دهب دكتور. يمكنني مساعدتك في تشخيص الأعطال، فهم المخططات الهندسية، الإجابة على أسئلتك التقنية، والتحدث بالصوت. كيف يمكنني مساعدتك اليوم؟',
       timestamp: new Date(),
-      relatedTools: ['التشخيص الذكي', 'معمل البوردفيو', 'موسوعة الآيسيهات'],
     },
   ]);
   const [input, setInput] = useState('');
@@ -79,36 +75,10 @@ export default function AIChat() {
         role: 'assistant',
         content: generateAIResponse(input),
         timestamp: new Date(),
-        sources: ['موسوعة الآيسيهات', 'دليل الصيانة'],
-        schematics: ['مخطط الباور الرئيسي', 'مخطط الشحن'],
-        relatedTools: getRelatedTools(input),
       };
       setMessages((prev) => [...prev, assistantMessage]);
       setIsLoading(false);
     }, 1500);
-  };
-
-  const getRelatedTools = (query: string): string[] => {
-    const lowerQuery = query.toLowerCase();
-    const tools: string[] = [];
-    
-    if (lowerQuery.includes('مخطط') || lowerQuery.includes('schematic')) {
-      tools.push('معمل البوردفيو', 'تكامل المخططات');
-    }
-    if (lowerQuery.includes('آيسي') || lowerQuery.includes('ic')) {
-      tools.push('موسوعة الآيسيهات');
-    }
-    if (lowerQuery.includes('فولت') || lowerQuery.includes('volt')) {
-      tools.push('حاسبة الفولت');
-    }
-    if (lowerQuery.includes('تشخيص') || lowerQuery.includes('عطل')) {
-      tools.push('التشخيص الذكي', 'قائمة الفحص');
-    }
-    if (lowerQuery.includes('بانيك')) {
-      tools.push('محلل البانيك');
-    }
-    
-    return tools.length > 0 ? tools : ['التشخيص الذكي', 'معمل البوردفيو'];
   };
 
   const generateAIResponse = (query: string): string => {
@@ -203,12 +173,6 @@ export default function AIChat() {
             >
               {isVoiceEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </button>
-            <button className="p-2 rounded-lg bg-gray-100 dark:bg-[#1F2937] hover:bg-gray-200 dark:hover:bg-[#374151] transition-colors">
-              <BookOpen className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-            </button>
-            <button className="p-2 rounded-lg bg-gray-100 dark:bg-[#1F2937] hover:bg-gray-200 dark:hover:bg-[#374151] transition-colors">
-              <FileText className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-            </button>
           </div>
         </div>
       </div>
@@ -228,66 +192,6 @@ export default function AIChat() {
               }`}
             >
               <p className="text-sm leading-relaxed">{message.content}</p>
-              
-              {/* Related Tools */}
-              {message.relatedTools && message.relatedTools.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-gray-200 dark:border-[#374151]">
-                  <p className="text-xs font-medium mb-2 flex items-center gap-1">
-                    <Cpu className="w-3 h-3" />
-                    الأدوات المرتبطة:
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {message.relatedTools.map((tool, index) => (
-                      <span
-                        key={index}
-                        className="text-xs px-3 py-1.5 rounded-full bg-white/20 dark:bg-black/20 hover:bg-white/30 dark:hover:bg-black/30 cursor-pointer transition-colors text-center"
-                      >
-                        {tool}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {/* Sources */}
-              {message.sources && message.sources.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-gray-200 dark:border-[#374151]">
-                  <p className="text-xs font-medium mb-2 flex items-center gap-1">
-                    <BookOpen className="w-3 h-3" />
-                    المصادر:
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {message.sources.map((source, index) => (
-                      <span
-                        key={index}
-                        className="text-xs px-3 py-1.5 rounded-full bg-white/20 dark:bg-black/20 text-center"
-                      >
-                        {source}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Schematics */}
-              {message.schematics && message.schematics.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-gray-200 dark:border-[#374151]">
-                  <p className="text-xs font-medium mb-2 flex items-center gap-1">
-                    <FileText className="w-3 h-3" />
-                    المخططات المرتبطة:
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {message.schematics.map((schematic, index) => (
-                      <span
-                        key={index}
-                        className="text-xs px-3 py-1.5 rounded-full bg-white/20 dark:bg-black/20 text-center"
-                      >
-                        {schematic}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         ))}
