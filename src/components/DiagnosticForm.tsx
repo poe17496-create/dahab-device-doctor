@@ -356,33 +356,29 @@ export default function DiagnosticForm({
 
       {/* 4. رفع الصور وزر التشخيص الأساسي */}
       <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-workshop-border">
-        {/* رفع صورة البوردة أو شاشة القياس */}
-        <div className="flex items-center gap-3">
-          <label className="cursor-pointer flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gray-900 hover:bg-gray-800 border border-gray-800 text-xs font-semibold text-gray-300 hover:text-white transition">
-            <Camera className="w-4 h-4 text-dahab-400" />
-            <span>إرفاق صورة (البوردة / الملتيميتر / الباور)</span>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleImageUpload}
-              className="hidden"
-            />
+        {/* رفع صورة الجهاز */}
+        <div className="bg-white dark:bg-[#111827] border border-gray-200 dark:border-[#1F2937] rounded-xl p-4">
+          <label className="block text-xs font-bold text-gray-900 dark:text-gray-100 mb-2">
+            📷 صورة الجهاز (اختياري)
           </label>
-
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleImageUpload}
+            className="w-full text-xs text-gray-600 dark:text-gray-400 file:mr-4 file:rounded-lg file:border-0 file:bg-gray-50 dark:file:bg-[#1F2937] file:text-gray-900 dark:file:text-gray-100 cursor-pointer"
+          />
           {imageBase64 && (
-            <div className="relative inline-block">
+            <div className="mt-2 relative">
               <img
                 src={imageBase64}
-                alt="Preview"
-                className="w-10 h-10 object-cover rounded-lg border border-dahab-500/50 shadow"
+                alt="Device"
+                className="w-32 h-32 object-cover rounded-lg"
               />
               <button
-                type="button"
                 onClick={() => setImageBase64(null)}
-                className="absolute -top-1.5 -right-1.5 bg-rose-600 text-white rounded-full p-0.5 shadow hover:bg-rose-700"
-                title="إزالة الصورة"
+                className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 text-xs"
               >
-                <X className="w-3 h-3" />
+                ✕
               </button>
             </div>
           )}

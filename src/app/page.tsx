@@ -14,6 +14,7 @@ import ICEncyclopediaTab from '@/components/ICEncyclopediaTab';
 import SchematicIntegrationReport from '@/components/SchematicIntegrationReport';
 import NavigationSidebar from '@/components/NavigationSidebar';
 import PWAInstallButton from '@/components/PWAInstallButton';
+import Notifications from '@/components/Notifications';
 import {
   DeviceSpecialty,
   PowerSupplyReadings,
@@ -232,12 +233,15 @@ export default function DahabFixAiConsole() {
             onExportJson={handleExportJson}
             sessionsCount={sessions.length}
           />
-          <button
-            onClick={toggleNavSidebar}
-            className="lg:hidden p-2 rounded-lg bg-gray-100 dark:bg-[#1F2937] hover:bg-gray-200 dark:hover:bg-[#374151] transition-colors"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <Notifications />
+            <button
+              onClick={toggleNavSidebar}
+              className="lg:hidden p-2 rounded-lg bg-gray-100 dark:bg-[#1F2937] hover:bg-gray-200 dark:hover:bg-[#374151] transition-colors"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </div>
 

@@ -11,6 +11,8 @@ import {
   FileText, 
   Zap,
   X,
+  BarChart3,
+  MessageCircle,
 } from 'lucide-react';
 import type { MasterTab } from '@/app/page';
 
@@ -30,6 +32,11 @@ const navItems = [
   { id: 'checklist' as MasterTab, label: 'قائمة الفحص', icon: CheckSquare, color: 'from-indigo-600 to-violet-600' },
   { id: 'references' as MasterTab, label: 'المراجع', icon: FileText, color: 'from-rose-600 to-pink-600' },
   { id: 'integration' as MasterTab, label: 'تكامل المخططات', icon: Zap, color: 'from-teal-600 to-cyan-600' },
+];
+
+const adminItems = [
+  { id: 'dashboard' as string, label: 'لوحة التحكم', icon: BarChart3, href: '/admin/dashboard' },
+  { id: 'support' as string, label: 'الدعم الفني', icon: MessageCircle, href: '/support' },
 ];
 
 export default function NavigationSidebar({ activeTab, onTabChange, isOpen, onClose }: NavigationSidebarProps) {
@@ -88,6 +95,26 @@ export default function NavigationSidebar({ activeTab, onTabChange, isOpen, onCl
                   <Icon className="w-5 h-5" />
                   <span>{item.label}</span>
                 </button>
+              );
+            })}
+
+            {/* Admin Section Divider */}
+            <div className="pt-4 mt-4 border-t border-gray-200 dark:border-[#1F2937]">
+              <p className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 px-4">أدوات إدارية</p>
+            </div>
+
+            {adminItems.map((item) => {
+              const Icon = item.icon;
+              
+              return (
+                <a
+                  key={item.id}
+                  href={item.href}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1F2937] hover:text-gray-900 dark:hover:text-white transition-all"
+                >
+                  <Icon className="w-5 h-5" />
+                  <span>{item.label}</span>
+                </a>
               );
             })}
           </nav>
