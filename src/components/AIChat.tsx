@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Send, Paperclip, Volume2, VolumeX, Mic, Cpu } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { MessageSquare, Mic, Volume2, VolumeX, Image as ImageIcon, X, Cpu, Trash2, Paperclip, Send } from 'lucide-react';
 
 interface ChatMessage {
   id: string;
@@ -18,14 +18,41 @@ interface ChatMessage {
 }
 
 export default function AIChat() {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: 'مرحباً! أنا مساعدك الذكي في دهب دكتور. يمكنني مساعدتك في تشخيص الأعطال، فهم المخططات الهندسية، الإجابة على أسئلتك التقنية، والتحدث بالصوت. يمكنك أيضاً رفع صور للأجهزة لتحليلها. كيف يمكنني مساعدتك اليوم؟',
-      timestamp: new Date(),
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    // تحميل المحادثة من localStorage عند البدء
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('dahab-chat-history');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          return parsed.map((msg: any) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp),
+          }));
+        } catch (e) {
+          console.error('Failed to load chat history:', e);
+        }
+      }
+    }
+    
+    // الرسالة الافتراضية إذا لم يكن هناك محفوظات
+    return [
+      {
+        id: '1',
+        role: 'assistant',
+        content: 'مرحباً! أنا مساعدك الذكي في دهب دكتور. يمكنني مساعدتك في تشخيص الأعطال، فهم المخططات الهندسية، الإجابة على أسئلتك التقنية، والتحدث بالصوت. يمكنك أيضاً رفع صور للأجهزة لتحليلها. كيف يمكنني مساعدتك اليوم؟',
+        timestamp: new Date(),
+      },
+    ];
+  });
+
+  // حفظ المحادثة في localStorage عند التغيير
+  useEffect(() => {
+    if (typeof window !== 'undefined' && messages.length > 0) {
+      localStorage.setItem('dahab-chat-history', JSON.stringify(messages));
+    }
+  }, [messages]);
+
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isVoiceEnabled, setIsVoiceEnabled] = useState(true);
@@ -83,7 +110,7 @@ export default function AIChat() {
     try {
       console.log('Sending chat request:', { input, hasImage: !!imageBase64 });
       
-      // استدعاء API الحقيقي
+      // استدعاء API الحقيقي مع تاريخ المحادثة
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
@@ -92,6 +119,7 @@ export default function AIChat() {
         body: JSON.stringify({
           message: input,
           imageBase64: imageBase64,
+          chatHistory: messages, // إرسال تاريخ المحادثة الكامل
         }),
       });
 
@@ -135,6 +163,18 @@ export default function AIChat() {
       setIsLoading(false);
       setImageBase64(null);
     }
+  };
+
+  const clearChat = () => {
+    setMessages([
+      {
+        id: '1',
+        role: 'assistant',
+        content: 'مرحباً! أنا مساعدك الذكي في دهب دكتور. يمكنني مساعدتك في تشخيص الأعطال، فهم المخططات الهندسية، الإجابة على أسئلتك التقنية، والتحدث بالصوت. يمكنك أيضاً رفع صور للأجهزة لتحليلها. كيف يمكنني مساعدتك اليوم؟',
+        timestamp: new Date(),
+      },
+    ]);
+    localStorage.removeItem('dahab-chat-history');
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -241,18 +281,25 @@ export default function AIChat() {
   return (
     <div className="flex flex-col h-full bg-white dark:bg-[#111827] rounded-2xl shadow-xl overflow-hidden">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 dark:border-[#1F2937]">
+      <div className="bg-white dark:bg-[#111827] border-b border-gray-200 dark:border-gray-700 p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-dahab-500 to-amber-600 flex items-center justify-center">
-              <Cpu className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 rounded-full bg-dahab-500 flex items-center justify-center">
+              <Cpu className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h3 className="font-bold text-gray-900 dark:text-gray-100">مساعد دهب الذكي</h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">متصل بـ 4 محركات AI • صوتي</p>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">المساعد الذكي</h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400">متعدد المحركات - يدعم المحادثة المستمرة</p>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={clearChat}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-[#1F2937] transition-colors"
+              title="مسح المحادثة"
+            >
+              <Trash2 className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            </button>
             <button
               onClick={toggleVoice}
               className={`p-2 rounded-lg transition-colors ${
@@ -260,6 +307,7 @@ export default function AIChat() {
                   ? 'bg-dahab-500 text-white' 
                   : 'bg-gray-100 dark:bg-[#1F2937] text-gray-600 dark:text-gray-400'
               }`}
+              title={isVoiceEnabled ? 'إيقاف الصوت' : 'تفعيل الصوت'}
             >
               {isVoiceEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </button>

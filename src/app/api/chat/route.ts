@@ -40,11 +40,27 @@ function cleanAIResponse(text: string): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const { message, imageBase64 } = await req.json();
+    const { message, imageBase64, chatHistory } = await req.json();
 
     console.log('=== Chat API Request ===');
     console.log('Message:', message);
     console.log('Has Image:', !!imageBase64);
+    console.log('Chat History Length:', chatHistory?.length || 0);
+
+    // بناء context من تاريخ المحادثة
+    let contextPrompt = '';
+    if (chatHistory && chatHistory.length > 0) {
+      const recentHistory = chatHistory.slice(-5); // آخر 5 رسائل فقط
+      contextPrompt = '\n\nتاريخ المحادثة السابق:\n';
+      recentHistory.forEach((msg: any) => {
+        if (msg.role === 'user') {
+          contextPrompt += `المستخدم: ${msg.content}\n`;
+        } else if (msg.role === 'assistant') {
+          contextPrompt += `المساعد: ${msg.content}\n`;
+        }
+      });
+      contextPrompt += '\n--- نهاية التاريخ ---\n\n';
+    }
 
     // System prompt للمحادثة الطبيعية - قوي وصارم
     const systemPrompt = `أنت مساعد ذكي متخصص في صيانة الأجهزة الإلكترونية. مهمتك الإجابة على أسئلة المستخدمين بشكل محادثة طبيعية وبسيطة.
@@ -60,6 +76,7 @@ export async function POST(req: NextRequest) {
 8. إذا سأل عن معلومة عامة، أجبه بشكل مباشر في جملة أو جملتين
 9. استخدم لغة بسيطة ومفهومة للفنيين
 10. لا تذكر أي شيء عن "قواعد" أو "تعليمات" في إجابتك
+11. تذكر دائماً تاريخ المحادثة السابق وأجب بناءً على السياق
 
 أمثلة للإجابات الجيدة:
 - السؤال: "ما هو فحص الديود؟"
@@ -75,7 +92,7 @@ export async function POST(req: NextRequest) {
 
     // استدعاء الذكاء الاصطناعي الحقيقي مع system prompt مخصص
     const aiResponse = await callAIEngine({
-      prompt: message,
+      prompt: contextPrompt + message,
       specialty: 'mobile-repair',
       deviceModel: 'General',
       readings: {},
