@@ -1,8 +1,5 @@
-'use client';
-
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
-import { useEffect } from 'react';
 
 export const metadata: Metadata = {
   title: 'Dahab Software | Dahab Device Doctor - خبير تشخيص وصيانة الإلكترونيات',
@@ -59,22 +56,25 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').then((registration) => {
-        console.log('SW registered: ', registration);
-      }).catch((registrationError) => {
-        console.log('SW registration failed: ', registrationError);
-      });
-    }
-  }, []);
-
   return (
     <html lang="ar" dir="rtl" className="dark">
       <head>
         <meta name="theme-color" content="#f59e0b" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/logo.jpg" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/sw.js').then((registration) => {
+                  console.log('SW registered: ', registration);
+                }).catch((registrationError) => {
+                  console.log('SW registration failed: ', registrationError);
+                });
+              }
+            `,
+          }}
+        />
       </head>
       <body className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-[#0B0F17] dark:via-[#111827] dark:to-[#0B0F17] text-gray-900 dark:text-gray-100 antialiased selection:bg-dahab-500/30 selection:text-white transition-colors duration-300">
         {children}
