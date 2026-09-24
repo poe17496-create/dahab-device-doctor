@@ -1,6 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callAIEngine } from '@/lib/aiEngines';
 
+// دالة لتنظيف النص من الأكواد والتقارير
+function cleanAIResponse(text: string): string {
+  let cleaned = text;
+  
+  // إزالة كتل الميتريكس
+  cleaned = cleaned.replace(/<<<DAHAB_DIAGNOSTIC_METRICS>>>[\s\S]*?<<<END_DAHAB_METRICS>>>/g, '');
+  
+  // إزالة أي JSON blocks
+  cleaned = cleaned.replace(/\{[\s\S]*?\}/g, '');
+  
+  // إزالة العناوين التقنية
+  cleaned = cleaned.replace(/###\s*\d+\.\s*[🔍⚡🛠️⚠️💡💾][^\n]*/g, '');
+  cleaned = cleaned.replace(/###\s*[^\n]+/g, '');
+  
+  // إزالة الأسطر التي تبدأ بـ - ** أو *
+  cleaned = cleaned.replace(/^\s*[-*]\s*\*\*[^*]+\*\*:[^\n]*$/gm, '');
+  cleaned = cleaned.replace(/^\s*[-*]\s*[^\n]*$/gm, '');
+  
+  // إزالة الأسطر الفارغة المتعددة
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+  
+  // إزالة المسافات الزائدة
+  cleaned = cleaned.trim();
+  
+  return cleaned;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { message, imageBase64 } = await req.json();
@@ -37,11 +64,15 @@ export async function POST(req: NextRequest) {
       readings: {},
       imageBase64: imageBase64 || null,
       preferredEngine: 'gemini',
-      systemPrompt: systemPrompt, // تمرير system prompt بشكل صحيح
+      systemPrompt: systemPrompt,
+      skipEnhancement: true, // تعطيل enhanceArabicPrompt
     });
 
+    // تنظيف الرد من الأكواد والتقارير
+    const cleanedMessage = cleanAIResponse(aiResponse.text);
+
     return NextResponse.json({
-      message: aiResponse.text,
+      message: cleanedMessage,
       engine: aiResponse.engine,
     });
   } catch (error) {

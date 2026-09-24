@@ -314,11 +314,12 @@ export async function callAIEngine(params: {
   imageBase64?: string;
   preferredEngine?: AIEngine;
   systemPrompt?: string; // custom system prompt للمحادثة
+  skipEnhancement?: boolean; // تعطيل enhanceArabicPrompt
 }): Promise<AIResponse> {
-  const { specialty = 'mobile-repair', systemPrompt = DAHAB_SYSTEM_PROMPT } = params;
+  const { specialty = 'mobile-repair', systemPrompt = DAHAB_SYSTEM_PROMPT, skipEnhancement = false } = params;
   
-  // تحسين النص العربي بالمصطلحات التقنية
-  const enhancedPrompt = enhanceArabicPrompt(params.prompt);
+  // تحسين النص العربي بالمصطلحات التقنية (إذا لم يُطلب تعطيله)
+  const enhancedPrompt = skipEnhancement ? params.prompt : enhanceArabicPrompt(params.prompt);
   const paramsWithSpecialty = { ...params, prompt: enhancedPrompt, specialty, systemPrompt };
 
   // استخدام أفضل محرك متاح تلقائياً
