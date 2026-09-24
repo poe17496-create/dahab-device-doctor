@@ -37,7 +37,10 @@ export default function AIChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   };
 
-  // إزالة التمرير التلقائي - المستخدم يرى الرسائل يدوياً
+  useEffect(() => {
+    // تمرير تلقائي عند إضافة رسالة جديدة
+    scrollToBottom();
+  }, [messages]);
 
   // Text-to-Speech للردود الصوتية
   const speakText = (text: string) => {
