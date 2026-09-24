@@ -46,6 +46,15 @@ export async function POST(req: NextRequest) {
     console.log('Message:', message);
     console.log('Has Image:', !!imageBase64);
     console.log('Chat History Length:', chatHistory?.length || 0);
+    
+    // التحقق من المفاتيح
+    console.log('=== Environment Variables Check ===');
+    console.log('GEMINI_API_KEY exists:', !!process.env.GEMINI_API_KEY);
+    console.log('GEMINI_API_KEY length:', process.env.GEMINI_API_KEY?.length || 0);
+    console.log('OPENAI_API_KEY exists:', !!process.env.OPENAI_API_KEY);
+    console.log('OPENAI_API_KEY length:', process.env.OPENAI_API_KEY?.length || 0);
+    console.log('OPENROUTER_API_KEY exists:', !!process.env.OPENROUTER_API_KEY);
+    console.log('OPENROUTER_API_KEY length:', process.env.OPENROUTER_API_KEY?.length || 0);
 
     // بناء context من تاريخ المحادثة
     let contextPrompt = '';
