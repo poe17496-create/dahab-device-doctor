@@ -11,7 +11,6 @@ import {
   FileText, 
   Zap,
   X,
-  Menu
 } from 'lucide-react';
 import type { MasterTab } from '@/app/page';
 
@@ -36,15 +35,7 @@ const navItems = [
 export default function NavigationSidebar({ activeTab, onTabChange, isOpen, onClose }: NavigationSidebarProps) {
   return (
     <>
-      {/* Mobile Menu Button */}
-      <button
-        onClick={() => onClose()}
-        className="lg:hidden fixed bottom-4 right-4 z-50 p-3 bg-dahab-500 text-white rounded-full shadow-lg"
-      >
-        <Menu className="w-6 h-6" />
-      </button>
-
-      {/* Sidebar Overlay */}
+      {/* Sidebar Overlay for mobile */}
       {isOpen && (
         <div
           onClick={onClose}
@@ -56,7 +47,7 @@ export default function NavigationSidebar({ activeTab, onTabChange, isOpen, onCl
       <aside
         className={`fixed top-0 right-0 h-full w-72 bg-white dark:bg-[#111827] border-l border-gray-200 dark:border-[#1F2937] shadow-2xl z-50 transform transition-transform duration-300 ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
-        } lg:translate-x-0 lg:static lg:shadow-none`}
+        } lg:translate-x-0 lg:static lg:shadow-none lg:border-r lg:border-l-0`}
       >
         <div className="flex flex-col h-full">
           {/* Sidebar Header */}
