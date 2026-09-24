@@ -447,22 +447,31 @@ export async function callAIEngine(params: {
 }): Promise<AIResponse> {
   const { specialty = 'mobile-repair', systemPrompt = DAHAB_SYSTEM_PROMPT, skipEnhancement = false } = params;
   
+  console.log('=== callAIEngine Called ===');
+  console.log('System prompt is custom:', systemPrompt !== DAHAB_SYSTEM_PROMPT);
+  console.log('Skip enhancement:', skipEnhancement);
+  
   // تحسين النص العربي بالمصطلحات التقنية (إذا لم يُطلب تعطيله)
   const enhancedPrompt = skipEnhancement ? params.prompt : enhanceArabicPrompt(params.prompt);
   const paramsWithSpecialty = { ...params, prompt: enhancedPrompt, specialty, systemPrompt };
 
   // استخدام أفضل محرك متاح تلقائياً
   const bestEngine = getBestEngine();
+  console.log('Best engine selected:', bestEngine.id, bestEngine.name, 'enabled:', bestEngine.enabled);
   
   try {
     switch (bestEngine.id) {
       case 'openai':
+        console.log('Calling OpenAI...');
         return await callOpenAI(paramsWithSpecialty);
       case 'openrouter':
+        console.log('Calling OpenRouter...');
         return await callOpenRouter(paramsWithSpecialty);
       case 'gemini':
+        console.log('Calling Gemini...');
         return await callGemini(paramsWithSpecialty);
       case 'local':
+        console.log('Using local engine...');
         return generateLocalDiagnosis(paramsWithSpecialty);
     }
   } catch (error) {
