@@ -42,6 +42,10 @@ export async function POST(req: NextRequest) {
   try {
     const { message, imageBase64 } = await req.json();
 
+    console.log('=== Chat API Request ===');
+    console.log('Message:', message);
+    console.log('Has Image:', !!imageBase64);
+
     // System prompt للمحادثة الطبيعية - قوي وصارم
     const systemPrompt = `أنت مساعد ذكي متخصص في صيانة الأجهزة الإلكترونية. مهمتك الإجابة على أسئلة المستخدمين بشكل محادثة طبيعية وبسيطة.
 
@@ -66,6 +70,9 @@ export async function POST(req: NextRequest) {
 
 تذكر: أنت مساعد محادثة، ليس مولد تقارير. أجب ببساطة ووضوح.`;
 
+    console.log('Using custom system prompt, length:', systemPrompt.length);
+    console.log('Skip enhancement: true');
+
     // استدعاء الذكاء الاصطناعي الحقيقي مع system prompt مخصص
     const aiResponse = await callAIEngine({
       prompt: message,
@@ -78,8 +85,13 @@ export async function POST(req: NextRequest) {
       skipEnhancement: true, // تعطيل enhanceArabicPrompt
     });
 
+    console.log('AI Response received, length:', aiResponse.text.length);
+    console.log('AI Engine used:', aiResponse.engine);
+
     // تنظيف الرد من الأكواد والتقارير
     const cleanedMessage = cleanAIResponse(aiResponse.text);
+    
+    console.log('Cleaned message length:', cleanedMessage.length);
     
     // التحقق من أن الرد ليس فارغاً بعد التنظيف
     if (!cleanedMessage || cleanedMessage.trim() === '') {
@@ -90,6 +102,9 @@ export async function POST(req: NextRequest) {
         engine: aiResponse.engine,
       });
     }
+
+    console.log('=== Chat API Response ===');
+    console.log('Final message length:', cleanedMessage.length);
 
     return NextResponse.json({
       message: cleanedMessage,
