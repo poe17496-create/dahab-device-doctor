@@ -8,6 +8,7 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  image?: string; // صورة مرفقة بالرسالة
   // بيانات خلفية للذكاء الاصطناعي (لا تُعرض في الواجهة)
   _internal?: {
     sources?: string[];
@@ -21,7 +22,7 @@ export default function AIChat() {
     {
       id: '1',
       role: 'assistant',
-      content: 'مرحباً! أنا مساعدك الذكي في دهب دكتور. يمكنني مساعدتك في تشخيص الأعطال، فهم المخططات الهندسية، الإجابة على أسئلتك التقنية، والتحدث بالصوت. كيف يمكنني مساعدتك اليوم؟',
+      content: 'مرحباً! أنا مساعدك الذكي في دهب دكتور. يمكنني مساعدتك في تشخيص الأعطال، فهم المخططات الهندسية، الإجابة على أسئلتك التقنية، والتحدث بالصوت. يمكنك أيضاً رفع صور للأجهزة لتحليلها. كيف يمكنني مساعدتك اليوم؟',
       timestamp: new Date(),
     },
   ]);
@@ -29,6 +30,7 @@ export default function AIChat() {
   const [isLoading, setIsLoading] = useState(false);
   const [isVoiceEnabled, setIsVoiceEnabled] = useState(true);
   const [isListening, setIsListening] = useState(false);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -68,29 +70,69 @@ export default function AIChat() {
       role: 'user',
       content: input,
       timestamp: new Date(),
+      image: imageBase64 || undefined,
     };
 
     setMessages([...messages, userMessage]);
     setInput('');
     setIsLoading(true);
 
-    // محاكاة استجابة AI (في الواقع ستتصل بـ API)
-    setTimeout(() => {
-      const assistantMessage: ChatMessage = {
+    try {
+      // استدعاء API الحقيقي
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: input,
+          imageBase64: imageBase64,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        const assistantMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: data.message,
+          timestamp: new Date(),
+          // بيانات خلفية للذكاء الاصطناعي (لا تُعرض في الواجهة)
+          _internal: {
+            sources: ['موسوعة الآيسيهات', 'دليل الصيانة'],
+            schematics: ['مخطط الباور الرئيسي', 'مخطط الشحن'],
+            relatedTools: getRelatedTools(input),
+          },
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+      } else {
+        throw new Error(data.error || 'فشل في الاتصال بالذكاء الاصطناعي');
+      }
+    } catch (error) {
+      console.error('Chat Error:', error);
+      const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: generateAIResponse(input),
+        content: 'عذراً، حدث خطأ في الاتصال بالذكاء الاصطناعي. يرجى المحاولة مرة أخرى.',
         timestamp: new Date(),
-        // بيانات خلفية للذكاء الاصطناعي (لا تُعرض في الواجهة)
-        _internal: {
-          sources: ['موسوعة الآيسيهات', 'دليل الصيانة'],
-          schematics: ['مخطط الباور الرئيسي', 'مخطط الشحن'],
-          relatedTools: getRelatedTools(input),
-        },
       };
-      setMessages((prev) => [...prev, assistantMessage]);
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
       setIsLoading(false);
-    }, 1500);
+      setImageBase64(null);
+    }
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImageBase64(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const getRelatedTools = (query: string): string[] => {
@@ -226,6 +268,13 @@ export default function AIChat() {
                   : 'bg-gray-100 dark:bg-[#1F2937] text-gray-900 dark:text-gray-100'
               }`}
             >
+              {message.image && (
+                <img
+                  src={message.image}
+                  alt="Uploaded"
+                  className="max-w-full h-auto rounded-lg mb-2"
+                />
+              )}
               <p className="text-sm leading-relaxed">{message.content}</p>
             </div>
           </div>
@@ -249,9 +298,33 @@ export default function AIChat() {
       {/* Input */}
       <div className="p-4 border-t border-gray-200 dark:border-[#1F2937]">
         <div className="flex gap-2">
-          <button className="p-2 rounded-xl bg-gray-100 dark:bg-[#1F2937] hover:bg-gray-200 dark:hover:bg-[#374151] transition-colors">
-            <Paperclip className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-          </button>
+          <div className="relative">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="hidden"
+              id="image-upload"
+            />
+            <label
+              htmlFor="image-upload"
+              className={`p-2 rounded-xl transition-colors cursor-pointer ${
+                imageBase64 
+                  ? 'bg-dahab-500 text-white' 
+                  : 'bg-gray-100 dark:bg-[#1F2937] hover:bg-gray-200 dark:hover:bg-[#374151] text-gray-600 dark:text-gray-400'
+              }`}
+            >
+              <Paperclip className="w-5 h-5" />
+            </label>
+            {imageBase64 && (
+              <button
+                onClick={() => setImageBase64(null)}
+                className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-xs"
+              >
+                ✕
+              </button>
+            )}
+          </div>
           <button
             onClick={handleVoiceInput}
             className={`p-2 rounded-xl transition-colors ${
