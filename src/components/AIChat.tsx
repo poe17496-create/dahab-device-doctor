@@ -8,6 +8,12 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  // بيانات خلفية للذكاء الاصطناعي (لا تُعرض في الواجهة)
+  _internal?: {
+    sources?: string[];
+    schematics?: string[];
+    relatedTools?: string[];
+  };
 }
 
 export default function AIChat() {
@@ -75,10 +81,39 @@ export default function AIChat() {
         role: 'assistant',
         content: generateAIResponse(input),
         timestamp: new Date(),
+        // بيانات خلفية للذكاء الاصطناعي (لا تُعرض في الواجهة)
+        _internal: {
+          sources: ['موسوعة الآيسيهات', 'دليل الصيانة'],
+          schematics: ['مخطط الباور الرئيسي', 'مخطط الشحن'],
+          relatedTools: getRelatedTools(input),
+        },
       };
       setMessages((prev) => [...prev, assistantMessage]);
       setIsLoading(false);
     }, 1500);
+  };
+
+  const getRelatedTools = (query: string): string[] => {
+    const lowerQuery = query.toLowerCase();
+    const tools: string[] = [];
+    
+    if (lowerQuery.includes('مخطط') || lowerQuery.includes('schematic')) {
+      tools.push('معمل البوردفيو', 'تكامل المخططات');
+    }
+    if (lowerQuery.includes('آيسي') || lowerQuery.includes('ic')) {
+      tools.push('موسوعة الآيسيهات');
+    }
+    if (lowerQuery.includes('فولت') || lowerQuery.includes('volt')) {
+      tools.push('حاسبة الفولت');
+    }
+    if (lowerQuery.includes('تشخيص') || lowerQuery.includes('عطل')) {
+      tools.push('التشخيص الذكي', 'قائمة الفحص');
+    }
+    if (lowerQuery.includes('بانيك')) {
+      tools.push('محلل البانيك');
+    }
+    
+    return tools.length > 0 ? tools : ['التشخيص الذكي', 'معمل البوردفيو'];
   };
 
   const generateAIResponse = (query: string): string => {
