@@ -14,7 +14,9 @@ import ICEncyclopediaTab from '@/components/ICEncyclopediaTab';
 import SchematicIntegrationReport from '@/components/SchematicIntegrationReport';
 import NavigationSidebar from '@/components/NavigationSidebar';
 import PWAInstallButton from '@/components/PWAInstallButton';
+import PWAUpdateNotification from '@/components/PWAUpdateNotification';
 import Notifications from '@/components/Notifications';
+import AIChat from '@/components/AIChat';
 import {
   DeviceSpecialty,
   PowerSupplyReadings,
@@ -25,7 +27,7 @@ import {
 import { createIntegratedContext } from '@/lib/schematicIntegration';
 import { Menu } from 'lucide-react';
 
-export type MasterTab = 'diagnosis' | 'panic-log' | 'safe-injection' | 'boardview' | 'ic-encyclopedia' | 'checklist' | 'references' | 'integration';
+export type MasterTab = 'diagnosis' | 'panic-log' | 'safe-injection' | 'boardview' | 'ic-encyclopedia' | 'checklist' | 'references' | 'integration' | 'ai-chat';
 
 export default function DahabFixAiConsole() {
   const [activeTab, setActiveTab] = useState<MasterTab>('diagnosis');
@@ -311,6 +313,11 @@ export default function DahabFixAiConsole() {
                   </p>
                 </div>
               )}
+              {activeTab === 'ai-chat' && (
+                <div className="h-[600px]">
+                  <AIChat />
+                </div>
+              )}
             </div>
           </div>
 
@@ -354,6 +361,9 @@ export default function DahabFixAiConsole() {
 
       {/* زر تثبيت PWA */}
       <PWAInstallButton />
+      
+      {/* إشعار تحديث PWA */}
+      <PWAUpdateNotification />
     </div>
   );
 }

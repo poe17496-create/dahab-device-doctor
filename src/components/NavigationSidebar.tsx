@@ -13,6 +13,7 @@ import {
   X,
   BarChart3,
   MessageCircle,
+  MessageSquare,
 } from 'lucide-react';
 import type { MasterTab } from '@/app/page';
 
@@ -25,6 +26,7 @@ interface NavigationSidebarProps {
 
 const navItems = [
   { id: 'diagnosis' as MasterTab, label: 'التشخيص الذكي', icon: Stethoscope, color: 'from-dahab-500 to-amber-600' },
+  { id: 'ai-chat' as MasterTab, label: 'مساعد الذكاء', icon: MessageSquare, color: 'from-violet-600 to-purple-600' },
   { id: 'panic-log' as MasterTab, label: 'محلل البانيك', icon: AlertOctagon, color: 'from-purple-600 to-indigo-600' },
   { id: 'safe-injection' as MasterTab, label: 'حاسبة الفولت', icon: Flame, color: 'from-amber-600 to-rose-600' },
   { id: 'boardview' as MasterTab, label: 'معمل البوردفيو', icon: Cpu, color: 'from-emerald-600 to-teal-600' },
