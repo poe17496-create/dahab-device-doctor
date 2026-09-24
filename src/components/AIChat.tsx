@@ -30,12 +30,10 @@ export default function AIChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   };
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+  // إزالة التمرير التلقائي - المستخدم يرى الرسائل يدوياً
 
   // Text-to-Speech للردود الصوتية
   const speakText = (text: string) => {
@@ -242,7 +240,7 @@ export default function AIChat() {
                     {message.relatedTools.map((tool, index) => (
                       <span
                         key={index}
-                        className="text-xs px-3 py-1.5 rounded-full bg-white/20 dark:bg-black/20 hover:bg-white/30 dark:hover:bg-black/30 cursor-pointer transition-colors"
+                        className="text-xs px-3 py-1.5 rounded-full bg-white/20 dark:bg-black/20 hover:bg-white/30 dark:hover:bg-black/30 cursor-pointer transition-colors whitespace-nowrap"
                       >
                         {tool}
                       </span>
@@ -262,7 +260,7 @@ export default function AIChat() {
                     {message.sources.map((source, index) => (
                       <span
                         key={index}
-                        className="text-xs px-3 py-1.5 rounded-full bg-white/20 dark:bg-black/20"
+                        className="text-xs px-3 py-1.5 rounded-full bg-white/20 dark:bg-black/20 whitespace-nowrap"
                       >
                         {source}
                       </span>
@@ -282,7 +280,7 @@ export default function AIChat() {
                     {message.schematics.map((schematic, index) => (
                       <span
                         key={index}
-                        className="text-xs px-3 py-1.5 rounded-full bg-white/20 dark:bg-black/20"
+                        className="text-xs px-3 py-1.5 rounded-full bg-white/20 dark:bg-black/20 whitespace-nowrap"
                       >
                         {schematic}
                       </span>
