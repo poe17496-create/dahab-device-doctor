@@ -135,6 +135,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       message: cleanedMessage,
       engine: aiResponse.engine,
+      debug: {
+        geminiKeyExists: !!process.env.GEMINI_API_KEY,
+        geminiKeyLength: process.env.GEMINI_API_KEY?.length || 0,
+        openaiKeyExists: !!process.env.OPENAI_API_KEY,
+        openaiKeyLength: process.env.OPENAI_API_KEY?.length || 0,
+        openrouterKeyExists: !!process.env.OPENROUTER_API_KEY,
+        openrouterKeyLength: process.env.OPENROUTER_API_KEY?.length || 0,
+      },
     });
   } catch (error) {
     console.error('Chat API Error:', error);

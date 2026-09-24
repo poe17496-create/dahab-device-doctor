@@ -127,6 +127,17 @@ export default function AIChat() {
       
       const data = await response.json();
       console.log('Chat API response data:', data);
+      
+      // طباعة debug info إذا وجد
+      if (data.debug) {
+        console.log('=== API Keys Debug Info ===');
+        console.log('GEMINI_API_KEY exists:', data.debug.geminiKeyExists);
+        console.log('GEMINI_API_KEY length:', data.debug.geminiKeyLength);
+        console.log('OPENAI_API_KEY exists:', data.debug.openaiKeyExists);
+        console.log('OPENAI_API_KEY length:', data.debug.openaiKeyLength);
+        console.log('OPENROUTER_API_KEY exists:', data.debug.openrouterKeyExists);
+        console.log('OPENROUTER_API_KEY length:', data.debug.openrouterKeyLength);
+      }
 
       if (response.ok) {
         // التحقق من أن الرد ليس فارغاً
