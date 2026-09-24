@@ -12,6 +12,8 @@ export interface UserAccount {
   active: boolean;
   diagnosesCount: number;
   createdAt: string;
+  activeSessionToken?: string;
+  lastLoginAt?: string;
 }
 
 const BASE_DIR = process.env.VERCEL ? '/tmp' : process.cwd();
@@ -128,6 +130,24 @@ export function toggleUserStatus(id: string): UserAccount | null {
   return null;
 }
 
+/**
+ * إنهاء جلسة مستخدم عن بعد من لوحة التحكم
+ */
+export function terminateUserSession(id: string): boolean {
+  const users = getAllUsers();
+  const user = users.find((u) => u.id === id);
+  if (user) {
+    user.activeSessionToken = undefined;
+    saveAllUsers(users);
+    return true;
+  }
+  return false;
+}
+
+/**
+ * التحقق من تسجيل الدخول وتطبيق قاعدة جهاز واحد فقط (Single-Device Enforcement)
+ * عند تسجيل الدخول من جهاز جديد، يتم إنشاء توكن جديد وإلغاء أي جلسة سابقة فوراً
+ */
 export function verifyLogin(username: string, password?: string): UserAccount | null {
   const users = getAllUsers();
   const user = users.find(
@@ -137,5 +157,25 @@ export function verifyLogin(username: string, password?: string): UserAccount | 
   if (user.password && password && user.password !== password) {
     return null;
   }
+
+  // توليد رمز جلسة جديد فريد وطرد أي جهاز سابق فوراً
+  const newSessionToken = `token_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  user.activeSessionToken = newSessionToken;
+  user.lastLoginAt = new Date().toISOString();
+  saveAllUsers(users);
+
   return user;
+}
+
+/**
+ * فحص سريان جلسة المستخدم الحالية
+ * إذا فتح نفس الحساب من جهاز آخر، سيرجع false لإخراج المستخدم الحالي فوراً
+ */
+export function validateSessionToken(username: string, sessionToken: string): boolean {
+  const users = getAllUsers();
+  const user = users.find(
+    (u) => u.username.toLowerCase() === username.toLowerCase().trim() && u.active
+  );
+  if (!user) return false;
+  return user.activeSessionToken === sessionToken;
 }

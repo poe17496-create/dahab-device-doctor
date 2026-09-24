@@ -52,5 +52,104 @@
     "compatibles": ["ISL95855CHRTZ", "ISL95855A"],
     "commonSymptoms": "اللابتوب يضيء لمبة الباور لثوانٍ ثم ينطفئ، غياب فولتية الـ VCORE (0V على ملفات المعالج)، مع وجود فولتات 3.3V و 5V و RAM.",
     "diodeReadings": "فحص رجل الـ VDD_5V ورجل الـ VR_ON المقفلة، يجب ألا تكون هناك ممانعة شورت لأرضي."
+  },
+  {
+    "partNumber": "A9",
+    "category": "Baseband CPU",
+    "deviceFamily": "Apple iPhone 6s / 6s Plus / SE",
+    "function": "معالج الشبكة والاتصالات (Baseband Processor)",
+    "compatibles": ["A9 (different batch)", "A9P"],
+    "commonSymptoms": "لا يوجد شبكة، IMEI null، خطأ 4014 في iTunes، سحب 0.12A وتوقف.",
+    "diodeReadings": "فحص خطوط الـ PMU_TO_BB و BB_PMU_RTC، الممانعة المتوقعة 0.450V-0.550V."
+  },
+  {
+    "partNumber": "A10",
+    "category": "Main CPU",
+    "deviceFamily": "Apple iPhone 7 / 7 Plus",
+    "function": "المعالج الرئيسي (Application Processor)",
+    "compatibles": ["A10 Fusion (different batch)"],
+    "commonSymptoms": "موت كامل، سحب 0.00A، سخونة على المعالج، لا يظهر في iTunes.",
+    "diodeReadings": "فحص خطوط VDD_CPU و VDD_GPU، الممانعة الطبيعية 0.025V-0.080V."
+  },
+  {
+    "partNumber": "A11",
+    "category": "Main CPU",
+    "deviceFamily": "Apple iPhone 8 / 8 Plus / X",
+    "function": "المعالج الرئيسي (Bionic)",
+    "compatibles": ["A11 Bionic (different batch)"],
+    "commonSymptoms": "ريستارت مستمر، لوجو ثم إطفاء، سحب متذبذب 0.15A-0.40A.",
+    "diodeReadings": "فحص خطوط الـ PMIC إلى المعالج، تأكد من عدم وجود شورت على خطوط الذاكرة."
+  },
+  {
+    "partNumber": "PMIC A11",
+    "category": "PMIC (Power Management)",
+    "deviceFamily": "Apple iPhone 8 / 8 Plus / X",
+    "function": "آيسي إدارة الطاقة الرئيسي",
+    "compatibles": ["338S00367", "338S00368"],
+    "commonSymptoms": "لا يشتغل، سحب 0.00A، سخونة على PMIC، غياب فولتات الباور.",
+    "diodeReadings": "فحص خطوط V_BATT و V_USB، الممانعة المتوقعة 0.300V-0.400V."
+  },
+  {
+    "partNumber": "Snapdragon 888",
+    "category": "Main SoC",
+    "deviceFamily": "Samsung Galaxy S21 / Xiaomi Mi 11 / OnePlus 9",
+    "function": "معالج كوالكوم الرئيسي مع مودم مدمج",
+    "compatibles": ["Snapdragon 888+", "Snapdragon 8 Gen 1 (with board modification)"],
+    "commonSymptoms": "سخونة شديدة، ريستارت، توقف عند لوجو، سحب 0.80A-1.2A.",
+    "diodeReadings": "فحص خطوط VDD_CPU و VDD_GPU، الممانعة الطبيعية 0.020V-0.070V."
+  },
+  {
+    "partNumber": "MT6765",
+    "category": "Main SoC",
+    "deviceFamily": "Oppo / Vivo / Realme Mid-range",
+    "function": "معالج MediaTek Helio P35",
+    "compatibles": ["MT6765T", "MT6765 (different batch)"],
+    "commonSymptoms": "لا يشتغل، سحب 0.05A وتوقف، لا يظهر في MTK Port",
+    "diodeReadings": "فحص خطوط VDD_CPU و VDD_MEM، الممانعة المتوقعة 0.030V-0.090V."
+  },
+  {
+    "partNumber": "TPS65982",
+    "category": "USB Type-C Controller",
+    "deviceFamily": "MacBook Pro 2019+ / Dell Laptops",
+    "function": "متحكم USB-C وشحن PD",
+    "compatibles": ["TPS65983", "TPS65984"],
+    "commonSymptoms": "لا يشحن، لا يتعرف على الأجهزة، لمبة برتقالية فقط.",
+    "diodeReadings": "فحص خطوط CC1 و CC2، الممانعة المتوقعة 0.500V-0.700V."
+  },
+  {
+    "partNumber": "CD3217",
+    "category": "USB-C Controller",
+    "deviceFamily": "MacBook Pro 2016-2019",
+    "function": "متحكم USB-C Apple",
+    "compatibles": ["CD3215", "CD3217B11"],
+    "commonSymptoms": "لا يشحن، منفذ واحد لا يعمل، لمبة خضراء فقط.",
+    "diodeReadings": "فحص خطوط VBUS و CC، الممانعة المتوقعة 0.450V-0.650V."
+  },
+  {
+    "partNumber": "ISL6236",
+    "category": "Power Controller",
+    "deviceFamily": "MacBook Pro / Air",
+    "function": "متحكم باور رئيسي",
+    "compatibles": ["ISL6237", "ISL9240"],
+    "commonSymptoms": "لا يشتغل، سحب 0.00A، سخونة على الآيسي.",
+    "diodeReadings": "فحص خطوط PP3V42_G3H و PP5V_S5، الممانعة المتوقعة 0.300V-0.500V."
+  },
+  {
+    "partNumber": "BGA169",
+    "category": "Audio Codec",
+    "deviceFamily": "iPhone 7-11 / iPad",
+    "function": "آيسي الصوت (Audio IC)",
+    "compatibles": ["338S0036", "338S0040"],
+    "commonSymptoms": "لا صوت، سماعة الرأس لا تعمل، خطأ 53 في iTunes.",
+    "diodeReadings": "فحص خطوط I2S_SCLK و I2S_LRCLK، الممانعة المتوقعة 0.550V-0.750V."
+  },
+  {
+    "partNumber": "Touch ID IC",
+    "category": "Security / Biometric",
+    "deviceFamily": "iPhone 5s-8 / iPad Pro",
+    "function": "آيسي البصمة",
+    "compatibles": ["Touch ID (same model only)"],
+    "commonSymptoms": "البصمة لا تعمل، خطأ 40 في iTunes، لا يمكن إضافة بصمة.",
+    "diodeReadings": "فحص خطوط SPI و RESET، الممانعة المتوقعة 0.600V-0.800V."
   }
 ]

@@ -5,11 +5,15 @@
 :root {
   --foreground-rgb: 17, 24, 39;
   --background-rgb: 248, 250, 252;
+  --card-rgb: 255, 255, 255;
+  --border-rgb: 226, 232, 240;
 }
 
 .dark {
   --foreground-rgb: 243, 244, 246;
   --background-rgb: 11, 15, 23;
+  --card-rgb: 17, 24, 39;
+  --border-rgb: 31, 41, 55;
 }
 
 body {
@@ -19,13 +23,13 @@ body {
   direction: rtl;
   text-align: right;
   overflow-x: hidden;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* تخصيص شريط التمرير (Custom Scrollbar) */
 ::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -38,11 +42,15 @@ body {
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: #1F2937;
+  background: #374151;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: #f59e0b;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #fbbf24;
 }
 
 @keyframes fadeIn {
@@ -58,6 +66,26 @@ body {
 
 .animate-fadeIn {
   animation: fadeIn 0.25s ease-out forwards;
+}
+
+/* تحسين Dark Mode للعناصر التفاعلية */
+.dark input,
+.dark textarea,
+.dark select {
+  background-color: rgb(17, 24, 39);
+  border-color: rgb(31, 41, 55);
+  color: rgb(243, 244, 246);
+}
+
+.dark input:focus,
+.dark textarea:focus,
+.dark select:focus {
+  border-color: #f59e0b;
+  outline: none;
+}
+
+.dark button {
+  transition: all 0.2s ease;
 }
 
 @media print {
