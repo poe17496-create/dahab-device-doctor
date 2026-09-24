@@ -80,6 +80,16 @@ export async function POST(req: NextRequest) {
 
     // تنظيف الرد من الأكواد والتقارير
     const cleanedMessage = cleanAIResponse(aiResponse.text);
+    
+    // التحقق من أن الرد ليس فارغاً بعد التنظيف
+    if (!cleanedMessage || cleanedMessage.trim() === '') {
+      console.warn('Cleaned message is empty, using original response');
+      // استخدام الرد الأصلي إذا كان التنظيف حذف كل شيء
+      return NextResponse.json({
+        message: aiResponse.text || 'عذراً، لم أتمكن من توليد رد مناسب.',
+        engine: aiResponse.engine,
+      });
+    }
 
     return NextResponse.json({
       message: cleanedMessage,

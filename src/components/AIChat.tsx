@@ -81,6 +81,8 @@ export default function AIChat() {
     setIsLoading(true);
 
     try {
+      console.log('Sending chat request:', { input, hasImage: !!imageBase64 });
+      
       // استدعاء API الحقيقي
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -93,9 +95,17 @@ export default function AIChat() {
         }),
       });
 
+      console.log('Chat API response status:', response.status);
+      
       const data = await response.json();
+      console.log('Chat API response data:', data);
 
       if (response.ok) {
+        // التحقق من أن الرد ليس فارغاً
+        if (!data.message || data.message.trim() === '') {
+          throw new Error('الرد فارئ من الذكاء الاصطناعي');
+        }
+
         const assistantMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
@@ -117,7 +127,7 @@ export default function AIChat() {
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'عذراً، حدث خطأ في الاتصال بالذكاء الاصطناعي. يرجى المحاولة مرة أخرى.',
+        content: `عذراً، حدث خطأ: ${error instanceof Error ? error.message : 'فشل في الاتصال بالذكاء الاصطناعي'}. يرجى المحاولة مرة أخرى.`,
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMessage]);
