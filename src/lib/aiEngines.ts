@@ -25,7 +25,7 @@ export interface AIResponse {
  * إعداد المحركات المتاحة
  */
 export function getAvailableEngines(): AIEngineConfig[] {
-  return [
+  const engines: AIEngineConfig[] = [
     {
       id: 'openai',
       name: 'OpenAI GPT-4o',
@@ -59,6 +59,13 @@ export function getAvailableEngines(): AIEngineConfig[] {
       priority: 99,
     },
   ];
+
+  console.log('=== Available Engines ===');
+  engines.forEach(engine => {
+    console.log(`${engine.name}: ${engine.enabled ? 'ENABLED' : 'DISABLED'} (priority: ${engine.priority})`);
+  });
+
+  return engines;
 }
 
 /**
@@ -227,10 +234,32 @@ function generateLocalDiagnosis(params: {
   specialty: DeviceSpecialty;
   deviceModel?: string;
   readings?: PowerSupplyReadings;
+  systemPrompt?: string; // custom system prompt
 }): AIResponse {
-  const { prompt, specialty, deviceModel, readings } = params;
+  const { prompt, specialty, deviceModel, readings, systemPrompt } = params;
   const pLower = prompt.toLowerCase();
 
+  // إذا كان هناك custom system prompt، نستخدم رد بسيط بدلاً من التقرير التقني
+  if (systemPrompt && systemPrompt.includes('مساعد محادثة')) {
+    // رد بسيط للمحادثة
+    let simpleResponse = '';
+    
+    if (pLower.includes('مرحبا') || pLower.includes('هلا') || pLower.includes('السلام')) {
+      simpleResponse = 'أهلاً بك! أنا مساعدك الذكي في صيانة الأجهزة. كيف يمكنني مساعدتك اليوم؟';
+    } else if (pLower.includes('شكر') || pLower.includes('شكرا')) {
+      simpleResponse = 'على الرحب والسعة! أنا هنا لمساعدتك دائماً.';
+    } else if (pLower.includes('مشكلة') || pLower.includes('عطل') || pLower.includes('لا يعمل')) {
+      simpleResponse = 'أفهم أن لديك مشكلة. هل يمكنك إعطائي المزيد من التفاصيل عن الجهاز والمشكلة التي تواجهها؟';
+    } else if (pLower.includes('فحص') || pLower.includes('ديود')) {
+      simpleResponse = 'فحص الديود هو طريقة لقياس المقاومة على خطوط البور. نضع الملتيميتر على وضع الديود، المجس الأحمر على الأرضي والأسود على المكثف. القراءة الطبيعية بين 0.280 إلى 0.450 فولت.';
+    } else {
+      simpleResponse = 'شكراً لسؤالك. يمكنني مساعدتك في تشخيص الأعطال، فهم المخططات، وتحليل البيانات. ما هي المشكلة التي تواجهها؟';
+    }
+    
+    return { text: simpleResponse, engine: 'local' };
+  }
+
+  // الرد التقني الافتراضي (للتشخيص)
   let isHw = false;
   let isSw = false;
   let hwProb = 50;
@@ -343,31 +372,34 @@ export async function callAIEngine(params: {
         return generateLocalDiagnosis(paramsWithSpecialty);
     }
   } catch (error) {
-    console.error('فشل المحرك الأساسي، الانتقال للمحرك التالي:', error);
-    // محاولة المحركات الأخرى بالترتيب
-    const engines = getAvailableEngines().filter(e => e.enabled && e.id !== bestEngine.id);
-    
-    for (const engine of engines) {
-      try {
-        switch (engine.id) {
-          case 'openai':
-            return await callOpenAI(paramsWithSpecialty);
-          case 'openrouter':
-            return await callOpenRouter(paramsWithSpecialty);
-          case 'gemini':
-            return await callGemini(paramsWithSpecialty);
-          case 'local':
-            return generateLocalDiagnosis(paramsWithSpecialty);
-        }
-      } catch (e) {
-        console.error(`فشل المحرك ${engine.id}:`, e);
-        continue;
+    console.error('AI Engine Error:', error);
+    // Fallback to local engine on error
+    console.log('Falling back to local engine due to error');
+    return generateLocalDiagnosis(paramsWithSpecialty);
+  }
+
+  // محاولة المحركات الأخرى بالترتيب
+  const engines = getAvailableEngines().filter(e => e.enabled && e.id !== bestEngine.id);
+  
+  for (const engine of engines) {
+    try {
+      switch (engine.id) {
+        case 'openai':
+          return await callOpenAI(paramsWithSpecialty);
+        case 'openrouter':
+          return await callOpenRouter(paramsWithSpecialty);
+        case 'gemini':
+          return await callGemini(paramsWithSpecialty);
+        case 'local':
+          return generateLocalDiagnosis(paramsWithSpecialty);
       }
+    } catch (e) {
+      console.error(`فشل المحرك ${engine.id}:`, e);
+      continue;
     }
   }
 
-  // Fallback للمحرك المحلي
-  console.log('استخدام المحرك المحلي كنسخة احتياطية');
+  // Fallback النهائي للمحرك المحلي
   return generateLocalDiagnosis(paramsWithSpecialty);
 }
 
