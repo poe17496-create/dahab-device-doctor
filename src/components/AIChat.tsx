@@ -236,11 +236,11 @@ export default function AIChat() {
                     <Cpu className="w-3 h-3" />
                     الأدوات المرتبطة:
                   </p>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     {message.relatedTools.map((tool, index) => (
                       <span
                         key={index}
-                        className="text-xs px-3 py-1.5 rounded-full bg-white/20 dark:bg-black/20 hover:bg-white/30 dark:hover:bg-black/30 cursor-pointer transition-colors whitespace-nowrap"
+                        className="text-xs px-3 py-1.5 rounded-full bg-white/20 dark:bg-black/20 hover:bg-white/30 dark:hover:bg-black/30 cursor-pointer transition-colors text-center"
                       >
                         {tool}
                       </span>
@@ -256,11 +256,11 @@ export default function AIChat() {
                     <BookOpen className="w-3 h-3" />
                     المصادر:
                   </p>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     {message.sources.map((source, index) => (
                       <span
                         key={index}
-                        className="text-xs px-3 py-1.5 rounded-full bg-white/20 dark:bg-black/20 whitespace-nowrap"
+                        className="text-xs px-3 py-1.5 rounded-full bg-white/20 dark:bg-black/20 text-center"
                       >
                         {source}
                       </span>
@@ -276,11 +276,11 @@ export default function AIChat() {
                     <FileText className="w-3 h-3" />
                     المخططات المرتبطة:
                   </p>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     {message.schematics.map((schematic, index) => (
                       <span
                         key={index}
-                        className="text-xs px-3 py-1.5 rounded-full bg-white/20 dark:bg-black/20 whitespace-nowrap"
+                        className="text-xs px-3 py-1.5 rounded-full bg-white/20 dark:bg-black/20 text-center"
                       >
                         {schematic}
                       </span>
@@ -288,13 +288,6 @@ export default function AIChat() {
                   </div>
                 </div>
               )}
-
-              <p className="text-xs mt-3 opacity-70 flex items-center gap-1">
-                {message.timestamp.toLocaleTimeString('ar-SA')}
-                {message.role === 'assistant' && isVoiceEnabled && (
-                  <Volume2 className="w-3 h-3" />
-                )}
-              </p>
             </div>
           </div>
         ))}
