@@ -5,6 +5,9 @@ import { callAIEngine } from '@/lib/aiEngines';
 function cleanAIResponse(text: string): string {
   let cleaned = text;
   
+  console.log('=== AI Response Before Cleaning ===');
+  console.log(cleaned);
+  
   // إزالة كتل الميتريكس
   cleaned = cleaned.replace(/<<<DAHAB_DIAGNOSTIC_METRICS>>>[\s\S]*?<<<END_DAHAB_METRICS>>>/g, '');
   
@@ -19,11 +22,18 @@ function cleanAIResponse(text: string): string {
   cleaned = cleaned.replace(/^\s*[-*]\s*\*\*[^*]+\*\*:[^\n]*$/gm, '');
   cleaned = cleaned.replace(/^\s*[-*]\s*[^\n]*$/gm, '');
   
+  // إزالة الأسطر المرقمة المتكررة
+  cleaned = cleaned.replace(/^\s*\d+\.\s*\*\*[^*]+\*\*:[^\n]*$/gm, '');
+  cleaned = cleaned.replace(/^\s*\d+\.\s*[^\n]*$/gm, '');
+  
   // إزالة الأسطر الفارغة المتعددة
   cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
   
   // إزالة المسافات الزائدة
   cleaned = cleaned.trim();
+  
+  console.log('=== AI Response After Cleaning ===');
+  console.log(cleaned);
   
   return cleaned;
 }

@@ -175,6 +175,12 @@ async function callGemini(params: {
   const model = genAI.getGenerativeModel({
     model: 'gemini-1.5-flash',
     systemInstruction: params.systemPrompt || DAHAB_SYSTEM_PROMPT,
+    generationConfig: {
+      temperature: 0.7, // زيادة التنوع في الردود
+      topK: 40,
+      topP: 0.95,
+      maxOutputTokens: 2048,
+    },
   });
 
   let contentParts: any[] = [{ text: params.prompt }];
