@@ -241,22 +241,91 @@ function generateLocalDiagnosis(params: {
 
   // إذا كان هناك custom system prompt، نستخدم رد بسيط بدلاً من التقرير التقني
   if (systemPrompt && systemPrompt.includes('مساعد محادثة')) {
-    // رد بسيط للمحادثة
-    let simpleResponse = '';
-    
-    if (pLower.includes('مرحبا') || pLower.includes('هلا') || pLower.includes('السلام')) {
-      simpleResponse = 'أهلاً بك! أنا مساعدك الذكي في صيانة الأجهزة. كيف يمكنني مساعدتك اليوم؟';
-    } else if (pLower.includes('شكر') || pLower.includes('شكرا')) {
-      simpleResponse = 'على الرحب والسعة! أنا هنا لمساعدتك دائماً.';
-    } else if (pLower.includes('مشكلة') || pLower.includes('عطل') || pLower.includes('لا يعمل')) {
-      simpleResponse = 'أفهم أن لديك مشكلة. هل يمكنك إعطائي المزيد من التفاصيل عن الجهاز والمشكلة التي تواجهها؟';
-    } else if (pLower.includes('فحص') || pLower.includes('ديود')) {
-      simpleResponse = 'فحص الديود هو طريقة لقياس المقاومة على خطوط البور. نضع الملتيميتر على وضع الديود، المجس الأحمر على الأرضي والأسود على المكثف. القراءة الطبيعية بين 0.280 إلى 0.450 فولت.';
-    } else {
-      simpleResponse = 'شكراً لسؤالك. يمكنني مساعدتك في تشخيص الأعطال، فهم المخططات، وتحليل البيانات. ما هي المشكلة التي تواجهها؟';
+    // قاعدة بيانات الردود الديناميكية
+    const responses = {
+      greetings: [
+        'أهلاً بك! أنا مساعدك الذكي في صيانة الأجهزة. كيف يمكنني مساعدتك اليوم؟',
+        'مرحباً! أنا هنا لمساعدتك في تشخيص الأعطال وصيانة الأجهزة. ما هي المشكلة التي تواجهها؟',
+        'أهلاً وسهلاً! يمكنني مساعدتك في فهم المخططات، تشخيص الأعطال، والإجابة على أسئلتك التقنية.',
+      ],
+      thanks: [
+        'على الرحب والسعة! أنا هنا لمساعدتك دائماً.',
+        'العفو! لا تتردد في السؤال عن أي شيء.',
+        'سروري مساعدتك! هل لديك أي أسئلة أخرى؟',
+      ],
+      problem: [
+        'أفهم أن لديك مشكلة. هل يمكنك إعطائي المزيد من التفاصيل عن الجهاز والمشكلة التي تواجهها؟',
+        'سأساعدك في حل المشكلة. أخبرني بالتفاصيل: ما نوع الجهاز؟ وما هي الأعراض؟',
+        'دعني أساعدك في تشخيص المشكلة. صف لي العطل بالتفصيل وسأقترح الحلول المناسبة.',
+      ],
+      diode: [
+        'فحص الديود هو طريقة لقياس المقاومة على خطوط البور. نضع الملتيميتر على وضع الديود، المجس الأحمر على الأرضي والأسود على المكثف. القراءة الطبيعية بين 0.280 إلى 0.450 فولت. إذا أعطى جرس أو قراءة أقل من 0.015 فولت، فهناك شورت.',
+        'لفحص الديود: ضع الملتيميتر على وضع الديود، المجس الأحمر على الأرضي والأسود على المكثف. القراءة السليمة بين 0.280-0.450 فولت. قراءة أقل من 0.015 فولت تعني وجود شورت.',
+      ],
+      short: [
+        'الشورت يعني وجود مسار قصير في الدائرة. للبحث عنه، استخدم وضع الديود أو حقن فولت آمن وتتبع السخونة بالرجينة أو الكاميرا الحرارية.',
+        'لإيجاد الشورت: افحص بوضع الديود، أو حقن فولت آمن (1.2V) وتتبع المكون الساخن.',
+      ],
+      power: [
+        'للمشاكل المتعلقة بالطاقة: افحص البطارية أولاً، ثم زر الباور، ثم خطوط البور الرئيسية بوضع الديود.',
+        'في مشاكل الباور: ابدأ بفحص البطارية، ثم زر الباور، ثم خطوط التغذية الرئيسية.',
+      ],
+      screen: [
+        'مشاكل الشاشة قد تكون بسبب الشاشة نفسها، الكابل المرن، أو آيسي العرض. افحص الكابل أولاً ثم الشاشة.',
+        'للمشاكل الشاشية: افحص الكابل المرن، ثم الشاشة، ثم آيسي العرض إذا لزم الأمر.',
+      ],
+      charging: [
+        'مشاكل الشحن قد تكون من البطارية، كابل الشحن، أو آيسي الشحن. افحص الكابل والبطارية أولاً.',
+        'للتشخيص الشحن: افحص كابل الشحن، البطارية، ثم آيسي الشحن.',
+      ],
+      general: [
+        'يمكنني مساعدتك في تشخيص الأعطال، فهم المخططات، وتحليل البيانات. ما هي المشكلة التي تواجهها؟',
+        'أنا هنا لمساعدتك في صيانة الأجهزة. أخبرني بالتفاصيل وسأقدم لك المساعدة.',
+        'سأساعدك بأي معلومة تحتاجها عن صيانة الأجهزة. ما هو سؤالك؟',
+      ],
+    };
+
+    // اختيار رد عشوائي من القائمة
+    const getRandomResponse = (key: keyof typeof responses): string => {
+      const list = responses[key];
+      return list[Math.floor(Math.random() * list.length)];
+    };
+
+    // Pattern matching ذكي
+    if (pLower.includes('مرحبا') || pLower.includes('هلا') || pLower.includes('السلام') || pLower.includes('صباح') || pLower.includes('مساء')) {
+      return { text: getRandomResponse('greetings'), engine: 'local' };
     }
     
-    return { text: simpleResponse, engine: 'local' };
+    if (pLower.includes('شكر') || pLower.includes('شكرا') || pLower.includes('جزاك') || pLower.includes('عفوا')) {
+      return { text: getRandomResponse('thanks'), engine: 'local' };
+    }
+    
+    if (pLower.includes('مشكلة') || pLower.includes('عطل') || pLower.includes('لا يعمل') || pLower.includes('موت') || pLower.includes('فاصل')) {
+      return { text: getRandomResponse('problem'), engine: 'local' };
+    }
+    
+    if (pLower.includes('فحص') && pLower.includes('ديود')) {
+      return { text: getRandomResponse('diode'), engine: 'local' };
+    }
+    
+    if (pLower.includes('شورت') || pLower.includes('قصر') || pLower.includes('ماس')) {
+      return { text: getRandomResponse('short'), engine: 'local' };
+    }
+    
+    if (pLower.includes('باور') || pLower.includes('طاقة') || pLower.includes('تشغيل')) {
+      return { text: getRandomResponse('power'), engine: 'local' };
+    }
+    
+    if (pLower.includes('شاشة') || pLower.includes('عرض') || pLower.includes('لمس')) {
+      return { text: getRandomResponse('screen'), engine: 'local' };
+    }
+    
+    if (pLower.includes('شحن') || pLower.includes('بطارية')) {
+      return { text: getRandomResponse('charging'), engine: 'local' };
+    }
+    
+    // رد عام للمحادثة
+    return { text: getRandomResponse('general'), engine: 'local' };
   }
 
   // الرد التقني الافتراضي (للتشخيص)
