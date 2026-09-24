@@ -241,6 +241,10 @@ function generateLocalDiagnosis(params: {
 
   // إذا كان هناك custom system prompt، نستخدم رد بسيط بدلاً من التقرير التقني
   if (systemPrompt && systemPrompt.includes('مساعد محادثة')) {
+    console.log('=== Using Custom System Prompt for Chat ===');
+    console.log('Prompt:', prompt);
+    console.log('System prompt length:', systemPrompt.length);
+    
     // قاعدة بيانات الردود الديناميكية
     const responses = {
       greetings: [
@@ -288,46 +292,67 @@ function generateLocalDiagnosis(params: {
     // اختيار رد عشوائي من القائمة
     const getRandomResponse = (key: keyof typeof responses): string => {
       const list = responses[key];
-      return list[Math.floor(Math.random() * list.length)];
+      const selected = list[Math.floor(Math.random() * list.length)];
+      console.log(`Selected response from ${key}:`, selected);
+      return selected;
     };
 
     // Pattern matching ذكي
     if (pLower.includes('مرحبا') || pLower.includes('هلا') || pLower.includes('السلام') || pLower.includes('صباح') || pLower.includes('مساء')) {
-      return { text: getRandomResponse('greetings'), engine: 'local' };
+      const response = getRandomResponse('greetings');
+      console.log('Matched: greetings');
+      return { text: response, engine: 'local' };
     }
     
     if (pLower.includes('شكر') || pLower.includes('شكرا') || pLower.includes('جزاك') || pLower.includes('عفوا')) {
-      return { text: getRandomResponse('thanks'), engine: 'local' };
+      const response = getRandomResponse('thanks');
+      console.log('Matched: thanks');
+      return { text: response, engine: 'local' };
     }
     
     if (pLower.includes('مشكلة') || pLower.includes('عطل') || pLower.includes('لا يعمل') || pLower.includes('موت') || pLower.includes('فاصل')) {
-      return { text: getRandomResponse('problem'), engine: 'local' };
+      const response = getRandomResponse('problem');
+      console.log('Matched: problem');
+      return { text: response, engine: 'local' };
     }
     
     if (pLower.includes('فحص') && pLower.includes('ديود')) {
-      return { text: getRandomResponse('diode'), engine: 'local' };
+      const response = getRandomResponse('diode');
+      console.log('Matched: diode');
+      return { text: response, engine: 'local' };
     }
     
     if (pLower.includes('شورت') || pLower.includes('قصر') || pLower.includes('ماس')) {
-      return { text: getRandomResponse('short'), engine: 'local' };
+      const response = getRandomResponse('short');
+      console.log('Matched: short');
+      return { text: response, engine: 'local' };
     }
     
     if (pLower.includes('باور') || pLower.includes('طاقة') || pLower.includes('تشغيل')) {
-      return { text: getRandomResponse('power'), engine: 'local' };
+      const response = getRandomResponse('power');
+      console.log('Matched: power');
+      return { text: response, engine: 'local' };
     }
     
     if (pLower.includes('شاشة') || pLower.includes('عرض') || pLower.includes('لمس')) {
-      return { text: getRandomResponse('screen'), engine: 'local' };
+      const response = getRandomResponse('screen');
+      console.log('Matched: screen');
+      return { text: response, engine: 'local' };
     }
     
     if (pLower.includes('شحن') || pLower.includes('بطارية')) {
-      return { text: getRandomResponse('charging'), engine: 'local' };
+      const response = getRandomResponse('charging');
+      console.log('Matched: charging');
+      return { text: response, engine: 'local' };
     }
     
     // رد عام للمحادثة
-    return { text: getRandomResponse('general'), engine: 'local' };
+    const response = getRandomResponse('general');
+    console.log('Matched: general (fallback)');
+    return { text: response, engine: 'local' };
   }
 
+  console.log('=== Using Default Technical Report Mode ===');
   // الرد التقني الافتراضي (للتشخيص)
   let isHw = false;
   let isSw = false;
