@@ -1,0 +1,43 @@
+{
+  "name": "دهب دكتور - خبير تشخيص الإلكترونيات",
+  "short_name": "دهب دكتور",
+  "description": "المنظومة الهندسية الأولى في الشرق الأوسط لتشخيص وفصل أعطال الموبايل واللابتوب وكروت الباور والإلكترونيات الدقيقة",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B0F17",
+  "theme_color": "#f59e0b",
+  "orientation": "portrait",
+  "dir": "rtl",
+  "lang": "ar",
+  "icons": [
+    {
+      "src": "/logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["utilities", "productivity"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "التشخيص الذكي",
+      "short_name": "تشخيص",
+      "description": "تشخيص الأعطال بالذكاء الاصطناعي",
+      "url": "/",
+      "icons": [{ "src": "/logo.jpg", "sizes": "192x192" }]
+    }
+  ]
+}

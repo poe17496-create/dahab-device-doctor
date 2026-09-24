@@ -13,6 +13,7 @@ import InteractiveBoardviewSimulator from '@/components/InteractiveBoardviewSimu
 import ICEncyclopediaTab from '@/components/ICEncyclopediaTab';
 import SchematicIntegrationReport from '@/components/SchematicIntegrationReport';
 import NavigationSidebar from '@/components/NavigationSidebar';
+import PWAInstallButton from '@/components/PWAInstallButton';
 import {
   DeviceSpecialty,
   PowerSupplyReadings,
@@ -346,6 +347,9 @@ export default function DahabFixAiConsole() {
           </div>
         </div>
       </div>
+
+      {/* زر تثبيت PWA */}
+      <PWAInstallButton />
     </div>
   );
 }
