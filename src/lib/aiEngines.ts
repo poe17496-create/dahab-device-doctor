@@ -75,6 +75,7 @@ export function getBestEngine(): AIEngineConfig {
 async function callOpenAI(params: {
   prompt: string;
   imageBase64?: string;
+  systemPrompt?: string;
 }): Promise<AIResponse> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error('OpenAI API key not configured');
@@ -82,7 +83,7 @@ async function callOpenAI(params: {
   const openai = new OpenAI({ apiKey });
 
   const messages: any[] = [
-    { role: 'system', content: DAHAB_SYSTEM_PROMPT },
+    { role: 'system', content: params.systemPrompt || DAHAB_SYSTEM_PROMPT },
     { role: 'user', content: params.prompt },
   ];
 
@@ -118,6 +119,7 @@ async function callOpenAI(params: {
 async function callOpenRouter(params: {
   prompt: string;
   imageBase64?: string;
+  systemPrompt?: string;
 }): Promise<AIResponse> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new Error('OpenRouter API key not configured');
@@ -128,7 +130,7 @@ async function callOpenRouter(params: {
   });
 
   const messages: any[] = [
-    { role: 'system', content: DAHAB_SYSTEM_PROMPT },
+    { role: 'system', content: params.systemPrompt || DAHAB_SYSTEM_PROMPT },
     { role: 'user', content: params.prompt },
   ];
 
@@ -164,6 +166,7 @@ async function callOpenRouter(params: {
 async function callGemini(params: {
   prompt: string;
   imageBase64?: string;
+  systemPrompt?: string;
 }): Promise<AIResponse> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('Gemini API key not configured');
@@ -171,7 +174,7 @@ async function callGemini(params: {
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({
     model: 'gemini-1.5-flash',
-    systemInstruction: DAHAB_SYSTEM_PROMPT,
+    systemInstruction: params.systemPrompt || DAHAB_SYSTEM_PROMPT,
   });
 
   let contentParts: any[] = [{ text: params.prompt }];
@@ -310,12 +313,13 @@ export async function callAIEngine(params: {
   readings?: PowerSupplyReadings;
   imageBase64?: string;
   preferredEngine?: AIEngine;
+  systemPrompt?: string; // custom system prompt للمحادثة
 }): Promise<AIResponse> {
-  const { specialty = 'mobile-repair' } = params;
+  const { specialty = 'mobile-repair', systemPrompt = DAHAB_SYSTEM_PROMPT } = params;
   
   // تحسين النص العربي بالمصطلحات التقنية
   const enhancedPrompt = enhanceArabicPrompt(params.prompt);
-  const paramsWithSpecialty = { ...params, prompt: enhancedPrompt, specialty };
+  const paramsWithSpecialty = { ...params, prompt: enhancedPrompt, specialty, systemPrompt };
 
   // استخدام أفضل محرك متاح تلقائياً
   const bestEngine = getBestEngine();

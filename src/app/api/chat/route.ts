@@ -29,14 +29,15 @@ export async function POST(req: NextRequest) {
 
 تذكر: أنت مساعد محادثة، ليس مولد تقارير. أجب ببساطة ووضوح.`;
 
-    // استدعاء الذكاء الاصطناعي الحقيقي
+    // استدعاء الذكاء الاصطناعي الحقيقي مع system prompt مخصص
     const aiResponse = await callAIEngine({
-      prompt: `${systemPrompt}\n\nسؤال المستخدم: ${message}`,
+      prompt: message,
       specialty: 'mobile-repair',
       deviceModel: 'General',
       readings: {},
       imageBase64: imageBase64 || null,
       preferredEngine: 'gemini',
+      systemPrompt: systemPrompt, // تمرير system prompt بشكل صحيح
     });
 
     return NextResponse.json({
