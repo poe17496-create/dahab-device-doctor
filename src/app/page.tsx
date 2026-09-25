@@ -172,6 +172,14 @@ export default function DahabFixAiConsole() {
         .catch(console.error);
 
       // 2. طلب التشخيص المباشر عبر الـ Streaming والربط بذاكرة الـ JSON
+      let customKeys: any = undefined;
+      try {
+        const stored = localStorage.getItem('dahab_system_api_keys');
+        if (stored) {
+          customKeys = JSON.parse(stored);
+        }
+      } catch (e) {}
+
       const response = await fetch('/api/diagnose', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -182,6 +190,7 @@ export default function DahabFixAiConsole() {
           readings,
           imageBase64,
           sessionId: activeSessionId,
+          customKeys,
         }),
       });
 

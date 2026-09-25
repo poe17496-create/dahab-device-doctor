@@ -110,6 +110,18 @@ export default function AIChat() {
     try {
       console.log('Sending chat request:', { input, hasImage: !!imageBase64 });
       
+      // جلب المفاتيح المحفوظة في منظومة دهب من التخزين المحلي إن وجدت
+      let customKeys: any = undefined;
+      try {
+        const stored = localStorage.getItem('dahab_system_api_keys');
+        if (stored) {
+          customKeys = JSON.parse(stored);
+          console.log('Loaded custom system keys from localStorage for Chat request');
+        }
+      } catch (err) {
+        console.warn('Could not read stored keys from localStorage:', err);
+      }
+
       // استدعاء API الحقيقي مع تاريخ المحادثة
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -120,6 +132,7 @@ export default function AIChat() {
           message: input,
           imageBase64: imageBase64,
           chatHistory: messages, // إرسال تاريخ المحادثة الكامل
+          customKeys,
         }),
       });
 

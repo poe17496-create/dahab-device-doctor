@@ -18,7 +18,7 @@ function cleanAIResponse(text: string): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const { message, imageBase64, chatHistory } = await req.json();
+    const { message, imageBase64, chatHistory, customKeys } = await req.json();
 
     if (!message && !imageBase64) {
       return NextResponse.json({ error: 'الرسالة فارغة' }, { status: 400 });
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
 4. اذكر دائماً نصائح الأمان (مثل: عدم رفع فولت الحقن لتفادي احتراق المعالجات).
 5. تذكر سياق الحوار السابق وأجب بذكاء وترابط، وإذا كان استفساراً عاماً أو تحية، رحب بالفني بحرارة وسله عن الجهاز أو البوردة التي يعمل عليها.`;
 
-    // استدعاء محرك الذكاء الاصطناعي مع التدوير التلقائي لكافة المفاتيح
+    // استدعاء محرك الذكاء الاصطناعي مع التدوير التلقائي لكافة المفاتيح والمفاتيح الممررة من العميل
     const aiResponse = await callAIEngine({
       prompt: contextPrompt + message,
       specialty: 'mobile-repair',
@@ -65,6 +65,7 @@ export async function POST(req: NextRequest) {
       preferredEngine: 'gemini',
       systemPrompt,
       skipEnhancement: true,
+      customKeys,
     });
 
     const cleanedMessage = cleanAIResponse(aiResponse.text);

@@ -3,6 +3,7 @@ import OpenAI from 'openai';
 import { DAHAB_SYSTEM_PROMPT } from './promptTemplates';
 import { DiagnosticMetrics, DeviceSpecialty, PowerSupplyReadings } from './types';
 import { enhanceArabicPrompt } from './middleEastFeatures';
+import { getAllActiveKeys } from './apiKeysStorage';
 
 export type AIEngine = 'gemini' | 'openai' | 'openrouter' | 'local';
 
@@ -440,6 +441,12 @@ export async function callAIEngine(params: {
   preferredEngine?: AIEngine;
   systemPrompt?: string;
   skipEnhancement?: boolean;
+  customKeys?: {
+    gemini?: string | string[];
+    openrouter?: string | string[];
+    openai?: string | string[];
+    groq?: string | string[];
+  };
 }): Promise<AIResponse> {
   const { specialty = 'mobile-repair', systemPrompt = DAHAB_SYSTEM_PROMPT, skipEnhancement = false } = params;
 
@@ -452,12 +459,13 @@ export async function callAIEngine(params: {
 
   const errorsLog: string[] = [];
 
-  // جمع كافة المفاتيح المتاحة من متغيرات البيئة
-  const geminiKeys = parseApiKeys(process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEYS || process.env.GOOGLE_API_KEY);
-  const openrouterKeys = parseApiKeys(process.env.OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEYS);
-  const openaiKeys = parseApiKeys(process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEYS);
+  // جمع كافة المفاتيح المتاحة من لوحة التحكم /admin والمتصفح ومتغيرات البيئة
+  const activeKeys = getAllActiveKeys(params.customKeys);
+  const geminiKeys = activeKeys.geminiKeys;
+  const openrouterKeys = activeKeys.openrouterKeys;
+  const openaiKeys = activeKeys.openaiKeys;
 
-  console.log(`=== AI Keys Summary: Gemini (${geminiKeys.length}), OpenRouter (${openrouterKeys.length}), OpenAI (${openaiKeys.length}) ===`);
+  console.log(`=== Active AI Keys: Gemini (${geminiKeys.length}), OpenRouter (${openrouterKeys.length}), OpenAI (${openaiKeys.length}) ===`);
 
   // تحديد ترتيب المزودين بناءً على التفضيل أو الأفضلية
   // نضع Gemini و OpenRouter أولاً لأن لهما حصص مجانية وفيرة وموديلات متعددة

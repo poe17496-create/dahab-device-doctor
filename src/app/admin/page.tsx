@@ -15,11 +15,14 @@ import {
   Terminal,
   Layers,
   Sparkles,
+  Key,
 } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import { UserAccount } from '@/lib/auth';
+import AIKeysManager from '@/components/AIKeysManager';
 
 export default function AdminDashboardPage() {
+  const [activeTab, setActiveTab] = useState<'technicians' | 'keys'>('technicians');
   const [users, setUsers] = useState<UserAccount[]>([]);
   const [sessionsCount, setSessionsCount] = useState(0);
   const [hwCount, setHwCount] = useState(0);
@@ -140,6 +143,15 @@ export default function AdminDashboardPage() {
             <ThemeToggle />
 
             <Link
+              href="/admin/keys"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-dahab-500/15 hover:bg-dahab-500/25 border border-dahab-500/30 text-xs font-bold text-dahab-700 dark:text-dahab-300 transition"
+              title="فتح صفحة المفاتيح في رابط مباشر ومستقل"
+            >
+              <Key className="w-4 h-4 text-dahab-500" />
+              <span>رابط المفاتيح المستقل (/admin/keys)</span>
+            </Link>
+
+            <Link
               href="/"
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-700 text-xs font-bold text-gray-800 dark:text-gray-200 transition"
             >
@@ -149,8 +161,41 @@ export default function AdminDashboardPage() {
           </div>
         </header>
 
-        {/* كروت الإحصائيات العامة للمعمل */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* أزرار التبديل بين التبويبات في لوحة التحكم */}
+        <div className="flex items-center gap-2 p-1.5 bg-gray-200/70 dark:bg-gray-900 rounded-2xl max-w-fit border border-gray-300/50 dark:border-gray-800">
+          <button
+            onClick={() => setActiveTab('technicians')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition ${
+              activeTab === 'technicians'
+                ? 'bg-white dark:bg-workshop-card text-dahab-600 dark:text-dahab-400 shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>إدارة المهندسين والفنيين ({users.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('keys')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition ${
+              activeTab === 'keys'
+                ? 'bg-white dark:bg-workshop-card text-dahab-600 dark:text-dahab-400 shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+            }`}
+          >
+            <Key className="w-4 h-4 text-dahab-500" />
+            <span>مفاتيح الذكاء الاصطناعي واختبار الاتصال الحي ⚡</span>
+          </button>
+        </div>
+
+        {/* تبويب المفاتيح */}
+        {activeTab === 'keys' && <AIKeysManager />}
+
+        {/* تبويب الفنيين والإحصائيات */}
+        {activeTab === 'technicians' && (
+          <>
+            {/* كروت الإحصائيات العامة للمعمل */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="p-4 rounded-2xl bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border shadow-lg space-y-1">
             <div className="text-xs font-bold text-gray-500 dark:text-gray-400 flex items-center justify-between">
               <span>إجمالي الأجهزة المفحوصة</span>
@@ -292,6 +337,8 @@ export default function AdminDashboardPage() {
             </table>
           </div>
         </div>
+        </>
+        )}
 
         {/* مودال إضافة فني جديد */}
         {showAddModal && (

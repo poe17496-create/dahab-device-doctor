@@ -16,7 +16,7 @@ export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {
-    const { prompt, specialty, deviceModel, readings, imageBase64, sessionId, preferredEngine } =
+    const { prompt, specialty, deviceModel, readings, imageBase64, sessionId, preferredEngine, customKeys } =
       await req.json();
 
     if (!prompt && !imageBase64) {
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
       readings,
     });
 
-    // استدعاء محرك AI المختار أو الأفضل تلقائياً
+    // استدعاء محرك AI المختار أو الأفضل تلقائياً مع تدوير كافة المفاتيح
     const aiResponse = await callAIEngine({
       prompt: userPrompt,
       specialty: specialty || 'mobile-repair',
@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
       readings,
       imageBase64,
       preferredEngine: preferredEngine as AIEngine,
+      customKeys,
     });
 
     // حفظ رد المساعد في ملف JSON
