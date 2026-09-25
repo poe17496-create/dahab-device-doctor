@@ -191,16 +191,15 @@ export async function testSingleApiKey(
 
   try {
     if (provider === 'gemini') {
-      if (!cleanKey.startsWith('AIzaSy')) {
-        return {
-          success: false,
-          message: 'المفتاح المدخل لا يتبع صيغة Google AI Studio',
-          latencyMs: Date.now() - startTime,
-          error: `المفتاح الحالي يبدأ بـ (${cleanKey.slice(0, 8)}...) بينما مفاتيح Google Gemini الرسمية المجانية تبدأ بـ (AIzaSy...). يمكنك إنشاء مفتاح مجاني بضغطة زر من رابط Google AI Studio الموضح أعلاه.`,
-        };
-      }
       const genAI = new GoogleGenerativeAI(cleanKey);
-      const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+      const models = [
+        'gemini-3.5-flash-lite',
+        'gemini-3.7-flash',
+        'gemini-3.8-flash',
+        'gemini-3.6-flash',
+        'gemini-3.1-flash-lite',
+        'gemini-flash-latest',
+      ];
       let lastErr = null;
 
       for (const m of models) {

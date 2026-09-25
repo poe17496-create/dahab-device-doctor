@@ -341,7 +341,7 @@ export default function AIKeysManager() {
                 </span>
               </div>
               <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                يبدأ المفتاح بـ <code className="font-mono text-dahab-600 dark:text-dahab-400">AIzaSy...</code> من Google AI Studio (موديلات Gemini 2.0 Flash و 1.5 Flash).
+                تدعم مفاتيح Google الرسمية (مثل <code className="font-mono text-dahab-600 dark:text-dahab-400">AQ.Ab...</code> أو <code className="font-mono text-dahab-600 dark:text-dahab-400">AIzaSy...</code>) مع أحدث موديلات 2026 فائقة السرعة.
               </p>
             </div>
           </div>
@@ -353,7 +353,7 @@ export default function AIKeysManager() {
               rel="noreferrer"
               className="text-[11px] text-dahab-600 dark:text-dahab-400 hover:underline flex items-center gap-1"
             >
-              <span>الحصول على مفتاح مجاني من Google</span>
+              <span>منصة Google AI Studio</span>
               <ExternalLink className="w-3 h-3" />
             </a>
 
@@ -380,7 +380,7 @@ export default function AIKeysManager() {
         <textarea
           value={geminiKeys}
           onChange={(e) => setGeminiKeys(e.target.value)}
-          placeholder={`الصق مفاتيح Gemini هنا (مفتاح في كل سطر إذا كان لديك أكثر من مفتاح):\nAIzaSyxxxxxxxxxxxxxxxxxxxxxxx\nAIzaSyyyyyyyyyyyyyyyyyyyyyyy`}
+          placeholder={`الصق مفاتيح Google هنا (مفتاح في كل سطر إذا كان لديك أكثر من مفتاح):\nAQ.Ab8RN6xxxxxxxxxxxxxxxxxxxx\nAIzaSyxxxxxxxxxxxxxxxxxxxxxxx`}
           rows={3}
           className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-mono text-gray-800 dark:text-gray-200 outline-none focus:border-dahab-500 transition resize-y"
         />
