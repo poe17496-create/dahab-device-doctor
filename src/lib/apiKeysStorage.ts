@@ -215,10 +215,10 @@ export async function testSingleApiKey(
       });
 
       const models = [
-        'google/gemini-2.0-flash-001',
         'meta-llama/llama-3.3-70b-instruct',
-        'openai/gpt-4o-mini',
         'deepseek/deepseek-chat',
+        'google/gemini-2.0-flash-001',
+        'openai/gpt-4o-mini',
       ];
       let lastErr = null;
 

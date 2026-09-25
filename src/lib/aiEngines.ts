@@ -170,10 +170,10 @@ async function tryCallOpenRouter(
   });
 
   const modelsToTry = [
-    'google/gemini-2.0-flash-001',
-    'google/gemini-2.0-flash-lite-001',
     'meta-llama/llama-3.3-70b-instruct',
     'deepseek/deepseek-chat',
+    'google/gemini-2.0-flash-001',
+    'google/gemini-2.0-flash-lite-001',
     'openai/gpt-4o-mini',
     'openrouter/auto',
   ];
