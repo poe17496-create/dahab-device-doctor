@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://dahab-device-doctor.vercel.app'),
   title: 'Dahab Software | Dahab Device Doctor - خبير تشخيص وصيانة الإلكترونيات',
   description: 'المنظومة الهندسية الأولى في الشرق الأوسط لتشخيص وفصل أعطال الموبايل واللابتوب وكروت الباور والإلكترونيات الدقيقة.',
   manifest: '/manifest.json',
