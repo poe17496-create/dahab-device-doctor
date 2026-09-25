@@ -17,6 +17,7 @@ import PWAInstallButton from '@/components/PWAInstallButton';
 import PWAUpdateNotification from '@/components/PWAUpdateNotification';
 import Notifications from '@/components/Notifications';
 import AIChat from '@/components/AIChat';
+import DahabEcosystem from '@/components/DahabEcosystem';
 import {
   DeviceSpecialty,
   PowerSupplyReadings,
@@ -25,9 +26,19 @@ import {
   ReferenceSource,
 } from '@/lib/types';
 import { createIntegratedContext } from '@/lib/schematicIntegration';
-import { Menu } from 'lucide-react';
+import { Menu, Crown, AlertCircle } from 'lucide-react';
 
-export type MasterTab = 'diagnosis' | 'panic-log' | 'safe-injection' | 'boardview' | 'ic-encyclopedia' | 'checklist' | 'references' | 'integration' | 'ai-chat';
+export type MasterTab =
+  | 'diagnosis'
+  | 'panic-log'
+  | 'safe-injection'
+  | 'boardview'
+  | 'ic-encyclopedia'
+  | 'checklist'
+  | 'references'
+  | 'integration'
+  | 'ai-chat'
+  | 'ecosystem';
 
 export default function DahabFixAiConsole() {
   const [activeTab, setActiveTab] = useState<MasterTab>('diagnosis');
@@ -44,6 +55,33 @@ export default function DahabFixAiConsole() {
   const [metrics, setMetrics] = useState<DiagnosticMetrics | undefined>(undefined);
   const [isNavSidebarOpen, setIsNavSidebarOpen] = useState(false);
 
+  // حالة المستخدم والزائر
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [guestAttemptsRemaining, setGuestAttemptsRemaining] = useState<number | undefined>(undefined);
+
+  // التحقق من رصيد الزائر اليومي (5 محاولات يومياً)
+  const checkGuestUsage = () => {
+    if (typeof window === 'undefined') return { isGuest: true, remaining: 5 };
+
+    const userStr = localStorage.getItem('dahab_current_user');
+    if (userStr) {
+      try {
+        const u = JSON.parse(userStr);
+        setCurrentUser(u);
+        setGuestAttemptsRemaining(undefined); // الفني المسجل لديه فحص غير محدود
+        return { isGuest: false, remaining: 9999 };
+      } catch (e) {}
+    }
+
+    setCurrentUser(null);
+    const today = new Date().toISOString().split('T')[0];
+    const key = `dahab_guest_usage_${today}`;
+    const used = parseInt(localStorage.getItem(key) || '0', 10);
+    const remaining = Math.max(0, 5 - used);
+    setGuestAttemptsRemaining(remaining);
+    return { isGuest: true, remaining };
+  };
+
   // جلب الجلسات السابقة من ملفات JSON عند فتح المنظومة
   const fetchSessions = async () => {
     try {
@@ -59,6 +97,7 @@ export default function DahabFixAiConsole() {
 
   useEffect(() => {
     fetchSessions();
+    checkGuestUsage();
   }, []);
 
   // اختيار جلسة سابقة من الذاكرة واسترجاع كامل حالتها
@@ -113,30 +152,30 @@ export default function DahabFixAiConsole() {
     }
   };
 
-  // تبديل حالة Sidebar للتنقل
-  const toggleNavSidebar = () => {
-    setIsNavSidebarOpen(!isNavSidebarOpen);
-  };
-
-  // تصدير ملف JSON للجلسة الحالية
+  // تصدير الجلسة الحالية بصيغة JSON
   const handleExportJson = () => {
-    const active = sessions.find((s) => s.id === activeSessionId) || {
+    const active: RepairSession = {
       id: activeSessionId,
-      title: deviceModel || prompt.slice(0, 30) || 'Dahab Device Repair',
+      title: deviceModel || 'فحص جهاز غير محدد',
       deviceType: specialty,
       deviceModel,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      status: 'diagnosed',
       powerReadings: readings,
       metrics,
+      status: 'open',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       messages: [
         {
-          id: `msg_export_${Date.now()}`,
-          sender: 'assistant',
+          id: `msg_u_${Date.now()}`,
+          sender: 'user',
+          text: prompt,
           timestamp: new Date().toISOString(),
+        },
+        {
+          id: `msg_a_${Date.now()}`,
+          sender: 'assistant',
           text: output,
-          metrics,
+          timestamp: new Date().toISOString(),
         },
       ],
     };
@@ -150,9 +189,27 @@ export default function DahabFixAiConsole() {
     dl.remove();
   };
 
-  // تنفيذ الفحص وتشغيل البث الحي (Streaming)
+  // تنفيذ الفحص وتشغيل البث الحي (Streaming) مع مراعاة حد الـ 5 محاولات للزائر
   const handleDiagnose = async () => {
     if (!prompt.trim() && !imageBase64) return;
+
+    // فحص صلاحية الزائر
+    const guestStatus = checkGuestUsage();
+    if (guestStatus.isGuest) {
+      if (guestStatus.remaining <= 0) {
+        alert(
+          '⚠️ تنبيه استهلاك المحاولات:\nلقد استهلكت الـ 5 محاولات المجانية المخصصة للزائر اليوم.\nللحصول على وصول غير محدود، يرجى تسجيل الدخول بحساب فني معتمد أو التواصل مع المهندس إسلام دهب على:\n📞 01064147224'
+        );
+        return;
+      }
+      // خصم محاولة
+      const today = new Date().toISOString().split('T')[0];
+      const key = `dahab_guest_usage_${today}`;
+      const used = parseInt(localStorage.getItem(key) || '0', 10);
+      localStorage.setItem(key, String(used + 1));
+      setGuestAttemptsRemaining(Math.max(0, 5 - (used + 1)));
+    }
+
     setLoading(true);
     setOutput('');
     setMetrics(undefined);
@@ -234,9 +291,9 @@ export default function DahabFixAiConsole() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col font-sans">
-      {/* Header علوي مبسط - بدون تكرار التنقل */}
-      <div className="bg-white/80 dark:bg-[#111827]/80 backdrop-blur-lg border-b border-gray-200 dark:border-[#1F2937] sticky top-0 z-50">
+    <div className="min-h-screen flex flex-col font-sans bg-gray-50 dark:bg-workshop-bg text-gray-900 dark:text-gray-100 transition-colors duration-300">
+      {/* Header علوي مبسط */}
+      <div className="bg-white/90 dark:bg-[#111827]/90 backdrop-blur-lg border-b border-gray-200 dark:border-[#1F2937] sticky top-0 z-50 transition-colors">
         <div className="p-3 md:p-4 max-w-full mx-auto flex items-center justify-between">
           <ConsoleHeader
             sessionId={activeSessionId}
@@ -247,8 +304,8 @@ export default function DahabFixAiConsole() {
           <div className="flex items-center gap-2">
             <Notifications />
             <button
-              onClick={toggleNavSidebar}
-              className="lg:hidden p-2 rounded-lg bg-gray-100 dark:bg-[#1F2937] hover:bg-gray-200 dark:hover:bg-[#374151] transition-colors"
+              onClick={() => setIsNavSidebarOpen(!isNavSidebarOpen)}
+              className="lg:hidden p-2 rounded-xl bg-gray-100 dark:bg-[#1F2937] hover:bg-gray-200 dark:hover:bg-[#374151] transition-colors"
             >
               <Menu className="w-5 h-5" />
             </button>
@@ -267,10 +324,10 @@ export default function DahabFixAiConsole() {
         />
 
         {/* مساحة العمل الرئيسية */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 overflow-y-auto p-4 md:p-6">
-            <div className="max-w-7xl mx-auto">
-              {/* المحتوى الرئيسي */}
+        <div className="flex-1 flex flex-col overflow-y-auto">
+          <div className="p-4 md:p-6 flex-1">
+            <div className="max-w-7xl mx-auto space-y-6">
+              {/* شاشة الفحص والتشخيص الهندسي الأساسية */}
               {activeTab === 'diagnosis' && (
                 <>
                   <DiagnosticForm
@@ -286,24 +343,65 @@ export default function DahabFixAiConsole() {
                     setReadings={setReadings}
                     loading={loading}
                     onDiagnose={handleDiagnose}
+                    guestUsageRemaining={guestAttemptsRemaining}
                   />
 
                   {metrics && (
-                    <div className="animate-fadeIn mb-5">
+                    <div className="animate-fadeIn">
                       <HardwareSoftwareIndicator metrics={metrics} />
                     </div>
                   )}
 
                   <ResultStreamViewer rawOutput={output} loading={loading} />
+
+                  {/* قائمة الفحص الهندسي وسجل الذاكرة داخل تبويب الفحص فقط */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 pt-4">
+                    {/* قائمة الفحص */}
+                    <div className="bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border rounded-3xl p-5 shadow-lg">
+                      <h3 className="text-sm font-black text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                        <span>قائمة الفحص الهندسي والخطوات القياسية</span>
+                      </h3>
+                      <InteractiveChecklist />
+                    </div>
+
+                    {/* ذاكرة الجلسات السابقة */}
+                    <div className="bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border rounded-3xl p-5 shadow-lg">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-black text-gray-900 dark:text-gray-100">
+                          ذاكرة الأجهزة السابقة ({sessions.length})
+                        </h3>
+                        <button
+                          onClick={handleNewSession}
+                          className="text-xs bg-gradient-to-r from-dahab-500 to-amber-600 text-slate-950 px-3 py-1.5 rounded-xl font-bold hover:from-dahab-600 transition"
+                        >
+                          + جهاز جديد
+                        </button>
+                      </div>
+                      <div className="space-y-2 max-h-56 overflow-y-auto">
+                        {sessions.slice(0, 8).map((session) => (
+                          <button
+                            key={session.id}
+                            onClick={() => handleSelectSession(session.id)}
+                            className="w-full text-right p-3 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 hover:border-dahab-500 transition"
+                          >
+                            <div className="text-xs font-bold text-gray-900 dark:text-gray-100">{session.title}</div>
+                            <div className="text-[10px] text-gray-500 dark:text-gray-400">{session.deviceModel || 'طراز غير محدد'}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </>
               )}
 
+              {/* التبويبات الأخرى (تظهر نظيفة بالكامل بدون أي ازدحام بالأسفل) */}
               {activeTab === 'panic-log' && <PanicLogAnalyzer />}
               {activeTab === 'safe-injection' && <SafeInjectionCalculator />}
               {activeTab === 'boardview' && <InteractiveBoardviewSimulator />}
               {activeTab === 'ic-encyclopedia' && <ICEncyclopediaTab />}
               {activeTab === 'checklist' && <InteractiveChecklist />}
               {activeTab === 'references' && <SourcesReferences sources={sources} />}
+              {activeTab === 'ecosystem' && <DahabEcosystem />}
               {activeTab === 'integration' && metrics && (
                 <SchematicIntegrationReport
                   context={createIntegratedContext({
@@ -316,53 +414,18 @@ export default function DahabFixAiConsole() {
                 />
               )}
               {activeTab === 'integration' && !metrics && (
-                <div className="bg-white dark:bg-[#111827] border border-gray-200 dark:border-[#1F2937] rounded-2xl p-6 text-center">
-                  <p className="text-gray-600 dark:text-gray-400">
-                    قم بإجراء تشخيص أولاً لعرض تقرير تكامل المخططات
+                <div className="bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border rounded-3xl p-8 text-center space-y-2">
+                  <AlertCircle className="w-8 h-8 text-dahab-500 mx-auto" />
+                  <p className="text-sm font-bold text-gray-700 dark:text-gray-300">
+                    يرجى إجراء فحص لجهاز أولاً لتوليد تقرير تكامل المخططات التفصيلي.
                   </p>
                 </div>
               )}
               {activeTab === 'ai-chat' && (
-                <div className="h-[600px]">
+                <div className="h-[650px]">
                   <AIChat />
                 </div>
               )}
-            </div>
-          </div>
-
-          {/* Panel سفلي: Checklist + Session History */}
-          <div className="border-t border-gray-200 dark:border-[#1F2937] bg-white dark:bg-[#111827] p-4">
-            <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* قائمة الفحص */}
-              <div className="bg-gray-50 dark:bg-[#0B0F17] rounded-xl p-4">
-                <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3">قائمة الفحص الهندسي</h3>
-                <InteractiveChecklist />
-              </div>
-
-              {/* ذاكرة الجلسات */}
-              <div className="bg-gray-50 dark:bg-[#0B0F17] rounded-xl p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">ذاكرة الأجهزة ({sessions.length})</h3>
-                  <button
-                    onClick={handleNewSession}
-                    className="text-xs bg-dahab-500 text-white px-3 py-1 rounded-lg hover:bg-dahab-600 transition-colors"
-                  >
-                    جهاز جديد
-                  </button>
-                </div>
-                <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {sessions.slice(0, 5).map((session) => (
-                    <button
-                      key={session.id}
-                      onClick={() => handleSelectSession(session.id)}
-                      className="w-full text-right p-2 rounded-lg bg-white dark:bg-[#111827] border border-gray-200 dark:border-[#1F2937] hover:border-dahab-500 transition-colors"
-                    >
-                      <div className="text-xs font-bold text-gray-900 dark:text-gray-100">{session.title}</div>
-                      <div className="text-[10px] text-gray-500 dark:text-gray-400">{session.deviceModel}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -370,7 +433,7 @@ export default function DahabFixAiConsole() {
 
       {/* زر تثبيت PWA */}
       <PWAInstallButton />
-      
+
       {/* إشعار تحديث PWA */}
       <PWAUpdateNotification />
     </div>

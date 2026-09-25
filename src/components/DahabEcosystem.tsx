@@ -195,13 +195,23 @@ export default function DahabEcosystem() {
 
           <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0">
             <a
-              href="https://wa.me/201026027137"
+              href="https://dahabsoftware.com/"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-white dark:bg-gray-800 border border-dahab-500/40 text-dahab-700 dark:text-dahab-300 font-black text-xs hover:border-dahab-500 transition shadow-sm"
+            >
+              <Globe className="w-4 h-4 text-dahab-500" />
+              <span>موقع دهب سوفت وير (dahabsoftware.com)</span>
+            </a>
+
+            <a
+              href="https://wa.me/201064147224"
               target="_blank"
               rel="noreferrer"
               className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-dahab-500 to-amber-600 hover:from-dahab-600 hover:to-amber-700 text-slate-950 font-black text-xs transition shadow-lg shadow-dahab-500/25"
             >
               <PhoneCall className="w-4 h-4" />
-              <span>تواصل مع المطور والطلب المباشر</span>
+              <span>تواصل مع م. إسلام دهب (01064147224)</span>
             </a>
           </div>
         </div>
@@ -291,14 +301,26 @@ export default function DahabEcosystem() {
           </div>
         </div>
 
-        <a
-          href="https://wa.me/201026027137?text=استفسار+عن+منصة+المكفوفين+المجانية+دهب+سوفت+وير"
-          target="_blank"
-          rel="noreferrer"
-          className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-black text-xs transition shrink-0 shadow-md shadow-teal-600/20"
-        >
-          طلب رابط المنصة المجانية 🤍
-        </a>
+        <div className="flex items-center gap-2.5 flex-wrap shrink-0">
+          <a
+            href="https://dahabsoftware.online/"
+            target="_blank"
+            rel="noreferrer"
+            className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-black text-xs transition shadow-md shadow-teal-600/20 flex items-center gap-1.5"
+          >
+            <Globe className="w-3.5 h-3.5" />
+            <span>زيارة موقع نور (dahabsoftware.online)</span>
+          </a>
+
+          <a
+            href="https://wa.me/201064147224?text=استفسار+عن+منصة+المكفوفين+المجانية+دهب+سوفت+وير"
+            target="_blank"
+            rel="noreferrer"
+            className="px-4 py-2.5 rounded-xl bg-white dark:bg-gray-800 border border-teal-500/30 text-teal-700 dark:text-teal-300 font-bold text-xs transition"
+          >
+            طلب دعم المكفوفين 🤍
+          </a>
+        </div>
       </div>
     </div>
   );

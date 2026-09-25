@@ -14,6 +14,8 @@ import {
   BarChart3,
   MessageCircle,
   MessageSquare,
+  Crown,
+  Lock,
 } from 'lucide-react';
 import type { MasterTab } from '@/app/page';
 
@@ -26,19 +28,19 @@ interface NavigationSidebarProps {
 
 const navItems = [
   { id: 'diagnosis' as MasterTab, label: 'التشخيص الذكي', icon: Stethoscope, color: 'from-dahab-500 to-amber-600' },
-  { id: 'ai-chat' as MasterTab, label: 'مساعد الذكاء', icon: MessageSquare, color: 'from-violet-600 to-purple-600' },
-  { id: 'panic-log' as MasterTab, label: 'محلل البانيك', icon: AlertOctagon, color: 'from-purple-600 to-indigo-600' },
-  { id: 'safe-injection' as MasterTab, label: 'حاسبة الفولت', icon: Flame, color: 'from-amber-600 to-rose-600' },
-  { id: 'boardview' as MasterTab, label: 'معمل البوردفيو', icon: Cpu, color: 'from-emerald-600 to-teal-600' },
-  { id: 'ic-encyclopedia' as MasterTab, label: 'موسوعة الآيسيهات', icon: BookOpen, color: 'from-sky-600 to-blue-600' },
-  { id: 'checklist' as MasterTab, label: 'قائمة الفحص', icon: CheckSquare, color: 'from-indigo-600 to-violet-600' },
-  { id: 'references' as MasterTab, label: 'المراجع', icon: FileText, color: 'from-rose-600 to-pink-600' },
-  { id: 'integration' as MasterTab, label: 'تكامل المخططات', icon: Zap, color: 'from-teal-600 to-cyan-600' },
+  { id: 'ai-chat' as MasterTab, label: 'مساعد الذكاء الاصطناعي', icon: MessageSquare, color: 'from-violet-600 to-purple-600' },
+  { id: 'boardview' as MasterTab, label: 'معمل البوردفيو والمسارات', icon: Cpu, color: 'from-emerald-600 to-teal-600' },
+  { id: 'ic-encyclopedia' as MasterTab, label: 'موسوعة الآيسيهات والبدائل', icon: BookOpen, color: 'from-sky-600 to-blue-600' },
+  { id: 'safe-injection' as MasterTab, label: 'حاسبة الفولت الآمن للحقن', icon: Flame, color: 'from-amber-600 to-rose-600' },
+  { id: 'panic-log' as MasterTab, label: 'محلل ملفات البانيك (Panic)', icon: AlertOctagon, color: 'from-purple-600 to-indigo-600' },
+  { id: 'checklist' as MasterTab, label: 'قائمة الفحص الهندسي', icon: CheckSquare, color: 'from-indigo-600 to-violet-600' },
+  { id: 'references' as MasterTab, label: 'المراجع الهندسية', icon: FileText, color: 'from-rose-600 to-pink-600' },
+  { id: 'ecosystem' as MasterTab, label: 'برمجيات دهب سوفت وير 👑', icon: Crown, color: 'from-amber-500 to-yellow-600' },
 ];
 
 const adminItems = [
-  { id: 'dashboard' as string, label: 'لوحة التحكم', icon: BarChart3, href: '/admin/dashboard' },
-  { id: 'support' as string, label: 'الدعم الفني', icon: MessageCircle, href: '/support' },
+  { id: 'admin' as string, label: 'لوحة تحكم المشرف (محمية)', icon: Lock, href: '/admin' },
+  { id: 'support' as string, label: 'تواصل مع المطور', icon: MessageCircle, href: 'https://wa.me/201064147224' },
 ];
 
 export default function NavigationSidebar({ activeTab, onTabChange, isOpen, onClose }: NavigationSidebarProps) {

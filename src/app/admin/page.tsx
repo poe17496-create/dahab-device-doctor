@@ -23,12 +23,20 @@ import {
   AlertTriangle,
   Radio,
   Crown,
+  Lock,
+  User,
 } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import { UserAccount } from '@/lib/auth';
 import AIKeysManager from '@/components/AIKeysManager';
 
 export default function AdminDashboardPage() {
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(false);
+  const [adminUsername, setAdminUsername] = useState('dahab');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
   const [activeTab, setActiveTab] = useState<'technicians' | 'keys'>('technicians');
   const [users, setUsers] = useState<any[]>([]);
   const [sessionsCount, setSessionsCount] = useState(0);
@@ -45,14 +53,26 @@ export default function AdminDashboardPage() {
   const [password, setPassword] = useState('123456');
   const [subscriptionDays, setSubscriptionDays] = useState('30');
 
+  useEffect(() => {
+    // التحقق هل المشرف العام مسجل دخوله بالفعل
+    const userStr = localStorage.getItem('dahab_current_user');
+    if (userStr) {
+      try {
+        const u = JSON.parse(userStr);
+        if (u.role === 'admin') {
+          setIsAdminAuthenticated(true);
+        }
+      } catch (e) {}
+    }
+    setCheckingAuth(false);
+  }, []);
+
   const fetchData = async () => {
     try {
-      // 1. جلب المستخدمين مع فحص الاشتراكات
       const usersRes = await fetch('/api/users');
       const usersData = await usersRes.json();
       if (usersData.users) setUsers(usersData.users);
 
-      // 2. جلب الجلسات للإحصائيات
       const sessionsRes = await fetch('/api/memory');
       const sessionsData = await sessionsRes.json();
       if (sessionsData.sessions) {
@@ -74,11 +94,43 @@ export default function AdminDashboardPage() {
   };
 
   useEffect(() => {
-    fetchData();
-    // تحديث دوري كل 20 ثانية لمتابعة المتصلين حياً
-    const interval = setInterval(fetchData, 20000);
-    return () => clearInterval(interval);
-  }, []);
+    if (isAdminAuthenticated) {
+      fetchData();
+      const interval = setInterval(fetchData, 20000);
+      return () => clearInterval(interval);
+    }
+  }, [isAdminAuthenticated]);
+
+  const handleAdminLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+    try {
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'login',
+          username: adminUsername,
+          password: adminPassword,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || data.user?.role !== 'admin') {
+        setAuthError(data.error || 'عذراً، هذه اللوحة مخصصة حصرياً للمشرف العام.');
+        return;
+      }
+
+      localStorage.setItem('dahab_current_user', JSON.stringify(data.user));
+      if (data.sessionToken) {
+        localStorage.setItem('dahab_session_token', data.sessionToken);
+      }
+      setIsAdminAuthenticated(true);
+      fetchData();
+    } catch (e) {
+      setAuthError('حدث خطأ أثناء التحقق من الصلاحيات.');
+    }
+  };
 
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -165,6 +217,93 @@ export default function AdminDashboardPage() {
     }
   };
 
+  // شاشة قفل أمان لوحة التحكم في حال لم يكن المشرف مسجلاً
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-workshop-bg flex items-center justify-center p-4">
+        <div className="w-8 h-8 border-2 border-dahab-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!isAdminAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-workshop-bg text-gray-900 dark:text-gray-100 flex items-center justify-center p-4">
+        <div className="max-w-md w-full p-8 rounded-3xl bg-white dark:bg-workshop-card border border-gray-200 dark:border-dahab-500/40 shadow-2xl space-y-6">
+          <div className="text-center space-y-2">
+            <div className="w-16 h-16 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 flex items-center justify-center mx-auto shadow-md">
+              <Lock className="w-8 h-8" />
+            </div>
+            <h2 className="text-xl font-black text-gray-900 dark:text-gray-100">
+              منطقة إدارية مشفرة ومحمية
+            </h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+              هذه اللوحة خاصة وحصرية بالمهندس إسلام دهب (المشرف العام) لإدارة التراخيص والمفاتيح. يرجى إدخال بيانات المشرف للمتابعة.
+            </p>
+          </div>
+
+          {authError && (
+            <div className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-xs text-rose-700 dark:text-rose-300">
+              {authError}
+            </div>
+          )}
+
+          <form onSubmit={handleAdminLogin} className="space-y-4">
+            <div>
+              <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">
+                اسم المستخدم للمشرف:
+              </label>
+              <div className="relative">
+                <User className="w-4 h-4 text-gray-400 absolute right-3.5 top-3.5" />
+                <input
+                  type="text"
+                  value={adminUsername}
+                  onChange={(e) => setAdminUsername(e.target.value)}
+                  className="w-full pr-10 pl-3 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-xs outline-none focus:border-dahab-500 font-mono"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">
+                كلمة المرور الحصرية:
+              </label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-gray-400 absolute right-3.5 top-3.5" />
+                <input
+                  type="password"
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full pr-10 pl-3 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-xs outline-none focus:border-dahab-500 font-mono"
+                  required
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-dahab-500 to-amber-600 hover:from-dahab-600 hover:to-amber-700 text-slate-950 font-black text-xs transition shadow-lg shadow-dahab-500/25"
+            >
+              فك قفل لوحة التحكم والدخول 🔓
+            </button>
+          </form>
+
+          <div className="text-center pt-2">
+            <Link
+              href="/"
+              className="text-xs text-gray-400 hover:text-dahab-500 transition inline-flex items-center gap-1 font-bold"
+            >
+              <ArrowRight className="w-3.5 h-3.5" />
+              <span>العودة لشاشة الفحص الرئيسية</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const onlineUsersCount = users.filter((u) => u.isOnline).length;
 
   return (
@@ -182,7 +321,7 @@ export default function AdminDashboardPage() {
                   لوحة تحكم المشرف وإدارة الفنيين
                 </h1>
                 <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-dahab-500/20 text-dahab-600 dark:text-dahab-400">
-                  ADMIN PORTAL
+                  ADMIN PORTAL (محمي)
                 </span>
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400">

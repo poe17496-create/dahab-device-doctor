@@ -1,9 +1,23 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Cpu, Zap, Activity, Info, Eye, CheckCircle2, Search, Layers, Maximize2, Minimize2 } from 'lucide-react';
+import {
+  Cpu,
+  Zap,
+  Activity,
+  Layers,
+  Search,
+  Maximize2,
+  Minimize2,
+  CheckCircle2,
+  AlertTriangle,
+  Radio,
+  Eye,
+  Crosshair,
+  Share2,
+} from 'lucide-react';
 
-interface ComponentPad {
+interface BoardNode {
   id: string;
   label: string;
   type: 'IC' | 'COIL' | 'CAP' | 'TEST_POINT' | 'CONNECTOR';
@@ -11,329 +25,585 @@ interface ComponentPad {
   y: number;
   width: number;
   height: number;
-  railName: string;
+  netId: string;
+  pinNumber?: string;
+  role: string;
   diodeMode: string;
   normalVoltage: string;
-  role: string;
   commonFault: string;
-  relatedComponents?: string[];
 }
 
-const BOARD_COMPONENTS: ComponentPad[] = [
-  {
-    id: 'cpu',
-    label: 'SoC / CPU',
-    type: 'IC',
-    x: 42,
-    y: 30,
-    width: 28,
-    height: 28,
-    railName: 'PP_CPU_CORE / VDD_CPU',
-    diodeMode: '0.025V - 0.080V',
-    normalVoltage: '0.75V - 0.95V',
-    role: 'المعالج المركزي ووحدة المعالجة العصبية والرسمية',
-    commonFault: 'حرارة عالية جداً فور التشغيل، ممانعة 0.000V صريحة تعني تلف طبقات المعالج الداخلية',
-    relatedComponents: ['PMIC', 'L201 (VCORE)', 'RAM'],
+interface BoardNet {
+  id: string;
+  name: string;
+  voltage: string;
+  diodeMode: string;
+  color: string;
+  description: string;
+  sourceComponent: string;
+  consumerComponents: string[];
+}
+
+const BOARD_NETS: Record<string, BoardNet> = {
+  net_vdd_main: {
+    id: 'net_vdd_main',
+    name: 'PP_VDD_MAIN / VPH_PWR',
+    voltage: '3.7V - 4.2V',
+    diodeMode: '0.380V - 0.430V',
+    color: '#f59e0b', // ذهبي
+    description: 'خط التغذية العمومي الأساسي المغذي لكافة معالجات وآيسيات البوردة بعد دائرة الشحن.',
+    sourceComponent: 'Charging IC (PMID/VSYS)',
+    consumerComponents: ['Main PMIC', 'Audio Codec', 'Baseband PMU', 'Flash Driver'],
   },
-  {
-    id: 'pmic',
-    label: 'Main PMIC',
-    type: 'IC',
-    x: 18,
-    y: 25,
-    width: 18,
-    height: 18,
-    railName: 'BUCK_S1..S8 / LDO1..L25',
-    diodeMode: '0.350V - 0.480V',
-    normalVoltage: 'متعدد (0.8V, 1.2V, 1.8V, 3.3V)',
-    role: 'آيسي الباور الرئيسي لتوزيع جهود الإقلاع والتحكم في مفتاح الباور',
-    commonFault: 'سحب 0.04A إلى 0.08A والتجمد عند الضغط على مفتاح الباور',
-    relatedComponents: ['Charging IC', 'CPU', 'Power Button'],
+  net_cpu_core: {
+    id: 'net_cpu_core',
+    name: 'PP_CPU_CORE / VDD_VCORE',
+    voltage: '0.75V - 0.95V',
+    diodeMode: '0.025V - 0.080V (ممانعة منخفضة طبيعية)',
+    color: '#38bdf8', // سماوي
+    description: 'خط إمداد الطاقة الرئيسي لقلب المعالج CPU. تياره عالي جداً وجهده منخفض.',
+    sourceComponent: 'Main PMIC (Buck 1 & Buck 2)',
+    consumerComponents: ['SoC / CPU', 'VCORE Coils L201/L202'],
   },
+  net_vbus: {
+    id: 'net_vbus',
+    name: 'VBUS_5V / USB_IN',
+    voltage: '5.0V - 9.0V (QC/PD)',
+    diodeMode: '0.520V - 0.650V',
+    color: '#10b981', // أخضر زمردي
+    description: 'مسار دخل فولت الشاحن القادم من منفذ الـ USB-C مباشرة إلى آيسي الشحن والحماية.',
+    sourceComponent: 'USB-C Port Connector',
+    consumerComponents: ['OVP Protection IC', 'Charging IC', 'TIG / Hydra'],
+  },
+  net_vreg_1p8: {
+    id: 'net_vreg_1p8',
+    name: 'PP1V8_ALWAYS / VREG_L6',
+    voltage: '1.8V دائم',
+    diodeMode: '0.320V - 0.390V',
+    color: '#a855f7', // بنفسجي
+    description: 'خط التغذية الدائم لتشغيل حساسات الأزرار، كريستالة التوقيت، وخطوط اتصالات I2C.',
+    sourceComponent: 'Main PMIC LDO',
+    consumerComponents: ['I2C Pull-up', 'Power Button', 'EEPROM', 'Touch IC'],
+  },
+};
+
+const BOARD_NODES: BoardNode[] = [
   {
-    id: 'charging',
-    label: 'Charging IC',
+    id: 'charging_ic',
+    label: 'Charging IC (U101)',
     type: 'IC',
-    x: 18,
-    y: 55,
+    x: 15,
+    y: 52,
     width: 16,
     height: 16,
-    railName: 'VBUS_5V / VPH_PWR',
-    diodeMode: '0.450V - 0.580V على رجل PMID',
-    normalVoltage: '4.2V - 5.0V',
-    role: 'تنظيم شحن البطارية وتوليد خط التغذية الرئيسي',
-    commonFault: 'شحن وهمي، سخونة وسحب 0.25A قبل الضغط على زر الباور',
-    relatedComponents: ['PMIC', 'Battery Connector', 'USB Port'],
+    netId: 'net_vdd_main',
+    pinNumber: 'Pin B3 (VSYS)',
+    role: 'منظم الشحن وتوليد خط التغذية الرئيسي VDD_MAIN',
+    diodeMode: '0.390V',
+    normalVoltage: '4.0V',
+    commonFault: 'شحن وهمي أو سخونة وسحب 0.20A قبل الضغط على زر الباور',
   },
   {
-    id: 'coil_buck1',
-    label: 'L101 (Buck)',
-    type: 'COIL',
-    x: 39,
-    y: 20,
-    width: 10,
-    height: 7,
-    railName: 'VREG_S4_1P8',
-    diodeMode: '0.380V',
-    normalVoltage: '1.8V',
-    role: 'ملف خفض جهد لتغذية دوائر الإشارة والتوقيت والذاكرة',
-    commonFault: 'انفصال لحام الملف أو شورت في المكثف التابع له',
-    relatedComponents: ['PMIC', 'Memory'],
-  },
-  {
-    id: 'coil_cpu',
-    label: 'L201 (VCORE)',
-    type: 'COIL',
-    x: 72,
-    y: 35,
-    width: 10,
-    height: 8,
-    railName: 'VDD_CORE',
-    diodeMode: '0.035V',
-    normalVoltage: '0.85V',
-    role: 'تغذية قلب المعالج بالتيار العالي النبضي',
-    commonFault: 'غياب الفولت عند التشغيل يعني عدم إصدار أمر الإقلاع',
-    relatedComponents: ['CPU', 'PMIC'],
+    id: 'pmic_ic',
+    label: 'Main PMIC (U201)',
+    type: 'IC',
+    x: 22,
+    y: 18,
+    width: 20,
+    height: 20,
+    netId: 'net_vdd_main',
+    pinNumber: 'Pin A1 (VIN)',
+    role: 'آيسي الباور الرئيسي لتوزيع جهود الإقلاع والتحكم بمفتاح الباور',
+    diodeMode: '0.385V',
+    normalVoltage: '4.0V',
+    commonFault: 'سحب 0.04A إلى 0.08A والتجمد عند الضغط على الباور',
   },
   {
     id: 'tp_vph',
-    label: 'TP_VPH',
+    label: 'TP_VDD_MAIN (Test Point)',
     type: 'TEST_POINT',
-    x: 20,
-    y: 78,
+    x: 38,
+    y: 42,
     width: 6,
     height: 6,
-    railName: 'PP_VDD_MAIN / VPH_PWR',
-    diodeMode: '0.380V - 0.420V',
-    normalVoltage: '3.7V - 4.2V',
-    role: 'نقطة اختبار حيوية لقياس ممانعة وجهد الخط الأساسي',
-    commonFault: 'إذا كانت الممانعة 0.000V فهناك شورت صريح',
-    relatedComponents: ['PMIC', 'Charging IC'],
+    netId: 'net_vdd_main',
+    pinNumber: 'TP12',
+    role: 'نقطة اختبار حيوية لقياس ممانعة وجهد الخط الأساسي بحقن الفولت',
+    diodeMode: '0.395V',
+    normalVoltage: '4.0V',
+    commonFault: 'ممانعة 0.000V تعني وجود مكثف شورت صريح على الخط',
   },
   {
-    id: 'battery',
-    label: 'Battery Connector',
-    type: 'CONNECTOR',
-    x: 5,
-    y: 70,
-    width: 12,
-    height: 12,
-    railName: 'VBAT',
-    diodeMode: '0.550V',
-    normalVoltage: '4.2V',
-    role: 'موصل البطارية الرئيسي',
-    commonFault: 'تآكل الموصل أو تلف المسارات',
-    relatedComponents: ['Charging IC', 'PMIC'],
-  },
-  {
-    id: 'usb',
-    label: 'USB-C Port',
-    type: 'CONNECTOR',
-    x: 5,
+    id: 'cap_vmain1',
+    label: 'C104 (Filter Cap)',
+    type: 'CAP',
+    x: 20,
     y: 40,
-    width: 10,
-    height: 15,
-    railName: 'VBUS / D+ / D-',
-    diodeMode: '0.680V على D+/D-',
-    normalVoltage: '5V',
-    role: 'منفذ الشحن والبيانات',
-    commonFault: 'تلف المسارات أو عدم التعرف على الأجهزة',
-    relatedComponents: ['Charging IC', 'PMIC'],
+    width: 5,
+    height: 4,
+    netId: 'net_vdd_main',
+    pinNumber: 'Pin 1',
+    role: 'مكثف تنعيم رئيسي على خط VDD_MAIN',
+    diodeMode: '0.390V',
+    normalVoltage: '4.0V',
+    commonFault: 'أشهر مكثف يتعرض للانهيار والتسريب والشورت الحراري',
+  },
+  {
+    id: 'cap_vmain2',
+    label: 'C105 (Filter Cap)',
+    type: 'CAP',
+    x: 27,
+    y: 40,
+    width: 5,
+    height: 4,
+    netId: 'net_vdd_main',
+    pinNumber: 'Pin 1',
+    role: 'مكثف تنعيم ثانوي على مسار الباور الرئيسي',
+    diodeMode: '0.390V',
+    normalVoltage: '4.0V',
+    commonFault: 'تفحم أو سخونة تحت الكاميرا الحرارية',
+  },
+  {
+    id: 'cpu_soc',
+    label: 'Application Processor (CPU)',
+    type: 'IC',
+    x: 52,
+    y: 25,
+    width: 26,
+    height: 26,
+    netId: 'net_cpu_core',
+    pinNumber: 'Core BGA Balls',
+    role: 'المعالج المركزي ووحدة الذكاء والرسوميات',
+    diodeMode: '0.035V',
+    normalVoltage: '0.85V',
+    commonFault: 'ممانعة صفرية مطلقة 0.000V تعني تلف داخلي بالمعالج',
+  },
+  {
+    id: 'coil_vcore1',
+    label: 'L201 (VCORE Coil)',
+    type: 'COIL',
+    x: 80,
+    y: 26,
+    width: 9,
+    height: 7,
+    netId: 'net_cpu_core',
+    pinNumber: 'Pin 2',
+    role: 'ملف تغذية نبضية لقلب المعالج',
+    diodeMode: '0.035V',
+    normalVoltage: '0.85V',
+    commonFault: 'انفصال اللحام أو انعدام الإشارة النبضية PWM',
+  },
+  {
+    id: 'coil_vcore2',
+    label: 'L202 (VCORE Coil)',
+    type: 'COIL',
+    x: 80,
+    y: 36,
+    width: 9,
+    height: 7,
+    netId: 'net_cpu_core',
+    pinNumber: 'Pin 2',
+    role: 'ملف المرحلة الثانية لجهد المعالج',
+    diodeMode: '0.035V',
+    normalVoltage: '0.85V',
+    commonFault: 'شورت على أحد مكثفات الخرج',
+  },
+  {
+    id: 'usb_port',
+    label: 'USB-C / Lightning Port',
+    type: 'CONNECTOR',
+    x: 4,
+    y: 45,
+    width: 8,
+    height: 16,
+    netId: 'net_vbus',
+    pinNumber: 'Pins A4/B4/A9/B9',
+    role: 'منفذ دخول الشاحن والبيانات',
+    diodeMode: '0.580V',
+    normalVoltage: '5.0V',
+    commonFault: 'كسر البنات أو التماس أرضي مباشر',
+  },
+  {
+    id: 'ovp_ic',
+    label: 'OVP IC (Protection)',
+    type: 'IC',
+    x: 14,
+    y: 35,
+    width: 7,
+    height: 7,
+    netId: 'net_vbus',
+    pinNumber: 'Pin IN',
+    role: 'حماية الدائرة من ارتفاع الجهد فوق 5.5V',
+    diodeMode: '0.580V',
+    normalVoltage: '5.0V',
+    commonFault: 'احتراق الآيسي عند استخدام شاحن تجاري رديء',
+  },
+  {
+    id: 'pwr_btn',
+    label: 'Power Button TP',
+    type: 'TEST_POINT',
+    x: 45,
+    y: 10,
+    width: 6,
+    height: 6,
+    netId: 'net_vreg_1p8',
+    pinNumber: 'TP_PWR_KEY',
+    role: 'نقطة تشغيل الجهاز يدوياً بدون فلاتة الباور',
+    diodeMode: '0.360V',
+    normalVoltage: '1.8V',
+    commonFault: 'فقدان فولت 1.8V يمنع استجابة الجهاز لزر التشغيل',
+  },
+  {
+    id: 'i2c_resistor',
+    label: 'R204 (I2C Pull-Up)',
+    type: 'COIL',
+    x: 35,
+    y: 12,
+    width: 6,
+    height: 4,
+    netId: 'net_vreg_1p8',
+    pinNumber: 'Pin 1',
+    role: 'مقاومة رفع 2.2K لمسارات بيانات I2C',
+    diodeMode: '0.370V',
+    normalVoltage: '1.8V',
+    commonFault: 'انقطاع المقاومة يسبب ريستارت متكرر (Panic Sensor)',
   },
 ];
 
 export default function InteractiveBoardviewSimulator() {
-  const [selectedComp, setSelectedComp] = useState<ComponentPad>(BOARD_COMPONENTS[0]);
+  const [selectedNodeId, setSelectedNodeId] = useState<string>('charging_ic');
   const [searchTerm, setSearchTerm] = useState('');
   const [isZoomed, setIsZoomed] = useState(false);
-  const [showLayers, setShowLayers] = useState(false);
 
-  const filteredComponents = BOARD_COMPONENTS.filter(comp =>
-    comp.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    comp.railName.toLowerCase().includes(searchTerm.toLowerCase())
+  const selectedNode = BOARD_NODES.find((n) => n.id === selectedNodeId) || BOARD_NODES[0];
+  const activeNet = BOARD_NETS[selectedNode.netId] || BOARD_NETS['net_vdd_main'];
+
+  // كافة المكونات المتصلة بنفس المسار الحالي المضاء
+  const connectedNodes = BOARD_NODES.filter((n) => n.netId === activeNet.id);
+
+  const filteredNodes = BOARD_NODES.filter(
+    (n) =>
+      n.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      n.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      activeNet.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
-    <div className="bg-white dark:bg-[#111827] border border-gray-200 dark:border-[#1F2937] rounded-2xl p-5 shadow-xl space-y-5 animate-fadeIn">
+    <div className="bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border rounded-3xl p-5 md:p-6 shadow-2xl space-y-6 animate-fadeIn transition-colors">
       {/* هيدر العارض */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 dark:border-[#1F2937] pb-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 dark:border-gray-800 pb-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center justify-center">
-            <Cpu className="w-6 h-6" />
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-dahab-400 to-amber-600 text-slate-950 font-black shadow-lg shadow-dahab-500/20 flex items-center justify-center">
+            <Crosshair className="w-6 h-6" />
           </div>
           <div>
-            <h2 className="text-base md:text-lg font-black text-gray-900 dark:text-gray-100 flex items-center gap-2">
-              <span>معمل البوردفيو والمسارات</span>
-              <span className="text-[10px] bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full font-bold border border-emerald-500/30">
-                ZXW & Borneo Simulator
+            <div className="flex items-center gap-2">
+              <h2 className="text-base md:text-lg font-black text-gray-900 dark:text-gray-100">
+                محاكي البورد فيو التفاعلي وتتبع المسارات الحية
+              </h2>
+              <span className="text-[10px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 px-2.5 py-0.5 rounded-full font-bold border border-emerald-500/30">
+                ZXW & FlexBV Net-Tracer
               </span>
-            </h2>
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              انقر على أي مكون لمعاينة المسار والفولت والممانعة
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              انقر على أي مسار أو مكون لإضاءة المسار بالكامل وكافة المكونات المتصلة به فوراً
             </p>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-2">
+          {/* اختيار سريع للمسار */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {Object.values(BOARD_NETS).map((net) => {
+              const isActive = net.id === activeNet.id;
+              return (
+                <button
+                  key={net.id}
+                  onClick={() => {
+                    const firstNode = BOARD_NODES.find((n) => n.netId === net.id);
+                    if (firstNode) setSelectedNodeId(firstNode.id);
+                  }}
+                  className={`px-2.5 py-1.5 rounded-xl text-[11px] font-black transition border flex items-center gap-1.5 ${
+                    isActive
+                      ? 'shadow-md'
+                      : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-900 dark:hover:bg-gray-800 border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400'
+                  }`}
+                  style={
+                    isActive
+                      ? {
+                          backgroundColor: `${net.color}25`,
+                          borderColor: net.color,
+                          color: net.color,
+                        }
+                      : {}
+                  }
+                >
+                  <span
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: net.color }}
+                  />
+                  <span>{net.name.split('/')[0].trim()}</span>
+                </button>
+              );
+            })}
+          </div>
+
           <button
             onClick={() => setIsZoomed(!isZoomed)}
-            className="p-2 rounded-lg bg-gray-100 dark:bg-[#1F2937] hover:bg-gray-200 dark:hover:bg-[#374151] transition-colors"
-            title={isZoomed ? 'تصغير' : 'تكبير'}
+            className="p-2 rounded-xl bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:border-dahab-500 transition"
+            title={isZoomed ? 'تصغير الشاشة' : 'تكبير الشاشة'}
           >
             {isZoomed ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
-          <button
-            onClick={() => setShowLayers(!showLayers)}
-            className="p-2 rounded-lg bg-gray-100 dark:bg-[#1F2937] hover:bg-gray-200 dark:hover:bg-[#374151] transition-colors"
-            title="إظهار الطبقات"
-          >
-            <Layers className="w-4 h-4" />
-          </button>
         </div>
       </div>
 
-      {/* شريط البحث */}
-      <div className="relative">
-        <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <input
-          type="text"
-          placeholder="ابحث عن مكون أو مسار..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-4 pr-10 py-2 rounded-xl bg-gray-100 dark:bg-[#1F2937] border border-gray-200 dark:border-[#374151] text-sm focus:outline-none focus:ring-2 focus:ring-dahab-500"
-        />
+      {/* شريط المسار المضاء النشط (Active Net Banner) */}
+      <div
+        className="p-4 rounded-2xl border transition-all flex flex-wrap items-center justify-between gap-3 shadow-sm"
+        style={{
+          backgroundColor: `${activeNet.color}15`,
+          borderColor: `${activeNet.color}40`,
+        }}
+      >
+        <div className="flex items-center gap-3">
+          <div
+            className="w-4 h-4 rounded-full animate-ping"
+            style={{ backgroundColor: activeNet.color }}
+          />
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-gray-500 dark:text-gray-400">
+                المسار المضاء حالياً (Active Net):
+              </span>
+              <span className="text-sm font-black font-mono" style={{ color: activeNet.color }}>
+                {activeNet.name}
+              </span>
+            </div>
+            <p className="text-[11px] text-gray-600 dark:text-gray-300">{activeNet.description}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4 text-xs font-mono">
+          <div className="bg-white/80 dark:bg-gray-900/80 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-800">
+            <span className="text-gray-500 text-[10px] block">الفولت النموذجي:</span>
+            <strong className="text-emerald-600 dark:text-emerald-400">{activeNet.voltage}</strong>
+          </div>
+          <div className="bg-white/80 dark:bg-gray-900/80 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-800">
+            <span className="text-gray-500 text-[10px] block">الممانعة (Diode Mode):</span>
+            <strong style={{ color: activeNet.color }}>{activeNet.diodeMode}</strong>
+          </div>
+          <div className="bg-white/80 dark:bg-gray-900/80 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-800">
+            <span className="text-gray-500 text-[10px] block">النقاط المتصلة:</span>
+            <strong className="text-dahab-600 dark:text-dahab-400">{connectedNodes.length} مكونات</strong>
+          </div>
+        </div>
       </div>
 
-      {/* شاشة العرض التفاعلية */}
-      <div className={`grid grid-cols-1 ${isZoomed ? 'lg:grid-cols-1' : 'lg:grid-cols-12'} gap-5`}>
-        {/* رسم البوردة التفاعلي */}
-        <div className={`${isZoomed ? 'lg:col-span-1' : 'lg:col-span-7'} bg-gray-950 border-2 border-dashed border-gray-800 rounded-2xl p-4 flex flex-col items-center justify-center min-h-[360px] relative overflow-hidden select-none`}>
-          <div className="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px] opacity-40" />
-          
-          <div className={`w-full ${isZoomed ? 'max-w-[700px] h-[450px]' : 'max-w-[480px] h-[320px]'} bg-gradient-to-br from-emerald-950/80 via-emerald-900/60 to-slate-950 rounded-2xl border-2 border-emerald-500/40 relative shadow-2xl shadow-emerald-950/50 p-2`}>
-            <div className="absolute inset-0 opacity-20 pointer-events-none">
-              <svg width="100%" height="100%">
-                <line x1="25%" y1="35%" x2="50%" y2="40%" stroke="#10b981" strokeWidth="2" />
-                <line x1="25%" y1="65%" x2="50%" y2="45%" stroke="#f59e0b" strokeWidth="2" />
-                <line x1="55%" y1="45%" x2="75%" y2="40%" stroke="#38bdf8" strokeWidth="2" />
-                <line x1="22%" y1="80%" x2="25%" y2="65%" stroke="#ef4444" strokeWidth="2" />
-              </svg>
-            </div>
+      {/* شاشة العرض التفاعلية: لوحة البوردة + اللوحة الجانبية */}
+      <div className={`grid grid-cols-1 ${isZoomed ? 'lg:grid-cols-1' : 'lg:grid-cols-12'} gap-6`}>
+        {/* رسم البوردة التفاعلي بالأشعة والمكونات */}
+        <div
+          className={`${
+            isZoomed ? 'lg:col-span-1' : 'lg:col-span-7 xl:col-span-8'
+          } bg-slate-950 border-2 border-dashed border-gray-800 rounded-3xl p-4 flex flex-col items-center justify-center min-h-[420px] relative overflow-hidden select-none shadow-inner`}
+        >
+          {/* شبكة البوردة الهندسية */}
+          <div className="absolute inset-0 bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:20px_20px] opacity-35" />
 
-            {filteredComponents.map((comp) => {
-              const isSelected = selectedComp.id === comp.id;
-              const isIC = comp.type === 'IC';
-              const isCoil = comp.type === 'COIL';
-              const isTP = comp.type === 'TEST_POINT';
-              const isConnector = comp.type === 'CONNECTOR';
+          {/* البوردة الإلكترونية */}
+          <div
+            className={`w-full ${
+              isZoomed ? 'max-w-[760px] h-[520px]' : 'max-w-[580px] h-[380px]'
+            } bg-gradient-to-br from-emerald-950 via-[#062419] to-slate-950 rounded-3xl border-2 border-emerald-500/40 relative shadow-2xl p-2 transition-all`}
+          >
+            {/* خطوط المسارات المضيئة الموصلة بين كافة مكونات المسار النشط (SVG Circuit Traces) */}
+            <svg className="absolute inset-0 w-full h-full pointer-events-none z-10">
+              {connectedNodes.map((source, i) =>
+                connectedNodes.slice(i + 1).map((target, j) => {
+                  const x1 = `${source.x + source.width / 2}%`;
+                  const y1 = `${source.y + source.height / 2}%`;
+                  const x2 = `${target.x + target.width / 2}%`;
+                  const y2 = `${target.y + target.height / 2}%`;
+
+                  return (
+                    <g key={`${source.id}_${target.id}`}>
+                      {/* خط التوهج الخارجي */}
+                      <line
+                        x1={x1}
+                        y1={y1}
+                        x2={x2}
+                        y2={y2}
+                        stroke={activeNet.color}
+                        strokeWidth="5"
+                        strokeOpacity="0.4"
+                        strokeLinecap="round"
+                        className="animate-pulse"
+                      />
+                      {/* المسار الداخلي المضيء */}
+                      <line
+                        x1={x1}
+                        y1={y1}
+                        x2={x2}
+                        y2={y2}
+                        stroke={activeNet.color}
+                        strokeWidth="2"
+                        strokeDasharray="4,4"
+                        strokeLinecap="round"
+                      />
+                    </g>
+                  );
+                })
+              )}
+            </svg>
+
+            {/* رسم المكونات والقطع الإلكترونية */}
+            {BOARD_NODES.map((node) => {
+              const isSelected = selectedNode.id === node.id;
+              const isConnectedToNet = node.netId === activeNet.id;
 
               return (
                 <div
-                  key={comp.id}
-                  onClick={() => setSelectedComp(comp)}
+                  key={node.id}
+                  onClick={() => setSelectedNodeId(node.id)}
                   style={{
-                    left: `${comp.x}%`,
-                    top: `${comp.y}%`,
-                    width: `${comp.width}%`,
-                    height: `${comp.height}%`,
+                    left: `${node.x}%`,
+                    top: `${node.y}%`,
+                    width: `${node.width}%`,
+                    height: `${node.height}%`,
                   }}
-                  className={`absolute rounded-lg cursor-pointer transition-all flex flex-col items-center justify-center text-center p-1 border ${
+                  className={`absolute rounded-xl cursor-pointer transition-all flex flex-col items-center justify-center text-center p-1 border select-none ${
                     isSelected
-                      ? 'ring-2 ring-dahab-400 scale-105 z-20 shadow-lg'
-                      : 'hover:scale-102 hover:border-gray-400 z-10'
-                  } ${
-                    isIC
-                      ? isSelected
-                        ? 'bg-gray-900 border-dahab-400 text-dahab-300'
-                        : 'bg-gray-900/90 border-gray-700 text-gray-200'
-                      : isCoil
-                      ? isSelected
-                        ? 'bg-amber-950 border-amber-400 text-amber-300'
-                        : 'bg-amber-950/80 border-amber-600/70 text-amber-200'
-                      : isTP
-                      ? isSelected
-                        ? 'bg-rose-950 border-rose-400 text-rose-300 rounded-full'
-                        : 'bg-rose-950/80 border-rose-600/70 text-rose-200 rounded-full'
-                      : isSelected
-                        ? 'bg-blue-950 border-blue-400 text-blue-300'
-                        : 'bg-blue-950/80 border-blue-600/70 text-blue-200'
+                      ? 'ring-4 ring-dahab-400 scale-110 z-30 shadow-2xl'
+                      : isConnectedToNet
+                      ? 'ring-2 scale-105 z-20 shadow-lg'
+                      : 'opacity-40 hover:opacity-100 hover:scale-102 z-10'
                   }`}
-                  title={`${comp.label} - ${comp.railName}`}
+                  style={{
+                    left: `${node.x}%`,
+                    top: `${node.y}%`,
+                    width: `${node.width}%`,
+                    height: `${node.height}%`,
+                    borderColor: isSelected
+                      ? '#f59e0b'
+                      : isConnectedToNet
+                      ? activeNet.color
+                      : '#334155',
+                    backgroundColor: isConnectedToNet
+                      ? `${activeNet.color}35`
+                      : '#0f172a95',
+                    color: isConnectedToNet ? '#ffffff' : '#94a3b8',
+                  }}
                 >
-                  <span className="text-[10px] font-mono font-black leading-tight line-clamp-1">
-                    {comp.label}
+                  <span className="text-[9px] font-black font-mono leading-none truncate max-w-full">
+                    {node.label.split(' ')[0]}
                   </span>
-                  <span className="text-[8px] font-mono opacity-80 hidden sm:inline">
-                    {isTP ? 'TP' : comp.type}
-                  </span>
+                  {node.pinNumber && (
+                    <span className="text-[7px] text-gray-300 font-mono">
+                      {node.pinNumber.split(' ')[0]}
+                    </span>
+                  )}
+                  {isConnectedToNet && (
+                    <span
+                      className="w-1.5 h-1.5 rounded-full absolute -top-1 -right-1 animate-ping"
+                      style={{ backgroundColor: activeNet.color }}
+                    />
+                  )}
                 </div>
               );
             })}
+          </div>
 
-            <div className="absolute bottom-2 left-3 text-[9px] font-mono text-emerald-400/70">
-              DAHAB_PCB_REV_2.4
-            </div>
-            <div className="absolute top-2 right-3 text-[9px] font-mono text-emerald-400/70">
-              GND CHASSIS
-            </div>
+          <div className="text-[10px] text-gray-400 mt-2 font-mono flex items-center gap-2">
+            <Radio className="w-3.5 h-3.5 text-dahab-500 animate-pulse" />
+            <span>انقر على أي مكون لعرض دائرته، أو اختر مساراً من القائمة العلوية لإضاءته</span>
           </div>
         </div>
 
-        {/* بطاقة تفاصيل المكون */}
-        <div className={`${isZoomed ? 'lg:col-span-1' : 'lg:col-span-5'} bg-gray-900/90 border border-gray-800 rounded-2xl p-5 space-y-3.5 flex flex-col justify-between`}>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between border-b border-gray-800 pb-2.5">
+        {/* لوحة المعلومات الهندسية التفاعلية للمسار والمكون */}
+        <div
+          className={`${
+            isZoomed ? 'lg:col-span-1' : 'lg:col-span-5 xl:col-span-4'
+          } space-y-4`}
+        >
+          {/* كارت المكون المحدد */}
+          <div className="p-5 rounded-3xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 space-y-4 shadow-sm">
+            <div className="flex items-start justify-between gap-2 border-b border-gray-200 dark:border-gray-800 pb-3">
               <div>
-                <span className="text-[10px] text-dahab-400 font-bold uppercase tracking-wider block">
-                  المكون النشط ({selectedComp.type})
+                <span className="text-[10px] font-bold text-gray-400 block mb-0.5">
+                  المكون المختار (Selected Component):
                 </span>
-                <h3 className="text-base font-black text-gray-100 font-mono">
-                  {selectedComp.label}
+                <h3 className="text-base font-black text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                  <span>{selectedNode.label}</span>
                 </h3>
               </div>
-              <span className="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-gray-800 text-emerald-300 border border-gray-700">
-                {selectedComp.railName}
+              <span className="px-2.5 py-1 rounded-xl bg-dahab-500/15 border border-dahab-500/30 text-dahab-700 dark:text-dahab-300 text-[10px] font-black">
+                {selectedNode.type}
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="p-2.5 rounded-xl bg-gray-950 border border-gray-800 space-y-1">
-                <span className="text-[10px] text-gray-400 block font-bold">الممانعة بالدايود:</span>
-                <span className="font-mono font-bold text-sky-400 text-xs">{selectedComp.diodeMode}</span>
+            <div className="space-y-2 text-xs">
+              <div className="flex justify-between py-1 border-b border-gray-200/50 dark:border-gray-800">
+                <span className="text-gray-500">رقم الرجل / النقطة:</span>
+                <span className="font-mono font-bold">{selectedNode.pinNumber || 'All Pins'}</span>
               </div>
-              <div className="p-2.5 rounded-xl bg-gray-950 border border-gray-800 space-y-1">
-                <span className="text-[10px] text-gray-400 block font-bold">الفولت الطبيعي:</span>
-                <span className="font-mono font-bold text-emerald-400 text-xs">{selectedComp.normalVoltage}</span>
+              <div className="flex justify-between py-1 border-b border-gray-200/50 dark:border-gray-800">
+                <span className="text-gray-500">الممانعة (Diode Mode):</span>
+                <span className="font-mono font-bold text-dahab-600 dark:text-dahab-400">
+                  {selectedNode.diodeMode}
+                </span>
               </div>
-            </div>
-
-            <div className="text-xs text-gray-300 bg-gray-950/60 p-3 rounded-xl border border-gray-800/80 space-y-1">
-              <strong className="text-dahab-400 block text-[11px]">الوظيفة الهندسية:</strong>
-              <p className="leading-relaxed text-[11px]">{selectedComp.role}</p>
-            </div>
-
-            <div className="text-xs text-rose-200 bg-rose-950/20 p-3 rounded-xl border border-rose-900/30 space-y-1">
-              <strong className="text-rose-400 block text-[11px]">الأعراض عند التلف:</strong>
-              <p className="leading-relaxed text-[11px]">{selectedComp.commonFault}</p>
-            </div>
-
-            {selectedComp.relatedComponents && (
-              <div className="text-xs text-blue-200 bg-blue-950/20 p-3 rounded-xl border border-blue-900/30 space-y-1">
-                <strong className="text-blue-400 block text-[11px]">مكونات مرتبطة:</strong>
-                <div className="flex flex-wrap gap-1">
-                  {selectedComp.relatedComponents.map((comp, idx) => (
-                    <span key={idx} className="px-2 py-0.5 bg-blue-900/30 rounded text-[10px]">
-                      {comp}
-                    </span>
-                  ))}
+              <div className="flex justify-between py-1 border-b border-gray-200/50 dark:border-gray-800">
+                <span className="text-gray-500">الفولت في وضع التشغيل:</span>
+                <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                  {selectedNode.normalVoltage}
+                </span>
+              </div>
+              <div className="py-1">
+                <span className="text-gray-500 block mb-1">الدور الوظيفي بالدائرة:</span>
+                <p className="text-gray-700 dark:text-gray-300 text-[11px] leading-relaxed">
+                  {selectedNode.role}
+                </p>
+              </div>
+              <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 text-[11px] text-rose-700 dark:text-rose-300 space-y-1">
+                <div className="font-bold flex items-center gap-1">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  <span>العطل الشائع المرتبط بهذه النقطة:</span>
                 </div>
+                <p className="leading-relaxed">{selectedNode.commonFault}</p>
               </div>
-            )}
+            </div>
           </div>
 
-          <div className="text-[10px] text-gray-500 pt-2 border-t border-gray-800 flex items-center gap-1">
-            <Info className="w-3.5 h-3.5 text-dahab-400" />
-            <span>مطابقة القيم مع قياسات أجهزة الباور والملتيميتر</span>
+          {/* قائمة المكونات المتصلة بالمسار حالياً (Connected Nodes List) */}
+          <div className="p-5 rounded-3xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 space-y-3 shadow-sm">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-black text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
+                <Share2 className="w-3.5 h-3.5 text-dahab-500" />
+                <span>المكونات المشتركة على نفس الخط ({connectedNodes.length}):</span>
+              </h4>
+              <span className="text-[10px] text-gray-400">انقر للتركيز</span>
+            </div>
+
+            <div className="space-y-1.5 max-h-48 overflow-y-auto">
+              {connectedNodes.map((n) => {
+                const isCurrent = n.id === selectedNode.id;
+                return (
+                  <button
+                    key={n.id}
+                    onClick={() => setSelectedNodeId(n.id)}
+                    className={`w-full p-2.5 rounded-xl text-right text-xs transition flex items-center justify-between border ${
+                      isCurrent
+                        ? 'bg-dahab-500/15 border-dahab-500 text-dahab-700 dark:text-dahab-300 font-bold'
+                        : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-dahab-500 text-gray-700 dark:text-gray-300'
+                    }`}
+                  >
+                    <span className="truncate">{n.label}</span>
+                    <span className="text-[10px] font-mono text-gray-400">{n.pinNumber || n.type}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
