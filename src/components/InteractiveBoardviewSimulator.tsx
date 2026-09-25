@@ -471,19 +471,6 @@ export default function InteractiveBoardviewSimulator() {
                     top: `${node.y}%`,
                     width: `${node.width}%`,
                     height: `${node.height}%`,
-                  }}
-                  className={`absolute rounded-xl cursor-pointer transition-all flex flex-col items-center justify-center text-center p-1 border select-none ${
-                    isSelected
-                      ? 'ring-4 ring-dahab-400 scale-110 z-30 shadow-2xl'
-                      : isConnectedToNet
-                      ? 'ring-2 scale-105 z-20 shadow-lg'
-                      : 'opacity-40 hover:opacity-100 hover:scale-102 z-10'
-                  }`}
-                  style={{
-                    left: `${node.x}%`,
-                    top: `${node.y}%`,
-                    width: `${node.width}%`,
-                    height: `${node.height}%`,
                     borderColor: isSelected
                       ? '#f59e0b'
                       : isConnectedToNet
@@ -494,6 +481,13 @@ export default function InteractiveBoardviewSimulator() {
                       : '#0f172a95',
                     color: isConnectedToNet ? '#ffffff' : '#94a3b8',
                   }}
+                  className={`absolute rounded-xl cursor-pointer transition-all flex flex-col items-center justify-center text-center p-1 border select-none ${
+                    isSelected
+                      ? 'ring-4 ring-dahab-400 scale-110 z-30 shadow-2xl'
+                      : isConnectedToNet
+                      ? 'ring-2 scale-105 z-20 shadow-lg'
+                      : 'opacity-40 hover:opacity-100 hover:scale-102 z-10'
+                  }`}
                 >
                   <span className="text-[9px] font-black font-mono leading-none truncate max-w-full">
                     {node.label.split(' ')[0]}
