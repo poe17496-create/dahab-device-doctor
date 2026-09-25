@@ -162,30 +162,27 @@ export default function AIKeysManager() {
     }
   };
 
-  // اختبار مفتاح مزود معين حياً
+  // اختبار كافة المفاتيح المدخلة حياً
   const handleTestKey = async (provider: 'gemini' | 'openrouter' | 'openai') => {
-    let keyToTest = '';
+    let keyList: string[] = [];
     let setStatus: React.Dispatch<React.SetStateAction<KeyTestStatus>>;
 
     if (provider === 'gemini') {
-      const list = geminiKeys.split(/[\n,;]+/).map((k) => k.trim()).filter(Boolean);
-      keyToTest = list[0] || '';
+      keyList = geminiKeys.split(/[\n,;]+/).map((k) => k.trim()).filter((k) => k.length > 5);
       setStatus = setGeminiStatus;
     } else if (provider === 'openrouter') {
-      const list = openrouterKeys.split(/[\n,;]+/).map((k) => k.trim()).filter(Boolean);
-      keyToTest = list[0] || '';
+      keyList = openrouterKeys.split(/[\n,;]+/).map((k) => k.trim()).filter((k) => k.length > 5);
       setStatus = setOpenrouterStatus;
     } else {
-      const list = openaiKeys.split(/[\n,;]+/).map((k) => k.trim()).filter(Boolean);
-      keyToTest = list[0] || '';
-      if (keyToTest.startsWith('k-proj-')) {
-        keyToTest = 's' + keyToTest;
-        setOpenaiKeys((prev) => prev.replace('k-proj-', 'sk-proj-'));
-      }
+      keyList = openaiKeys
+        .split(/[\n,;]+/)
+        .map((k) => k.trim())
+        .map((k) => (k.startsWith('k-proj-') ? 's' + k : k))
+        .filter((k) => k.length > 5);
       setStatus = setOpenaiStatus;
     }
 
-    if (!keyToTest) {
+    if (keyList.length === 0) {
       setStatus({
         status: 'error',
         message: 'يرجى إدخال مفتاح واحد على الأقل للاختبار',
@@ -195,45 +192,53 @@ export default function AIKeysManager() {
 
     setStatus({ status: 'testing' });
 
-    try {
-      const res = await fetch('/api/admin/keys', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'test',
-          provider,
-          key: keyToTest,
-        }),
-      });
+    let workingKeyResult: any = null;
+    const errorsList: string[] = [];
 
-      const data = await res.json();
-      if (res.ok && data.result) {
-        if (data.result.success) {
-          setStatus({
-            status: 'success',
-            message: data.result.message,
-            latencyMs: data.result.latencyMs,
-            modelUsed: data.result.modelUsed,
-          });
-        } else {
-          setStatus({
-            status: 'error',
-            message: data.result.message,
-            error: data.result.error,
-            latencyMs: data.result.latencyMs,
-          });
-        }
-      } else {
-        setStatus({
-          status: 'error',
-          message: data.error || 'فشل الاتصال',
+    for (let i = 0; i < keyList.length; i++) {
+      const key = keyList[i];
+      try {
+        const res = await fetch('/api/admin/keys', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'test',
+            provider,
+            key,
+          }),
         });
+
+        const data = await res.json();
+        if (res.ok && data.result?.success) {
+          workingKeyResult = {
+            ...data.result,
+            message:
+              keyList.length > 1
+                ? `المفتاح رقم (${i + 1} من أصل ${keyList.length}): ${data.result.message}`
+                : data.result.message,
+          };
+          break; // عثرنا على مفتاح سليم ويعمل
+        } else {
+          const errDetail = data.result?.error || data.result?.message || data.error || 'فشل الاتصال';
+          errorsList.push(`مفتاح #${i + 1} (...${key.slice(-5)}): ${errDetail}`);
+        }
+      } catch (e: any) {
+        errorsList.push(`مفتاح #${i + 1}: ${e?.message || 'تعذر الوصول لخادم الفحص'}`);
       }
-    } catch (e: any) {
+    }
+
+    if (workingKeyResult) {
+      setStatus({
+        status: 'success',
+        message: workingKeyResult.message,
+        latencyMs: workingKeyResult.latencyMs,
+        modelUsed: workingKeyResult.modelUsed,
+      });
+    } else {
       setStatus({
         status: 'error',
-        message: 'تعذر الوصول لخادم الفحص',
-        error: e?.message,
+        message: `فشل الاتصال بجميع المفاتيح المدخلة (عدد: ${keyList.length})`,
+        error: errorsList.join('\n'),
       });
     }
   };
