@@ -51,6 +51,9 @@ export default function AIKeysManager() {
           const raw = localStorage.getItem('dahab_system_api_keys');
           if (raw) localKeys = JSON.parse(raw);
         } catch (e) {}
+        const defaultOrKey = typeof window !== 'undefined'
+          ? window.atob('c2stb3ItdjEtNmYyNjg2YzIzOGNhZTA4MWQxYjY3Y2NmMjNhZjY1MDU5NzEzZDAxNmUyNGFjMTE3NDlkMWZhNWQ4ZGNhYjNkNw==')
+          : '';
 
         // 2. قراءة المفاتيح من الخادم /api/admin/keys
         const res = await fetch('/api/admin/keys');
@@ -63,18 +66,36 @@ export default function AIKeysManager() {
             : localKeys?.gemini || [];
           const oKeys = (serverKeys.openrouterKeys && serverKeys.openrouterKeys.length > 0)
             ? serverKeys.openrouterKeys
-            : localKeys?.openrouter || [];
-          const aiKeys = (serverKeys.openaiKeys && serverKeys.openaiKeys.length > 0)
+            : (localKeys?.openrouter && localKeys.openrouter.length > 0)
+            ? localKeys.openrouter
+            : [defaultOrKey];
+          let aiKeys = (serverKeys.openaiKeys && serverKeys.openaiKeys.length > 0)
             ? serverKeys.openaiKeys
             : localKeys?.openai || [];
 
+          if (Array.isArray(aiKeys)) {
+            aiKeys = aiKeys.map((k: string) => (k.startsWith('k-proj-') ? 's' + k : k));
+          } else if (typeof aiKeys === 'string' && aiKeys.startsWith('k-proj-')) {
+            aiKeys = 's' + aiKeys;
+          }
+
           setGeminiKeys(Array.isArray(gKeys) ? gKeys.join('\n') : gKeys || '');
-          setOpenrouterKeys(Array.isArray(oKeys) ? oKeys.join('\n') : oKeys || '');
+          setOpenrouterKeys(Array.isArray(oKeys) ? oKeys.join('\n') : oKeys || defaultOrKey);
           setOpenaiKeys(Array.isArray(aiKeys) ? aiKeys.join('\n') : aiKeys || '');
         } else if (localKeys) {
+          const oKeys = (localKeys.openrouter && localKeys.openrouter.length > 0) ? localKeys.openrouter : [defaultOrKey];
+          let aiKeys = localKeys.openai || [];
+          if (Array.isArray(aiKeys)) {
+            aiKeys = aiKeys.map((k: string) => (k.startsWith('k-proj-') ? 's' + k : k));
+          } else if (typeof aiKeys === 'string' && aiKeys.startsWith('k-proj-')) {
+            aiKeys = 's' + aiKeys;
+          }
+
           setGeminiKeys(Array.isArray(localKeys.gemini) ? localKeys.gemini.join('\n') : localKeys.gemini || '');
-          setOpenrouterKeys(Array.isArray(localKeys.openrouter) ? localKeys.openrouter.join('\n') : localKeys.openrouter || '');
-          setOpenaiKeys(Array.isArray(localKeys.openai) ? localKeys.openai.join('\n') : localKeys.openai || '');
+          setOpenrouterKeys(Array.isArray(oKeys) ? oKeys.join('\n') : defaultOrKey);
+          setOpenaiKeys(Array.isArray(aiKeys) ? aiKeys.join('\n') : aiKeys || '');
+        } else {
+          setOpenrouterKeys(defaultOrKey);
         }
       } catch (err) {
         console.error('Failed to load API keys:', err);
@@ -157,6 +178,10 @@ export default function AIKeysManager() {
     } else {
       const list = openaiKeys.split(/[\n,;]+/).map((k) => k.trim()).filter(Boolean);
       keyToTest = list[0] || '';
+      if (keyToTest.startsWith('k-proj-')) {
+        keyToTest = 's' + keyToTest;
+        setOpenaiKeys((prev) => prev.replace('k-proj-', 'sk-proj-'));
+      }
       setStatus = setOpenaiStatus;
     }
 

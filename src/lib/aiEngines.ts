@@ -232,7 +232,11 @@ async function tryCallOpenAI(
   apiKey: string,
   params: { prompt: string; imageBase64?: string; systemPrompt?: string }
 ): Promise<AIResponse> {
-  const client = new OpenAI({ apiKey });
+  let cleanKey = apiKey.trim();
+  if (cleanKey.startsWith('k-proj-')) {
+    cleanKey = 's' + cleanKey;
+  }
+  const client = new OpenAI({ apiKey: cleanKey });
 
   const modelsToTry = ['gpt-4o-mini', 'gpt-4o', 'gpt-3.5-turbo'];
 
