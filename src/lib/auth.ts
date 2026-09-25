@@ -14,6 +14,11 @@ export interface UserAccount {
   createdAt: string;
   activeSessionToken?: string;
   lastLoginAt?: string;
+  lastSeenAt?: string;
+  isOnline?: boolean;
+  deviceInfo?: string;
+  expiresAt?: string; // تاريخ انتهاء الصلاحية أو فارغ لغير محدود
+  subscriptionDays?: number;
 }
 
 const BASE_DIR = process.env.VERCEL ? '/tmp' : process.cwd();
@@ -24,14 +29,17 @@ const DEFAULT_USERS: UserAccount[] = [
   {
     id: 'user_admin',
     username: 'dahab',
-    name: 'المهندس إسلام دهب (المشرف العام)',
+    name: 'المهندس إسلام دهب (المشرف العام ومطور المنظومة)',
     email: 'dahab@doctor.com',
     role: 'admin',
-    specialty: 'كبير مهندسي صيانة الإلكترونيات والميكروسولديرنج',
+    specialty: 'كبير مهندسي الإلكترونيات والميكروسولديرنج ومطور أنظمة دهب',
     password: 'dahab2026',
     active: true,
-    diagnosesCount: 142,
+    diagnosesCount: 185,
     createdAt: '2026-01-01T00:00:00.000Z',
+    isOnline: true,
+    lastSeenAt: new Date().toISOString(),
+    expiresAt: undefined, // غير محدود
   },
   {
     id: 'user_tech1',
@@ -42,8 +50,10 @@ const DEFAULT_USERS: UserAccount[] = [
     specialty: 'صيانة الآيفون وسواب المعالجات A12-A17',
     password: '123456',
     active: true,
-    diagnosesCount: 58,
+    diagnosesCount: 64,
     createdAt: '2026-02-15T00:00:00.000Z',
+    expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(), // 60 يوم متبقية
+    subscriptionDays: 60,
   },
   {
     id: 'user_tech2',
@@ -54,8 +64,10 @@ const DEFAULT_USERS: UserAccount[] = [
     specialty: 'صيانة اللابتوب والماك بوك وكروت الشاشة',
     password: '123456',
     active: true,
-    diagnosesCount: 39,
+    diagnosesCount: 42,
     createdAt: '2026-03-01T00:00:00.000Z',
+    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 يوم متبقية
+    subscriptionDays: 30,
   },
 ];
 
@@ -95,13 +107,43 @@ export function saveAllUsers(users: UserAccount[]): boolean {
   }
 }
 
-export function addUser(user: Omit<UserAccount, 'id' | 'createdAt' | 'diagnosesCount'>): UserAccount {
+/**
+ * فحص سريان اشتراك المستخدم وحساب الأيام المتبقية
+ */
+export function checkSubscription(user: UserAccount): { isExpired: boolean; daysRemaining: number } {
+  if (!user.expiresAt || user.role === 'admin') {
+    return { isExpired: false, daysRemaining: 9999 }; // غير محدود
+  }
+  const exp = new Date(user.expiresAt).getTime();
+  const now = Date.now();
+  const diffMs = exp - now;
+  const daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  return {
+    isExpired: daysRemaining <= 0,
+    daysRemaining: Math.max(0, daysRemaining),
+  };
+}
+
+/**
+ * إضافة مستخدم جديد مع تحديد مدة الصلاحية
+ */
+export function addUser(
+  user: Omit<UserAccount, 'id' | 'createdAt' | 'diagnosesCount'> & { subscriptionDays?: number }
+): UserAccount {
   const users = getAllUsers();
+  
+  let expiresAt = user.expiresAt;
+  if (!expiresAt && user.subscriptionDays && user.subscriptionDays > 0) {
+    expiresAt = new Date(Date.now() + user.subscriptionDays * 24 * 60 * 60 * 1000).toISOString();
+  }
+
   const newUser: UserAccount = {
     ...user,
     id: `user_${Date.now()}`,
     diagnosesCount: 0,
     createdAt: new Date().toISOString(),
+    expiresAt,
+    isOnline: false,
   };
   users.push(newUser);
   saveAllUsers(users);
@@ -131,13 +173,32 @@ export function toggleUserStatus(id: string): UserAccount | null {
 }
 
 /**
- * إنهاء جلسة مستخدم عن بعد من لوحة التحكم
+ * تمديد اشتراك مستخدم بعدد أيام إضافية
+ */
+export function extendSubscription(id: string, days: number): UserAccount | null {
+  const users = getAllUsers();
+  const user = users.find((u) => u.id === id);
+  if (!user) return null;
+
+  const currentExp = user.expiresAt ? new Date(user.expiresAt).getTime() : Date.now();
+  const baseTime = currentExp > Date.now() ? currentExp : Date.now();
+  const newExp = new Date(baseTime + days * 24 * 60 * 60 * 1000).toISOString();
+
+  user.expiresAt = newExp;
+  user.active = true;
+  saveAllUsers(users);
+  return user;
+}
+
+/**
+ * إنهاء جلسة مستخدم عن بعد من لوحة التحكم (Kick/Terminate Session)
  */
 export function terminateUserSession(id: string): boolean {
   const users = getAllUsers();
   const user = users.find((u) => u.id === id);
   if (user) {
     user.activeSessionToken = undefined;
+    user.isOnline = false;
     saveAllUsers(users);
     return true;
   }
@@ -145,31 +206,78 @@ export function terminateUserSession(id: string): boolean {
 }
 
 /**
- * التحقق من تسجيل الدخول وتطبيق قاعدة جهاز واحد فقط (Single-Device Enforcement)
- * عند تسجيل الدخول من جهاز جديد، يتم إنشاء توكن جديد وإلغاء أي جلسة سابقة فوراً
+ * تحديث حالة النشاط الحية (Heartbeat) وتأكيد جلسة الجهاز الواحد
  */
-export function verifyLogin(username: string, password?: string): UserAccount | null {
+export function updateUserHeartbeat(
+  username: string,
+  sessionToken: string,
+  deviceInfo?: string
+): { valid: boolean; user?: UserAccount; error?: string } {
+  const users = getAllUsers();
+  const user = users.find((u) => u.username.toLowerCase() === username.toLowerCase().trim());
+  if (!user || !user.active) {
+    return { valid: false, error: 'الحساب غير متاح أو تم تعطيله' };
+  }
+  if (user.activeSessionToken && user.activeSessionToken !== sessionToken) {
+    return { valid: false, error: 'تم تسجيل الدخول إلى هذا الحساب من جهاز آخر، وتم إنهاء هذه الجلسة حفاظاً على الأمان.' };
+  }
+  const sub = checkSubscription(user);
+  if (sub.isExpired && user.role !== 'admin') {
+    return { valid: false, error: 'انتهت فترة اشتراك الحساب، يرجى مراجعة المشرف العام لتجديد الصلاحية.' };
+  }
+
+  user.lastSeenAt = new Date().toISOString();
+  user.isOnline = true;
+  if (deviceInfo) user.deviceInfo = deviceInfo;
+  saveAllUsers(users);
+  return { valid: true, user };
+}
+
+/**
+ * التحقق من تسجيل الدخول وتطبيق قاعدة جهاز واحد فقط (Single-Device Enforcement)
+ * وحظر الحسابات منتهية الاشتراك
+ */
+export function verifyLogin(
+  username: string,
+  password?: string,
+  deviceInfo?: string
+): { user: UserAccount | null; error?: string } {
   const users = getAllUsers();
   const user = users.find(
-    (u) => u.username.toLowerCase() === username.toLowerCase().trim() && u.active
+    (u) => u.username.toLowerCase() === username.toLowerCase().trim()
   );
-  if (!user) return null;
+
+  if (!user) {
+    return { user: null, error: 'اسم المستخدم غير موجود' };
+  }
+  if (!user.active) {
+    return { user: null, error: 'هذا الحساب معطل حالياً من قبل المشرف العام' };
+  }
   if (user.password && password && user.password !== password) {
-    return null;
+    return { user: null, error: 'كلمة المرور غير صحيحة' };
+  }
+
+  // فحص مدة الصلاحية والاشتراك
+  const sub = checkSubscription(user);
+  if (sub.isExpired && user.role !== 'admin') {
+    return { user: null, error: 'انتهت فترة اشتراك الحساب، يرجى التواصل مع المشرف العام لتجديد الاشتراك.' };
   }
 
   // توليد رمز جلسة جديد فريد وطرد أي جهاز سابق فوراً
   const newSessionToken = `token_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
   user.activeSessionToken = newSessionToken;
   user.lastLoginAt = new Date().toISOString();
+  user.lastSeenAt = new Date().toISOString();
+  user.isOnline = true;
+  if (deviceInfo) user.deviceInfo = deviceInfo;
+
   saveAllUsers(users);
 
-  return user;
+  return { user };
 }
 
 /**
  * فحص سريان جلسة المستخدم الحالية
- * إذا فتح نفس الحساب من جهاز آخر، سيرجع false لإخراج المستخدم الحالي فوراً
  */
 export function validateSessionToken(username: string, sessionToken: string): boolean {
   const users = getAllUsers();

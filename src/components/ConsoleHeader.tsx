@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Cpu, FileJson, PlusCircle, ShieldCheck, User, LogOut, Settings } from 'lucide-react';
+import { Cpu, FileJson, PlusCircle, ShieldCheck, User, LogOut, Settings, Crown, Laptop } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import LoginModal from '@/components/LoginModal';
 import { UserAccount } from '@/lib/auth';
@@ -34,8 +34,49 @@ export default function ConsoleHeader({
     }
   }, []);
 
+  // نبض الجلسة الدورية للتحقق من عدم الفتح من جهاز آخر
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const sessionToken = localStorage.getItem('dahab_session_token');
+    if (!sessionToken) return;
+
+    const sendHeartbeat = async () => {
+      try {
+        const deviceInfo = `${navigator.platform || 'PC'} - ${navigator.userAgent.includes('Chrome') ? 'Chrome' : 'Browser'}`;
+        const res = await fetch('/api/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'heartbeat',
+            username: currentUser.username,
+            sessionToken,
+            deviceInfo,
+          }),
+        });
+
+        const data = await res.json();
+        if (data.kicked) {
+          alert(`⚠️ تنبيه أمان:\n${data.error || 'تم تسجيل الدخول إلى هذا الحساب من جهاز آخر، وسيتم إغلاق هذه الجلسة فوراً.'}`);
+          localStorage.removeItem('dahab_current_user');
+          localStorage.removeItem('dahab_session_token');
+          setCurrentUser(null);
+          setIsLoginOpen(true);
+        }
+      } catch (err) {
+        // تجاهل أخطاء الشبكة المؤقتة
+      }
+    };
+
+    // إرسال نبضة أولى ثم نبضة كل 30 ثانية
+    sendHeartbeat();
+    const timer = setInterval(sendHeartbeat, 30000);
+    return () => clearInterval(timer);
+  }, [currentUser]);
+
   const handleLogout = () => {
     localStorage.removeItem('dahab_current_user');
+    localStorage.removeItem('dahab_session_token');
     setCurrentUser(null);
   };
 
@@ -45,7 +86,7 @@ export default function ConsoleHeader({
         <div className="flex flex-wrap items-center justify-between gap-4">
           {/* الشعار والهوية الملكية لدهب */}
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-dahab-400 via-dahab-500 to-amber-700 flex items-center justify-center shadow-lg shadow-dahab-500/20 text-slate-950 font-black text-2xl border border-dahab-300">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-dahab-400 via-dahab-500 to-amber-700 flex items-center justify-center shadow-lg shadow-dahab-500/20 text-slate-950 font-black text-2xl border border-dahab-300">
               <Cpu className="w-7 h-7 text-slate-950" />
             </div>
             <div>
@@ -54,7 +95,7 @@ export default function ConsoleHeader({
                   Dahab FixAI 🛠️⚡
                 </h1>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-dahab-500/15 text-dahab-600 dark:text-dahab-400 border border-dahab-500/30">
-                  خبير الأعطال الأول
+                  خبير الأعطال الأول بالشرق الأوسط
                 </span>
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -65,6 +106,16 @@ export default function ConsoleHeader({
 
           {/* أزرار الإجراءات العلوية وتغيير الوضع والحساب */}
           <div className="flex items-center flex-wrap gap-2">
+            {/* زر معرض برمجيات دهب سوفت وير */}
+            <Link
+              href="/ecosystem"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-xs font-black text-amber-700 dark:text-dahab-300 transition shadow-sm"
+              title="استعراض كافة برمجيات وأنظمة دهب سوفت وير"
+            >
+              <Crown className="w-4 h-4 text-dahab-500" />
+              <span>برمجيات دهب 👑</span>
+            </Link>
+
             {/* زر الوضع النهاري والليلي */}
             <ThemeToggle />
 
