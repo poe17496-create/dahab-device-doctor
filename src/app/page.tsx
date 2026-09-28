@@ -59,8 +59,9 @@ export default function DahabFixAiConsole() {
   // حالة تسجيل الدخول الإلزامي
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [guestTrialsRemaining, setGuestTrialsRemaining] = useState(5);
 
-  // التحقق من جلسة المستخدم المحفوظة
+  // التحقق من جلسة المستخدم المحفوظة (أو وضع الزائر)
   const checkAuth = () => {
     if (typeof window === 'undefined') return;
 
@@ -69,6 +70,19 @@ export default function DahabFixAiConsole() {
       try {
         const u = JSON.parse(userStr);
         if (u && u.username) {
+          // إذا كان زائراً: تحقق من المحاولات المتبقية
+          if (u.isGuest) {
+            const today = new Date().toISOString().split('T')[0];
+            const used = parseInt(localStorage.getItem(`dahab_guest_usage_${today}`) || '0', 10);
+            const remaining = Math.max(0, 5 - used);
+            if (remaining <= 0) {
+              localStorage.removeItem('dahab_current_user');
+              setCurrentUser(null);
+              setIsCheckingAuth(false);
+              return;
+            }
+            setGuestTrialsRemaining(remaining);
+          }
           setCurrentUser(u);
           setIsCheckingAuth(false);
           return;
@@ -78,6 +92,21 @@ export default function DahabFixAiConsole() {
 
     setCurrentUser(null);
     setIsCheckingAuth(false);
+  };
+
+  // معالجة دخول الزائر من AuthGate
+  const handleGuestAccess = (remaining: number) => {
+    const guestUser: any = {
+      id: `guest_${Date.now()}`,
+      username: 'guest',
+      name: `زائر (${remaining} تجربة متبقية اليوم)`,
+      role: 'guest',
+      active: true,
+      isGuest: true,
+    };
+    localStorage.setItem('dahab_current_user', JSON.stringify(guestUser));
+    setGuestTrialsRemaining(remaining);
+    setCurrentUser(guestUser);
   };
 
   // جلب الجلسات السابقة من ملفات JSON عند فتح المنظومة
@@ -191,6 +220,26 @@ export default function DahabFixAiConsole() {
   const handleDiagnose = async () => {
     if (!prompt.trim() && !imageBase64) return;
 
+    // فحص عداد الزائر قبل التشخيص
+    if (currentUser?.isGuest) {
+      const today = new Date().toISOString().split('T')[0];
+      const key = `dahab_guest_usage_${today}`;
+      const used = parseInt(localStorage.getItem(key) || '0', 10);
+      if (used >= 5) {
+        setOutput('⚠️ انتهت تجاربك المجانية اليومية (5 من 5).\n\nللحصول على وصول غير محدود، سجّل الدخول بحساب فني معتمد أو تواصل مع المطور م. إسلام دهب على واتساب: 01064147224');
+        return;
+      }
+      // خصم تجربة
+      const newUsed = used + 1;
+      localStorage.setItem(key, String(newUsed));
+      const remaining = 5 - newUsed;
+      setGuestTrialsRemaining(remaining);
+      // تحديث اسم الزائر ليعكس العدد الجديد
+      const updatedGuest = { ...currentUser, name: `زائر (${remaining} تجربة متبقية اليوم)` };
+      localStorage.setItem('dahab_current_user', JSON.stringify(updatedGuest));
+      setCurrentUser(updatedGuest);
+    }
+
     setLoading(true);
     setOutput('');
     setMetrics(undefined);
@@ -285,11 +334,23 @@ export default function DahabFixAiConsole() {
 
   // إذا لم يكن المستخدم مسجلاً، اظهر بوابة تسجيل الدخول الإلزامية في كامل الشاشة
   if (!currentUser) {
-    return <AuthGate onAuthenticated={(user) => setCurrentUser(user)} />;
+    return <AuthGate onAuthenticated={(user) => setCurrentUser(user)} onGuestAccess={handleGuestAccess} />;
   }
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-gray-50 dark:bg-workshop-bg text-gray-900 dark:text-gray-100 transition-colors duration-300">
+      {/* شريط الزائر المؤقت */}
+      {currentUser?.isGuest && (
+        <div className="bg-gradient-to-r from-sky-600 to-indigo-600 text-white text-center py-2 px-4 text-xs font-bold flex items-center justify-center gap-3 flex-wrap z-[60] relative">
+          <span>🧪 وضع الزائر — متبقي لك <strong>{guestTrialsRemaining}</strong> تجربة مجانية اليوم</span>
+          <button
+            onClick={() => { localStorage.removeItem('dahab_current_user'); setCurrentUser(null); }}
+            className="px-3 py-1 rounded-lg bg-white/20 hover:bg-white/30 transition text-[11px] font-black"
+          >
+            تسجيل الدخول بحساب فني
+          </button>
+        </div>
+      )}
       {/* Header علوي مبسط */}
       <div className="bg-white/90 dark:bg-[#111827]/90 backdrop-blur-lg border-b border-gray-200 dark:border-[#1F2937] sticky top-0 z-50 transition-colors">
         <div className="p-3 md:p-4 max-w-full mx-auto flex items-center justify-between">
