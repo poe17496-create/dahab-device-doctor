@@ -24,6 +24,7 @@ interface NavigationSidebarProps {
   onTabChange: (tab: MasterTab) => void;
   isOpen: boolean;
   onClose: () => void;
+  currentUser?: { username: string; name: string; role?: string } | null;
 }
 
 const navItems = [
@@ -38,12 +39,9 @@ const navItems = [
   { id: 'ecosystem' as MasterTab, label: 'برمجيات دهب سوفت وير 👑', icon: Crown, color: 'from-amber-500 to-yellow-600' },
 ];
 
-const adminItems = [
-  { id: 'admin' as string, label: 'لوحة تحكم المشرف (محمية)', icon: Lock, href: '/admin' },
-  { id: 'support' as string, label: 'تواصل مع المطور', icon: MessageCircle, href: 'https://wa.me/201064147224' },
-];
+export default function NavigationSidebar({ activeTab, onTabChange, isOpen, onClose, currentUser }: NavigationSidebarProps) {
+  const isAdmin = currentUser?.role === 'admin' || currentUser?.username === 'dahab';
 
-export default function NavigationSidebar({ activeTab, onTabChange, isOpen, onClose }: NavigationSidebarProps) {
   return (
     <>
       {/* Sidebar Overlay for mobile */}
@@ -65,7 +63,7 @@ export default function NavigationSidebar({ activeTab, onTabChange, isOpen, onCl
           <div className="p-4 border-b border-gray-200 dark:border-[#1F2937] flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-dahab-500 to-amber-600 flex items-center justify-center">
-                <Cpu className="w-5 h-5 text-white" />
+                <Cpu className="w-5 h-5 text-slate-950 font-bold" />
               </div>
               <span className="font-bold text-gray-900 dark:text-gray-100">دهب دكتور</span>
             </div>
@@ -102,25 +100,35 @@ export default function NavigationSidebar({ activeTab, onTabChange, isOpen, onCl
               );
             })}
 
-            {/* Admin Section Divider */}
-            <div className="pt-4 mt-4 border-t border-gray-200 dark:border-[#1F2937]">
-              <p className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 px-4">أدوات إدارية</p>
-            </div>
+            {/* أدوات إدارية للمشرف والمالك فقط */}
+            {isAdmin && (
+              <>
+                <div className="pt-4 mt-4 border-t border-gray-200 dark:border-[#1F2937]">
+                  <p className="text-xs font-bold text-dahab-600 dark:text-dahab-400 mb-2 px-4">أدوات الإدارة والمالك 👑</p>
+                </div>
 
-            {adminItems.map((item) => {
-              const Icon = item.icon;
-              
-              return (
                 <a
-                  key={item.id}
-                  href={item.href}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1F2937] hover:text-gray-900 dark:hover:text-white transition-all"
+                  href="/admin"
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-amber-700 dark:text-dahab-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 transition-all"
                 >
-                  <Icon className="w-5 h-5" />
-                  <span>{item.label}</span>
+                  <Lock className="w-5 h-5 text-dahab-500" />
+                  <span>لوحة تحكم المشرف</span>
                 </a>
-              );
-            })}
+              </>
+            )}
+
+            {/* زر التواصل السريع مع الدعم */}
+            <div className="pt-4 mt-2">
+              <a
+                href="https://wa.me/201064147224"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 transition-all border border-emerald-500/20"
+              >
+                <MessageCircle className="w-4 h-4 text-emerald-500" />
+                <span>دعم المطور: 01064147224</span>
+              </a>
+            </div>
           </nav>
 
           {/* Sidebar Footer */}

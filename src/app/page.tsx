@@ -18,6 +18,7 @@ import PWAUpdateNotification from '@/components/PWAUpdateNotification';
 import Notifications from '@/components/Notifications';
 import AIChat from '@/components/AIChat';
 import DahabEcosystem from '@/components/DahabEcosystem';
+import AuthGate from '@/components/AuthGate';
 import {
   DeviceSpecialty,
   PowerSupplyReadings,
@@ -26,7 +27,7 @@ import {
   ReferenceSource,
 } from '@/lib/types';
 import { createIntegratedContext } from '@/lib/schematicIntegration';
-import { Menu, Crown, AlertCircle } from 'lucide-react';
+import { Menu, Crown, AlertCircle, Cpu } from 'lucide-react';
 
 export type MasterTab =
   | 'diagnosis'
@@ -55,31 +56,28 @@ export default function DahabFixAiConsole() {
   const [metrics, setMetrics] = useState<DiagnosticMetrics | undefined>(undefined);
   const [isNavSidebarOpen, setIsNavSidebarOpen] = useState(false);
 
-  // حالة المستخدم والزائر
+  // حالة تسجيل الدخول الإلزامي
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const [guestAttemptsRemaining, setGuestAttemptsRemaining] = useState<number | undefined>(undefined);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
-  // التحقق من رصيد الزائر اليومي (5 محاولات يومياً)
-  const checkGuestUsage = () => {
-    if (typeof window === 'undefined') return { isGuest: true, remaining: 5 };
+  // التحقق من جلسة المستخدم المحفوظة
+  const checkAuth = () => {
+    if (typeof window === 'undefined') return;
 
     const userStr = localStorage.getItem('dahab_current_user');
     if (userStr) {
       try {
         const u = JSON.parse(userStr);
-        setCurrentUser(u);
-        setGuestAttemptsRemaining(undefined); // الفني المسجل لديه فحص غير محدود
-        return { isGuest: false, remaining: 9999 };
+        if (u && u.username) {
+          setCurrentUser(u);
+          setIsCheckingAuth(false);
+          return;
+        }
       } catch (e) {}
     }
 
     setCurrentUser(null);
-    const today = new Date().toISOString().split('T')[0];
-    const key = `dahab_guest_usage_${today}`;
-    const used = parseInt(localStorage.getItem(key) || '0', 10);
-    const remaining = Math.max(0, 5 - used);
-    setGuestAttemptsRemaining(remaining);
-    return { isGuest: true, remaining };
+    setIsCheckingAuth(false);
   };
 
   // جلب الجلسات السابقة من ملفات JSON عند فتح المنظومة
@@ -96,8 +94,8 @@ export default function DahabFixAiConsole() {
   };
 
   useEffect(() => {
+    checkAuth();
     fetchSessions();
-    checkGuestUsage();
   }, []);
 
   // اختيار جلسة سابقة من الذاكرة واسترجاع كامل حالتها
@@ -189,26 +187,9 @@ export default function DahabFixAiConsole() {
     dl.remove();
   };
 
-  // تنفيذ الفحص وتشغيل البث الحي (Streaming) مع مراعاة حد الـ 5 محاولات للزائر
+  // تنفيذ الفحص وتشغيل البث الحي (Streaming)
   const handleDiagnose = async () => {
     if (!prompt.trim() && !imageBase64) return;
-
-    // فحص صلاحية الزائر
-    const guestStatus = checkGuestUsage();
-    if (guestStatus.isGuest) {
-      if (guestStatus.remaining <= 0) {
-        alert(
-          '⚠️ تنبيه استهلاك المحاولات:\nلقد استهلكت الـ 5 محاولات المجانية المخصصة للزائر اليوم.\nللحصول على وصول غير محدود، يرجى تسجيل الدخول بحساب فني معتمد أو التواصل مع المهندس إسلام دهب على:\n📞 01064147224'
-        );
-        return;
-      }
-      // خصم محاولة
-      const today = new Date().toISOString().split('T')[0];
-      const key = `dahab_guest_usage_${today}`;
-      const used = parseInt(localStorage.getItem(key) || '0', 10);
-      localStorage.setItem(key, String(used + 1));
-      setGuestAttemptsRemaining(Math.max(0, 5 - (used + 1)));
-    }
 
     setLoading(true);
     setOutput('');
@@ -290,6 +271,23 @@ export default function DahabFixAiConsole() {
     }
   };
 
+  // شاشة فحص حالة تسجيل الدخول الأولية
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-slate-950 text-white font-sans">
+        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-dahab-400 to-amber-600 flex items-center justify-center animate-pulse shadow-xl shadow-dahab-500/30 mb-4 border border-dahab-300">
+          <Cpu className="w-8 h-8 text-slate-950 font-bold" />
+        </div>
+        <p className="text-sm font-bold text-amber-300">جاري تهيئة منظومة دهب دكتور...</p>
+      </div>
+    );
+  }
+
+  // إذا لم يكن المستخدم مسجلاً، اظهر بوابة تسجيل الدخول الإلزامية في كامل الشاشة
+  if (!currentUser) {
+    return <AuthGate onAuthenticated={(user) => setCurrentUser(user)} />;
+  }
+
   return (
     <div className="min-h-screen flex flex-col font-sans bg-gray-50 dark:bg-workshop-bg text-gray-900 dark:text-gray-100 transition-colors duration-300">
       {/* Header علوي مبسط */}
@@ -300,6 +298,8 @@ export default function DahabFixAiConsole() {
             onNewSession={handleNewSession}
             onExportJson={handleExportJson}
             sessionsCount={sessions.length}
+            currentUser={currentUser}
+            onLogout={() => setCurrentUser(null)}
           />
           <div className="flex items-center gap-2">
             <Notifications />
@@ -321,6 +321,7 @@ export default function DahabFixAiConsole() {
           onTabChange={setActiveTab}
           isOpen={isNavSidebarOpen}
           onClose={() => setIsNavSidebarOpen(false)}
+          currentUser={currentUser}
         />
 
         {/* مساحة العمل الرئيسية */}
@@ -343,7 +344,6 @@ export default function DahabFixAiConsole() {
                     setReadings={setReadings}
                     loading={loading}
                     onDiagnose={handleDiagnose}
-                    guestUsageRemaining={guestAttemptsRemaining}
                   />
 
                   {metrics && (

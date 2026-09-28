@@ -12,6 +12,8 @@ interface ConsoleHeaderProps {
   onNewSession: () => void;
   onExportJson: () => void;
   sessionsCount: number;
+  currentUser?: UserAccount | null;
+  onLogout?: () => void;
 }
 
 export default function ConsoleHeader({
@@ -19,11 +21,17 @@ export default function ConsoleHeader({
   onNewSession,
   onExportJson,
   sessionsCount,
+  currentUser: propUser,
+  onLogout,
 }: ConsoleHeaderProps) {
-  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(propUser || null);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
 
   useEffect(() => {
+    if (propUser !== undefined) {
+      setCurrentUser(propUser);
+      return;
+    }
     const saved = localStorage.getItem('dahab_current_user');
     if (saved) {
       try {
@@ -32,7 +40,9 @@ export default function ConsoleHeader({
         console.error(e);
       }
     }
-  }, []);
+  }, [propUser]);
+
+  const isAdmin = currentUser?.role === 'admin' || currentUser?.username === 'dahab';
 
   // نبض الجلسة الدورية للتحقق من عدم الفتح من جهاز آخر
   useEffect(() => {
@@ -61,7 +71,7 @@ export default function ConsoleHeader({
           localStorage.removeItem('dahab_current_user');
           localStorage.removeItem('dahab_session_token');
           setCurrentUser(null);
-          setIsLoginOpen(true);
+          if (onLogout) onLogout();
         }
       } catch (err) {
         // تجاهل أخطاء الشبكة المؤقتة
@@ -72,12 +82,17 @@ export default function ConsoleHeader({
     sendHeartbeat();
     const timer = setInterval(sendHeartbeat, 30000);
     return () => clearInterval(timer);
-  }, [currentUser]);
+  }, [currentUser, onLogout]);
 
   const handleLogout = () => {
     localStorage.removeItem('dahab_current_user');
     localStorage.removeItem('dahab_session_token');
     setCurrentUser(null);
+    if (onLogout) {
+      onLogout();
+    } else {
+      window.location.reload();
+    }
   };
 
   return (
@@ -119,31 +134,35 @@ export default function ConsoleHeader({
             {/* زر الوضع النهاري والليلي */}
             <ThemeToggle />
 
-            {/* رابط لوحة التحكم الإدارية */}
-            <Link
-              href="/admin"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-700 text-gray-800 dark:text-gray-200 text-xs font-bold transition shadow-sm"
-              title="لوحة تحكم المشرف وإدارة الفنيين"
-            >
-              <Settings className="w-4 h-4 text-dahab-500" />
-              <span className="hidden sm:inline">لوحة التحكم</span>
-            </Link>
+            {/* رابط لوحة التحكم الإدارية للمالك/المشرف فقط */}
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-800 dark:text-dahab-300 text-xs font-bold transition shadow-sm"
+                title="لوحة تحكم المشرف وإدارة الفنيين"
+              >
+                <Settings className="w-4 h-4 text-dahab-500" />
+                <span className="hidden sm:inline">لوحة الإدارة 👑</span>
+              </Link>
+            )}
 
-            {/* زر تحميل الـ JSON */}
-            <button
-              onClick={onExportJson}
-              title="تصدير ملف الجلسة بصيغة JSON لكي لا ينسى الذكاء الاصطناعي أي تفصيلة"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-700 text-gray-800 dark:text-gray-200 text-xs font-bold transition shadow-sm"
-            >
-              <FileJson className="w-4 h-4 text-sky-500" />
-              <span className="hidden sm:inline">تحميل JSON</span>
-            </button>
+            {/* زر تحميل الـ JSON للمالك/المشرف فقط */}
+            {isAdmin && (
+              <button
+                onClick={onExportJson}
+                title="تصدير ملف الجلسة بصيغة JSON لكي لا ينسى الذكاء الاصطناعي أي تفصيلة"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-700 text-gray-800 dark:text-gray-200 text-xs font-bold transition shadow-sm"
+              >
+                <FileJson className="w-4 h-4 text-sky-500" />
+                <span className="hidden sm:inline">تحميل JSON</span>
+              </button>
+            )}
 
             {/* حالة تسجيل الدخول */}
             {currentUser ? (
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-dahab-500/10 border border-dahab-500/30 text-xs">
                 <span className="font-bold text-dahab-700 dark:text-dahab-300 line-clamp-1 max-w-[130px]">
-                  {currentUser.name}
+                  {currentUser.name} {isAdmin && '👑'}
                 </span>
                 <button
                   onClick={handleLogout}
@@ -153,15 +172,7 @@ export default function ConsoleHeader({
                   <LogOut className="w-3.5 h-3.5" />
                 </button>
               </div>
-            ) : (
-              <button
-                onClick={() => setIsLoginOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-700 text-gray-800 dark:text-gray-200 text-xs font-bold transition shadow-sm"
-              >
-                <User className="w-4 h-4 text-dahab-500" />
-                <span>دخول الفني</span>
-              </button>
-            )}
+            ) : null}
 
             {/* زر فحص جهاز جديد */}
             <button
@@ -175,7 +186,7 @@ export default function ConsoleHeader({
         </div>
       </header>
 
-      {/* نافذة تسجيل الدخول */}
+      {/* نافذة تسجيل الدخول في حال طلبها */}
       <LoginModal
         isOpen={isLoginOpen}
         onClose={() => setIsLoginOpen(false)}

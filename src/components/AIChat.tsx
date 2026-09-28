@@ -55,7 +55,7 @@ export default function AIChat() {
 
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isVoiceEnabled, setIsVoiceEnabled] = useState(true);
+  const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -69,28 +69,26 @@ export default function AIChat() {
     scrollToBottom();
   }, [messages]);
 
-  // Text-to-Speech للردود الصوتية
+  // Text-to-Speech للردود الصوتية اليدوية فقط (لا يتحدث تلقائياً أبداً)
   const speakText = (text: string) => {
-    if (!isVoiceEnabled || typeof window === 'undefined') return;
+    if (typeof window === 'undefined') return;
     
     // إيقاف أي صوت سابق
     window.speechSynthesis.cancel();
     
-    const utterance = new SpeechSynthesisUtterance(text);
+    // تنظيف النص من الرموز والماركداون للقراءة الصوتية النقية
+    const cleanText = text
+      .replace(/[*#_`~\[\]\(\)>]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.lang = 'ar-SA';
-    utterance.rate = 0.9;
+    utterance.rate = 0.95;
     utterance.pitch = 1;
     
     window.speechSynthesis.speak(utterance);
   };
-
-  // تشغيل الصوت عند إضافة رسالة جديدة من المساعد
-  useEffect(() => {
-    const lastMessage = messages[messages.length - 1];
-    if (lastMessage && lastMessage.role === 'assistant') {
-      speakText(lastMessage.content);
-    }
-  }, [messages, isVoiceEnabled]);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -190,11 +188,14 @@ export default function AIChat() {
   };
 
   const clearChat = () => {
+    if (typeof window !== 'undefined') {
+      window.speechSynthesis.cancel();
+    }
     setMessages([
       {
         id: '1',
         role: 'assistant',
-        content: 'مرحباً! أنا مساعدك الذكي في دهب دكتور. يمكنني مساعدتك في تشخيص الأعطال، فهم المخططات الهندسية، الإجابة على أسئلتك التقنية، والتحدث بالصوت. يمكنك أيضاً رفع صور للأجهزة لتحليلها. كيف يمكنني مساعدتك اليوم؟',
+        content: 'مرحباً بك في مساعد دهب دكتور الهندسي! 🛠️⚡\nأنا هنا لمساعدتك في تحليل المخططات الهندسية (Schematics/Boardview)، تشخيص مسارات الباور والشحن، استخراج بدائل الآيسيهات، وحل أعطال البوردات المعقدة. يمكنك أيضاً رفع صور المخططات والبوردات لفحصها مباشرة. كيف يمكنني مساعدتك؟',
         timestamp: new Date(),
       },
     ]);
@@ -261,13 +262,6 @@ export default function AIChat() {
     return 'شكراً لسؤالك. يمكنني مساعدتك في تشخيص الأعطال، فهم المخططات، وتحليل البيانات. لدي أدوات متعددة في اللوحة يمكنني مساعدتك في استخدامها. هل يمكنك تقديم المزيد من التفاصيل حول المشكلة؟';
   };
 
-  const toggleVoice = () => {
-    setIsVoiceEnabled(!isVoiceEnabled);
-    if (!isVoiceEnabled) {
-      window.speechSynthesis.cancel();
-    }
-  };
-
   const handleVoiceInput = () => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       alert('ميزة التعرف على الصوت غير مدعومة في هذا المتصفح');
@@ -308,12 +302,12 @@ export default function AIChat() {
       <div className="bg-white dark:bg-[#111827] border-b border-gray-200 dark:border-gray-700 p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-dahab-500 flex items-center justify-center">
-              <Cpu className="w-6 h-6 text-white" />
+            <div className="w-10 h-10 rounded-full bg-dahab-500 flex items-center justify-center shadow-md">
+              <Cpu className="w-6 h-6 text-slate-950 font-bold" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white">المساعد الذكي</h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400">متعدد المحركات - يدعم المحادثة المستمرة</p>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">المساعد الذكي الهندسي</h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400">تحليل المخططات والأعطال بدقة الذكاء الاصطناعي</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -323,17 +317,6 @@ export default function AIChat() {
               title="مسح المحادثة"
             >
               <Trash2 className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-            </button>
-            <button
-              onClick={toggleVoice}
-              className={`p-2 rounded-lg transition-colors ${
-                isVoiceEnabled 
-                  ? 'bg-dahab-500 text-white' 
-                  : 'bg-gray-100 dark:bg-[#1F2937] text-gray-600 dark:text-gray-400'
-              }`}
-              title={isVoiceEnabled ? 'إيقاف الصوت' : 'تفعيل الصوت'}
-            >
-              {isVoiceEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </button>
           </div>
         </div>
@@ -347,20 +330,40 @@ export default function AIChat() {
             className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             <div
-              className={`max-w-[85%] rounded-2xl p-4 ${
+              className={`max-w-[85%] rounded-2xl p-4 shadow-sm ${
                 message.role === 'user'
-                  ? 'bg-dahab-500 text-white'
-                  : 'bg-gray-100 dark:bg-[#1F2937] text-gray-900 dark:text-gray-100'
+                  ? 'bg-gradient-to-r from-dahab-500 to-amber-600 text-slate-950 font-medium'
+                  : 'bg-gray-100 dark:bg-[#1F2937] text-gray-900 dark:text-gray-100 border border-gray-200/50 dark:border-gray-700/50'
               }`}
             >
               {message.image && (
-                <img
-                  src={message.image}
-                  alt="Uploaded"
-                  className="max-w-full h-auto rounded-lg mb-2"
-                />
+                <div className="mb-2">
+                  <img
+                    src={message.image}
+                    alt="Uploaded Schematic or Board"
+                    className="max-w-full max-h-72 object-contain rounded-lg border border-gray-300 dark:border-gray-600 shadow"
+                  />
+                  <span className="text-[10px] text-gray-400 block mt-1">📐 تم إرفاق مخطط/صورة للفحص</span>
+                </div>
               )}
-              <p className="text-sm leading-relaxed">{message.content}</p>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+              
+              {/* زر استماع يدوي اختياري عند الطلب فقط */}
+              {message.role === 'assistant' && (
+                <div className="mt-2 pt-2 border-t border-gray-200/40 dark:border-gray-700/40 flex items-center justify-between">
+                  <span className="text-[10px] text-gray-400">
+                    {message.timestamp ? new Date(message.timestamp).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : ''}
+                  </span>
+                  <button
+                    onClick={() => speakText(message.content)}
+                    className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400 hover:text-dahab-500 transition px-2 py-0.5 rounded-md hover:bg-gray-200/50 dark:hover:bg-gray-800"
+                    title="قراءة الرد صوتياً"
+                  >
+                    <Volume2 className="w-3.5 h-3.5 text-dahab-500" />
+                    <span>استماع</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         ))}

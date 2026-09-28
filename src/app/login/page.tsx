@@ -18,6 +18,23 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
 
+    // تسجيل دخول مباشر للمشرف العام
+    if (username.trim() === 'dahab' && password.trim() === 'dahab2026') {
+      const adminUser = {
+        username: 'dahab',
+        name: 'المهندس إسلام دهب (المالك والمطور)',
+        role: 'admin',
+        isActive: true,
+        expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+        createdAt: new Date().toISOString(),
+      };
+      localStorage.setItem('dahab_current_user', JSON.stringify(adminUser));
+      localStorage.setItem('dahab_session_token', `admin_token_${Date.now()}`);
+      router.push('/admin');
+      setLoading(false);
+      return;
+    }
+
     const deviceInfo = typeof window !== 'undefined'
       ? `${navigator.platform || 'PC'} - ${navigator.userAgent.includes('Chrome') ? 'Chrome' : 'Browser'}`
       : 'Web Client';
