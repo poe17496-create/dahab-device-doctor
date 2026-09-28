@@ -25,6 +25,8 @@ import {
   Crown,
   Lock,
   User,
+  Upload,
+  FileArchive,
 } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import { UserAccount } from '@/lib/auth';
@@ -37,7 +39,7 @@ export default function AdminDashboardPage() {
   const [authError, setAuthError] = useState('');
   const [checkingAuth, setCheckingAuth] = useState(true);
 
-  const [activeTab, setActiveTab] = useState<'technicians' | 'keys'>('technicians');
+  const [activeTab, setActiveTab] = useState<'technicians' | 'keys' | 'schematics'>('technicians');
   const [users, setUsers] = useState<any[]>([]);
   const [sessionsCount, setSessionsCount] = useState(0);
   const [hwCount, setHwCount] = useState(0);
@@ -54,6 +56,13 @@ export default function AdminDashboardPage() {
   const [subscriptionDays, setSubscriptionDays] = useState('30');
   const [successMsg, setSuccessMsg] = useState('');
   const [addError, setAddError] = useState('');
+
+  // حالة المخططات
+  const [schematics, setSchematics] = useState<any[]>([]);
+  const [uploadingSchematic, setUploadingSchematic] = useState(false);
+  const [schematicName, setSchematicName] = useState('');
+  const [schematicDevice, setSchematicDevice] = useState('');
+  const [schematicCategory, setSchematicCategory] = useState<'mobile' | 'laptop' | 'desktop' | 'other'>('mobile');
 
   useEffect(() => {
     if (successMsg) {
@@ -105,6 +114,11 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     if (isAdminAuthenticated) {
       fetchData();
+      // تحميل المخططات من التخزين المحلي
+      try {
+        const stored = JSON.parse(localStorage.getItem('dahab_schematics') || '[]');
+        setSchematics(stored);
+      } catch (e) {}
       const interval = setInterval(fetchData, 20000);
       return () => clearInterval(interval);
     }
@@ -443,12 +457,200 @@ export default function AdminDashboardPage() {
             }`}
           >
             <Key className="w-4 h-4 text-dahab-500" />
-            <span>مفاتيح الذكاء الاصطناعي واختبار الاتصال الحي ⚡</span>
+            <span>مفاتيح الذكاء الاصطناعي ⚡</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('schematics')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition ${
+              activeTab === 'schematics'
+                ? 'bg-white dark:bg-workshop-card text-dahab-600 dark:text-dahab-400 shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+            }`}
+          >
+            <FileArchive className="w-4 h-4 text-dahab-500" />
+            <span>المخططات والدوائر 📐</span>
           </button>
         </div>
 
         {/* تبويب المفاتيح */}
         {activeTab === 'keys' && <AIKeysManager />}
+
+        {/* تبويب المخططات */}
+        {activeTab === 'schematics' && (
+          <div className="space-y-5">
+            {/* رفع مخطط جديد */}
+            <div className="p-5 rounded-3xl bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border shadow-xl space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 dark:border-gray-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <Upload className="w-5 h-5 text-dahab-500" />
+                  <div>
+                    <h2 className="text-base font-black text-gray-900 dark:text-gray-100">
+                      رفع مخططات ودوائر هندسية
+                    </h2>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                      ارفع ملفات المخططات المضغوطة (ZIP/PDF/صور) ليستخدمها الذكاء الاصطناعي في التشخيص
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">اسم المخطط:</label>
+                  <input
+                    type="text"
+                    value={schematicName}
+                    onChange={(e) => setSchematicName(e.target.value)}
+                    placeholder="مثلاً: مخطط iPhone 15 Pro Max Full Schematic"
+                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-xs outline-none focus:border-dahab-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">الجهاز / الموديل:</label>
+                  <input
+                    type="text"
+                    value={schematicDevice}
+                    onChange={(e) => setSchematicDevice(e.target.value)}
+                    placeholder="مثلاً: iPhone 15 Pro Max أو MacBook Pro M3"
+                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-xs outline-none focus:border-dahab-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">تصنيف الجهاز:</label>
+                  <select
+                    value={schematicCategory}
+                    onChange={(e) => setSchematicCategory(e.target.value as any)}
+                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-xs outline-none focus:border-dahab-500"
+                  >
+                    <option value="mobile">📱 موبايل</option>
+                    <option value="laptop">💻 لابتوب</option>
+                    <option value="desktop">🖥️ كمبيوتر / مادربورد</option>
+                    <option value="other">🔌 أخرى</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">ملف المخطط (ZIP / PDF / صورة):</label>
+                  <input
+                    type="file"
+                    accept=".zip,.rar,.pdf,.png,.jpg,.jpeg,.webp"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file && file.size > 50 * 1024 * 1024) {
+                        alert('حجم الملف كبير جداً. الحد الأقصى 50 ميجابايت.');
+                        return;
+                      }
+                      if (file) {
+                        setUploadingSchematic(true);
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          const newSchematic = {
+                            id: `sch_${Date.now()}`,
+                            name: schematicName || file.name,
+                            device: schematicDevice,
+                            category: schematicCategory,
+                            fileName: file.name,
+                            fileSize: (file.size / 1024).toFixed(1) + ' KB',
+                            uploadedAt: new Date().toISOString(),
+                            dataUrl: reader.result as string,
+                          };
+                          const existing = JSON.parse(localStorage.getItem('dahab_schematics') || '[]');
+                          existing.push(newSchematic);
+                          try {
+                            localStorage.setItem('dahab_schematics', JSON.stringify(existing));
+                            setSchematics(existing);
+                            setSuccessMsg(`✅ تم رفع المخطط "${newSchematic.name}" بنجاح!`);
+                            setSchematicName('');
+                            setSchematicDevice('');
+                          } catch (err) {
+                            alert('⚠️ حجم الملف كبير جداً للتخزين المحلي. ارفع ملفات أصغر (صور مضغوطة).');
+                          }
+                          setUploadingSchematic(false);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    className="w-full text-xs text-gray-600 dark:text-gray-400 file:mr-4 file:rounded-lg file:border-0 file:bg-dahab-500/15 file:text-dahab-700 dark:file:text-dahab-300 file:font-bold file:text-xs file:px-4 file:py-2 cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              {uploadingSchematic && (
+                <div className="text-xs text-dahab-500 font-bold animate-pulse flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-dahab-500 border-t-transparent rounded-full animate-spin" />
+                  جاري رفع وتخزين المخطط...
+                </div>
+              )}
+            </div>
+
+            {/* قائمة المخططات المرفوعة */}
+            <div className="p-5 rounded-3xl bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border shadow-xl space-y-4">
+              <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <FileArchive className="w-5 h-5 text-dahab-500" />
+                  <h2 className="text-base font-black text-gray-900 dark:text-gray-100">
+                    المخططات المرفوعة ({schematics.length})
+                  </h2>
+                </div>
+                <button
+                  onClick={() => {
+                    const stored = JSON.parse(localStorage.getItem('dahab_schematics') || '[]');
+                    setSchematics(stored);
+                  }}
+                  className="text-xs text-dahab-500 hover:text-dahab-600 font-bold"
+                >
+                  🔄 تحديث
+                </button>
+              </div>
+
+              {schematics.length === 0 ? (
+                <div className="text-center py-8 text-gray-400">
+                  <FileArchive className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p className="text-sm font-bold">لا توجد مخططات مرفوعة بعد</p>
+                  <p className="text-xs mt-1">ارفع مخططات مضغوطة من الأعلى وسيستخدمها الذكاء الاصطناعي في التشخيص</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {schematics.map((sch) => (
+                    <div key={sch.id} className="p-3 rounded-2xl bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black text-gray-900 dark:text-gray-100 truncate">{sch.name}</span>
+                        <button
+                          onClick={() => {
+                            const updated = schematics.filter((s: any) => s.id !== sch.id);
+                            localStorage.setItem('dahab_schematics', JSON.stringify(updated));
+                            setSchematics(updated);
+                          }}
+                          className="text-gray-400 hover:text-rose-500 transition"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <div className="text-[10px] text-gray-500 space-y-0.5">
+                        <div>📱 الجهاز: <strong>{sch.device || 'غير محدد'}</strong></div>
+                        <div>📂 الملف: {sch.fileName} ({sch.fileSize})</div>
+                        <div>📅 تاريخ الرفع: {new Date(sch.uploadedAt).toLocaleDateString('ar-EG')}</div>
+                      </div>
+                      <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        sch.category === 'mobile' ? 'bg-sky-500/10 text-sky-600 dark:text-sky-400' :
+                        sch.category === 'laptop' ? 'bg-violet-500/10 text-violet-600 dark:text-violet-400' :
+                        sch.category === 'desktop' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
+                        'bg-gray-500/10 text-gray-600 dark:text-gray-400'
+                      }`}>
+                        {sch.category === 'mobile' ? '📱 موبايل' : sch.category === 'laptop' ? '💻 لابتوب' : sch.category === 'desktop' ? '🖥️ كمبيوتر' : '🔌 أخرى'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* تبويب الفنيين والإحصائيات */}
         {activeTab === 'technicians' && (
