@@ -21,14 +21,6 @@ export default function EcosystemPage() {
             <ArrowRight className="w-4 h-4 text-dahab-500" />
             <span>العودة إلى شاشة الفحص والمعمل</span>
           </Link>
-
-          <Link
-            href="/admin"
-            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-dahab-500 transition"
-          >
-            <Wrench className="w-3.5 h-3.5" />
-            <span>لوحة التحكم والمشرف</span>
-          </Link>
         </div>
 
         {/* معرض البرمجيات الشامل */}

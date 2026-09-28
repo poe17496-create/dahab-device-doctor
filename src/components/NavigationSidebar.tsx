@@ -100,25 +100,8 @@ export default function NavigationSidebar({ activeTab, onTabChange, isOpen, onCl
               );
             })}
 
-            {/* أدوات إدارية للمشرف والمالك فقط */}
-            {isAdmin && (
-              <>
-                <div className="pt-4 mt-4 border-t border-gray-200 dark:border-[#1F2937]">
-                  <p className="text-xs font-bold text-dahab-600 dark:text-dahab-400 mb-2 px-4">أدوات الإدارة والمالك 👑</p>
-                </div>
-
-                <a
-                  href="/admin"
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-amber-700 dark:text-dahab-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 transition-all"
-                >
-                  <Lock className="w-5 h-5 text-dahab-500" />
-                  <span>لوحة تحكم المشرف</span>
-                </a>
-              </>
-            )}
-
-            {/* زر التواصل السريع مع الدعم */}
-            <div className="pt-4 mt-2">
+            {/* زر التواصل السريع مع المطور */}
+            <div className="pt-4 mt-4 border-t border-gray-200 dark:border-[#1F2937]">
               <a
                 href="https://wa.me/201064147224"
                 target="_blank"

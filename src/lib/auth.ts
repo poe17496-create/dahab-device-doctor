@@ -218,11 +218,26 @@ export function updateUserHeartbeat(
   if (!user || !user.active) {
     return { valid: false, error: 'الحساب غير متاح أو تم تعطيله' };
   }
-  if (user.activeSessionToken && user.activeSessionToken !== sessionToken) {
+
+  // المشرف العام (المهندس إسلام دهب) لا يتم طرده بأي حال من الأحوال
+  if (user.role === 'admin' || user.username.toLowerCase() === 'dahab') {
+    user.activeSessionToken = sessionToken;
+    user.lastSeenAt = new Date().toISOString();
+    user.isOnline = true;
+    if (deviceInfo) user.deviceInfo = deviceInfo;
+    saveAllUsers(users);
+    return { valid: true, user };
+  }
+
+  // إذا لم يكن هناك توكن مسجل بعد على السيرفر، اعتمده مباشرة
+  if (!user.activeSessionToken) {
+    user.activeSessionToken = sessionToken;
+  } else if (user.activeSessionToken !== sessionToken) {
     return { valid: false, error: 'تم تسجيل الدخول إلى هذا الحساب من جهاز آخر، وتم إنهاء هذه الجلسة حفاظاً على الأمان.' };
   }
+
   const sub = checkSubscription(user);
-  if (sub.isExpired && user.role !== 'admin') {
+  if (sub.isExpired) {
     return { valid: false, error: 'انتهت فترة اشتراك الحساب، يرجى مراجعة المشرف العام لتجديد الصلاحية.' };
   }
 

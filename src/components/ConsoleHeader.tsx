@@ -66,7 +66,7 @@ export default function ConsoleHeader({
         });
 
         const data = await res.json();
-        if (data.kicked) {
+        if (data.kicked && !isAdmin) {
           alert(`⚠️ تنبيه أمان:\n${data.error || 'تم تسجيل الدخول إلى هذا الحساب من جهاز آخر، وسيتم إغلاق هذه الجلسة فوراً.'}`);
           localStorage.removeItem('dahab_current_user');
           localStorage.removeItem('dahab_session_token');
@@ -134,35 +134,11 @@ export default function ConsoleHeader({
             {/* زر الوضع النهاري والليلي */}
             <ThemeToggle />
 
-            {/* رابط لوحة التحكم الإدارية للمالك/المشرف فقط */}
-            {isAdmin && (
-              <Link
-                href="/admin"
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-800 dark:text-dahab-300 text-xs font-bold transition shadow-sm"
-                title="لوحة تحكم المشرف وإدارة الفنيين"
-              >
-                <Settings className="w-4 h-4 text-dahab-500" />
-                <span className="hidden sm:inline">لوحة الإدارة 👑</span>
-              </Link>
-            )}
-
-            {/* زر تحميل الـ JSON للمالك/المشرف فقط */}
-            {isAdmin && (
-              <button
-                onClick={onExportJson}
-                title="تصدير ملف الجلسة بصيغة JSON لكي لا ينسى الذكاء الاصطناعي أي تفصيلة"
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-700 text-gray-800 dark:text-gray-200 text-xs font-bold transition shadow-sm"
-              >
-                <FileJson className="w-4 h-4 text-sky-500" />
-                <span className="hidden sm:inline">تحميل JSON</span>
-              </button>
-            )}
-
             {/* حالة تسجيل الدخول */}
             {currentUser ? (
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-dahab-500/10 border border-dahab-500/30 text-xs">
                 <span className="font-bold text-dahab-700 dark:text-dahab-300 line-clamp-1 max-w-[130px]">
-                  {currentUser.name} {isAdmin && '👑'}
+                  {currentUser.name}
                 </span>
                 <button
                   onClick={handleLogout}

@@ -38,26 +38,6 @@ export default function AuthGate({ onAuthenticated }: AuthGateProps) {
     setLoading(true);
     setError('');
 
-    // تسجيل دخول مباشر للمشرف العام
-    if (username.trim() === 'dahab' && password.trim() === 'dahab2026') {
-      const adminUser: UserAccount = {
-        id: 'user_admin',
-        username: 'dahab',
-        name: 'المهندس إسلام دهب (المالك والمطور)',
-        email: 'dahab@dahabsoftware.com',
-        role: 'admin',
-        active: true,
-        diagnosesCount: 1,
-        expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-        createdAt: new Date().toISOString(),
-      };
-      localStorage.setItem('dahab_current_user', JSON.stringify(adminUser));
-      localStorage.setItem('dahab_session_token', `admin_token_${Date.now()}`);
-      onAuthenticated(adminUser);
-      setLoading(false);
-      return;
-    }
-
     const deviceInfo = typeof window !== 'undefined'
       ? `${navigator.platform || 'PC'} - ${navigator.userAgent.includes('Chrome') ? 'Chrome' : 'Browser'}`
       : 'Web Client';
@@ -76,6 +56,26 @@ export default function AuthGate({ onAuthenticated }: AuthGateProps) {
 
       const data = await res.json();
       if (!res.ok) {
+        // دعم تسجيل الدخول المباشر للمشرف العام في حال تعذر السيرفر
+        if (username.trim() === 'dahab' && password.trim() === 'dahab2026') {
+          const adminUser: UserAccount = {
+            id: 'user_admin',
+            username: 'dahab',
+            name: 'المهندس إسلام دهب (المالك والمطور)',
+            email: 'dahab@dahabsoftware.com',
+            role: 'admin',
+            active: true,
+            diagnosesCount: 1,
+            expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+            createdAt: new Date().toISOString(),
+          };
+          localStorage.setItem('dahab_current_user', JSON.stringify(adminUser));
+          localStorage.setItem('dahab_session_token', `admin_token_${Date.now()}`);
+          onAuthenticated(adminUser);
+          setLoading(false);
+          return;
+        }
+
         setError(data.error || 'اسم المستخدم أو كلمة المرور غير صحيحة، أو انتهت صلاحية الحساب.');
         setLoading(false);
         return;
@@ -88,7 +88,24 @@ export default function AuthGate({ onAuthenticated }: AuthGateProps) {
 
       onAuthenticated(data.user);
     } catch (err) {
-      setError('حدث خطأ في الاتصال بالخادم، يرجى المحاولة مرة أخرى.');
+      if (username.trim() === 'dahab' && password.trim() === 'dahab2026') {
+        const adminUser: UserAccount = {
+          id: 'user_admin',
+          username: 'dahab',
+          name: 'المهندس إسلام دهب (المالك والمطور)',
+          email: 'dahab@dahabsoftware.com',
+          role: 'admin',
+          active: true,
+          diagnosesCount: 1,
+          expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+          createdAt: new Date().toISOString(),
+        };
+        localStorage.setItem('dahab_current_user', JSON.stringify(adminUser));
+        localStorage.setItem('dahab_session_token', `admin_token_${Date.now()}`);
+        onAuthenticated(adminUser);
+      } else {
+        setError('حدث خطأ في الاتصال بالخادم، يرجى المحاولة مرة أخرى.');
+      }
     } finally {
       setLoading(false);
     }
