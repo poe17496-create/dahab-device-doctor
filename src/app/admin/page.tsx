@@ -52,6 +52,15 @@ export default function AdminDashboardPage() {
   const [specialty, setSpecialty] = useState('');
   const [password, setPassword] = useState('123456');
   const [subscriptionDays, setSubscriptionDays] = useState('30');
+  const [successMsg, setSuccessMsg] = useState('');
+  const [addError, setAddError] = useState('');
+
+  useEffect(() => {
+    if (successMsg) {
+      const timer = setTimeout(() => setSuccessMsg(''), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMsg]);
 
   useEffect(() => {
     // التحقق هل المشرف العام مسجل دخوله بالفعل
@@ -166,7 +175,13 @@ export default function AdminDashboardPage() {
 
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAddError('');
     if (!name || !username) return;
+
+    if (users.some((u) => u.username.toLowerCase() === username.trim().toLowerCase())) {
+      setAddError('اسم المستخدم مسجل مسبقاً، يرجى اختيار اسم مستخدم آخر.');
+      return;
+    }
 
     try {
       const res = await fetch('/api/users', {
@@ -174,7 +189,7 @@ export default function AdminDashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name,
-          username,
+          username: username.trim(),
           role,
           specialty,
           password,
@@ -184,14 +199,19 @@ export default function AdminDashboardPage() {
 
       if (res.ok) {
         setShowAddModal(false);
+        setSuccessMsg('✅ تم إصدار حساب الفني وتفعيله بنجاح!');
         setName('');
         setUsername('');
         setSpecialty('');
         setSubscriptionDays('30');
         fetchData();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setAddError(data.error || 'فشل في إضافة الفني. حاول مرة أخرى.');
       }
     } catch (e) {
       console.error(e);
+      setAddError('فشل في إضافة الفني. حاول مرة أخرى.');
     }
   };
 
@@ -393,6 +413,13 @@ export default function AdminDashboardPage() {
           </div>
         </header>
 
+        {successMsg && (
+          <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center gap-2 animate-fadeIn">
+            <CheckCircle className="w-4 h-4" />
+            <span>{successMsg}</span>
+          </div>
+        )}
+
         {/* أزرار التبديل بين التبويبات في لوحة التحكم */}
         <div className="flex items-center gap-2 p-1.5 bg-gray-200/70 dark:bg-gray-900 rounded-2xl max-w-fit border border-gray-300/50 dark:border-gray-800">
           <button
@@ -489,7 +516,10 @@ export default function AdminDashboardPage() {
                 </div>
 
                 <button
-                  onClick={() => setShowAddModal(true)}
+                  onClick={() => {
+                    setAddError('');
+                    setShowAddModal(true);
+                  }}
                   className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-dahab-500 to-amber-600 hover:from-dahab-600 hover:to-amber-700 text-slate-950 font-black text-xs transition shadow-md shadow-dahab-500/25"
                 >
                   <UserPlus className="w-4 h-4" />
@@ -736,10 +766,19 @@ export default function AdminDashboardPage() {
                   />
                 </div>
 
+                {addError && (
+                  <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-300 text-xs">
+                    {addError}
+                  </div>
+                )}
+
                 <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-gray-800">
                   <button
                     type="button"
-                    onClick={() => setShowAddModal(false)}
+                    onClick={() => {
+                      setShowAddModal(false);
+                      setAddError('');
+                    }}
                     className="px-4 py-2 rounded-xl text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
                   >
                     إلغاء

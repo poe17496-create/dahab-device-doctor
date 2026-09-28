@@ -61,6 +61,10 @@ export async function POST(req: NextRequest) {
       }
       const hb = updateUserHeartbeat(username, sessionToken, deviceInfo);
       if (!hb.valid) {
+        // لا ترجع 403 إذا كان الخطأ بسبب عدم وجود المستخدم (حدث بعد إعادة نشر Vercel)
+        if (hb.error?.includes('غير متاح')) {
+          return NextResponse.json({ success: true, rebuilt: true });
+        }
         return NextResponse.json({ error: hb.error, kicked: true }, { status: 403 });
       }
       return NextResponse.json({ success: true });
