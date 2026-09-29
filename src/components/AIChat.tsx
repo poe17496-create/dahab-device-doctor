@@ -93,6 +93,7 @@ export default function AIChat() {
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
+  const speakTimerRef = useRef<any>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<any>(null);
@@ -247,89 +248,100 @@ export default function AIChat() {
     }
   }, []);
 
-  // 🎙️ محرك النطق الصوتي المزدوج: صوت سحابي فائق الوضوح (MP3) مع Fallback محلي
+  // 🎙️ محرك النطق الصوتي الفوري المباشر (Direct Responsive SpeechSynthesis)
   const speakText = (text: string, msgId?: string) => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+      setToastMsg('المتصفح لا يدعم القراءة الصوتية');
+      return;
+    }
 
-    // إذا كان المساعد يقرأ نفس الرسالة حالياً، نوقفه فوراً (Toggle)
+    // إذا كان المساعد يقرأ نفس الرسالة حالياً، نوقفه فوراً (Toggle Stop)
     if (speakingMessageId && (!msgId || speakingMessageId === msgId)) {
-      if (audioPlayerRef.current) {
-        audioPlayerRef.current.pause();
-        audioPlayerRef.current.currentTime = 0;
-      }
-      window.speechSynthesis?.cancel();
+      if (speakTimerRef.current) clearInterval(speakTimerRef.current);
+      window.speechSynthesis.cancel();
       setSpeakingMessageId(null);
       return;
     }
 
-    // إيقاف أي قراءة صوتية جارية
-    if (audioPlayerRef.current) {
-      audioPlayerRef.current.pause();
-      audioPlayerRef.current.currentTime = 0;
-    }
-    window.speechSynthesis?.cancel();
+    // إيقاف أي قراءة سابقة فوراً
+    if (speakTimerRef.current) clearInterval(speakTimerRef.current);
+    window.speechSynthesis.cancel();
 
+    // فك التجميد عن محرك SpeechSynthesis في Chrome
+    try {
+      window.speechSynthesis.resume();
+    } catch {}
+
+    // تنظيف النص بالكامل من علامات الماركداون والرموز والإيموجي لضمان نطق عربي سليم 100%
     const cleanText = text
       .replace(/[*#_`~\[\]\(\)>]/g, ' ')
       .replace(/https?:\/\/\S+/g, ' ')
       .replace(/<<<[\s\S]*?>>>/g, ' ')
+      .replace(/[^\u0600-\u06FFa-zA-Z0-9\s.,،؟!:\-]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
 
     if (!cleanText) return;
 
     const targetId = msgId || Date.now().toString();
-    setSpeakingMessageId(targetId);
 
-    // 1. تشغيل الصوت العربي الطبيعي عالي الوضوح من /api/tts
-    try {
-      const audioUrl = `/api/tts?text=${encodeURIComponent(cleanText.slice(0, 320))}`;
-      const audio = new Audio(audioUrl);
-      audioPlayerRef.current = audio;
+    // نطق أول 250 حرف بطلاقة لتفادي توقف محرك المتصفح في النصوص الطويلة
+    const textToSpeak = cleanText.length > 250 ? cleanText.slice(0, 250) + '...' : cleanText;
 
-      audio.onended = () => {
-        setSpeakingMessageId(null);
-      };
-
-      audio.onerror = () => {
-        // Fallback: استخدام SpeechSynthesis المحلي عند تعذر التحميل
-        playLocalSpeech(cleanText, targetId);
-      };
-
-      audio.play().catch(() => {
-        playLocalSpeech(cleanText, targetId);
-      });
-    } catch {
-      playLocalSpeech(cleanText, targetId);
-    }
-  };
-
-  const playLocalSpeech = (cleanText: string, targetId: string) => {
-    if (!window.speechSynthesis) {
-      setSpeakingMessageId(null);
-      return;
-    }
-    try {
-      window.speechSynthesis.resume();
-    } catch {}
-
-    const utterance = new SpeechSynthesisUtterance(cleanText);
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
     currentUtteranceRef.current = utterance;
     (window as any).__dahab_active_utterance = utterance;
 
     utterance.lang = 'ar-SA';
     utterance.rate = 1.0;
+    utterance.pitch = 1.0;
 
+    // محاولة اختيار أفضل صوت عربي متاح في نظام العميل أو المتصفح
     try {
       const voices = window.speechSynthesis.getVoices();
       const arabicVoice = voices.find(
-        (v) => v.lang.startsWith('ar') || v.name.toLowerCase().includes('arabic')
+        (v) =>
+          v.lang.toLowerCase().startsWith('ar') ||
+          v.name.toLowerCase().includes('arabic') ||
+          v.name.toLowerCase().includes('shakir') ||
+          v.name.toLowerCase().includes('salma') ||
+          v.name.toLowerCase().includes('tarik')
       );
-      if (arabicVoice) utterance.voice = arabicVoice;
+      if (arabicVoice) {
+        utterance.voice = arabicVoice;
+        utterance.lang = arabicVoice.lang;
+      }
     } catch {}
 
-    utterance.onend = () => setSpeakingMessageId(null);
-    utterance.onerror = () => setSpeakingMessageId(null);
+    utterance.onstart = () => {
+      setSpeakingMessageId(targetId);
+      // Heartbeat لمنع توقف Google Chrome في منتصف النطق
+      if (speakTimerRef.current) clearInterval(speakTimerRef.current);
+      speakTimerRef.current = setInterval(() => {
+        try {
+          if (window.speechSynthesis.speaking) {
+            window.speechSynthesis.resume();
+          } else {
+            clearInterval(speakTimerRef.current);
+          }
+        } catch {}
+      }, 3000);
+    };
+
+    utterance.onend = () => {
+      if (speakTimerRef.current) clearInterval(speakTimerRef.current);
+      setSpeakingMessageId(null);
+      currentUtteranceRef.current = null;
+    };
+
+    utterance.onerror = (e) => {
+      console.warn('SpeechSynthesis error:', e);
+      if (speakTimerRef.current) clearInterval(speakTimerRef.current);
+      setSpeakingMessageId(null);
+      currentUtteranceRef.current = null;
+    };
+
+    // تشغيل فوري متزامن داخل نقرة المستخدم
     window.speechSynthesis.speak(utterance);
   };
 
