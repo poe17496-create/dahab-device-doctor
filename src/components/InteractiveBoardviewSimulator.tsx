@@ -646,6 +646,10 @@ export default function InteractiveBoardviewSimulator() {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
+  // مراجع اللمس للموبايل
+  const lastTouchDistance = useRef<number>(0);
+  const lastTouchCenter = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
   // مراجع الكانفاس
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -811,23 +815,69 @@ export default function InteractiveBoardviewSimulator() {
     ctx.stroke();
     ctx.restore();
 
-    // 5. رسم خطوط التوصيل الجوية المضيئة (Flight Lines) بين مكونات المسار النشط
+    // 5. رسم خطوط التوصيل الجوية المضيئة (Animated Bézier Trace Lines)
     if (showFlightLines && connectedPins.length > 1) {
-      ctx.save();
-      ctx.strokeStyle = activeNet.color;
-      ctx.lineWidth = 1.2 / zoom;
-      ctx.setLineDash([4 / zoom, 3 / zoom]);
-      ctx.shadowColor = activeNet.color;
-      ctx.shadowBlur = 10;
+      const now = Date.now();
+      const dashOffset = -(now / 30) % (14 / zoom);  // أنيميشن جري
 
-      ctx.beginPath();
+      ctx.save();
+
+      // للمسار: رسم كل وصلة كقوس Bézier تربائي
       for (let i = 0; i < connectedPins.length - 1; i++) {
         const p1 = connectedPins[i];
         const p2 = connectedPins[i + 1];
+        const midX = (p1.worldX + p2.worldX) / 2;
+        const midY = (p1.worldY + p2.worldY) / 2;
+        // نقطة الضبط للقوس (تميل قليلاً للأعلى لإضفاء شكل منحنى)
+        const dx = p2.worldX - p1.worldX;
+        const dy = p2.worldY - p1.worldY;
+        const len = Math.hypot(dx, dy) || 1;
+        const cpX = midX + (-dy / len) * (len * 0.22);
+        const cpY = midY + (dx / len) * (len * 0.22);
+
+        // 1) هالة توهج خارجية
+        ctx.beginPath();
         ctx.moveTo(p1.worldX, p1.worldY);
-        ctx.lineTo(p2.worldX, p2.worldY);
+        ctx.quadraticCurveTo(cpX, cpY, p2.worldX, p2.worldY);
+        ctx.strokeStyle = activeNet.color + '44';
+        ctx.lineWidth = 5 / zoom;
+        ctx.setLineDash([]);
+        ctx.shadowColor = activeNet.color;
+        ctx.shadowBlur = 18;
+        ctx.stroke();
+
+        // 2) الخط المتحرك الأساسي
+        ctx.beginPath();
+        ctx.moveTo(p1.worldX, p1.worldY);
+        ctx.quadraticCurveTo(cpX, cpY, p2.worldX, p2.worldY);
+        ctx.strokeStyle = activeNet.color;
+        ctx.lineWidth = 1.8 / zoom;
+        ctx.setLineDash([5 / zoom, 3 / zoom]);
+        ctx.lineDashOffset = dashOffset;
+        ctx.shadowBlur = 12;
+        ctx.stroke();
+
+        // 3) رسم سهم صغير في منتصف القوس لإظهار الاتجاه
+        const arrowX = 0.5 * p1.worldX + 0.5 * cpX * 0.5 + 0.5 * p2.worldX * 0.25; // نقطة على القوس ≈ t=0.5
+        const arrowY = 0.5 * p1.worldY + 0.5 * cpY * 0.5 + 0.5 * p2.worldY * 0.25;
+        const angle = Math.atan2(p2.worldY - p1.worldY, p2.worldX - p1.worldX);
+        const arrowSize = 4 / zoom;
+
+        ctx.save();
+        ctx.translate(midX, midY);
+        ctx.rotate(angle);
+        ctx.setLineDash([]);
+        ctx.shadowBlur = 6;
+        ctx.fillStyle = activeNet.color;
+        ctx.beginPath();
+        ctx.moveTo(arrowSize, 0);
+        ctx.lineTo(-arrowSize * 0.7, arrowSize * 0.5);
+        ctx.lineTo(-arrowSize * 0.7, -arrowSize * 0.5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
       }
-      ctx.stroke();
+
       ctx.restore();
     }
 
@@ -1075,6 +1125,72 @@ export default function InteractiveBoardviewSimulator() {
 
     setZoom(newZoom);
     setPan({ x: newPanX, y: newPanY });
+  };
+
+  // ==========================================
+  // 5b. معالجات اللمس للموبايل والتابلت (Touch Handlers)
+  // ==========================================
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    if (e.touches.length === 1) {
+      // سحب بإصبع واحد
+      setIsDragging(true);
+      setDragStart({ x: e.touches[0].clientX - pan.x, y: e.touches[0].clientY - pan.y });
+    } else if (e.touches.length === 2) {
+      // تكبير بإصبعين
+      setIsDragging(false);
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      lastTouchDistance.current = Math.hypot(dx, dy);
+      lastTouchCenter.current = {
+        x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+        y: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+      };
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    if (e.touches.length === 1 && isDragging) {
+      // سحب
+      setPan({
+        x: e.touches[0].clientX - dragStart.x,
+        y: e.touches[0].clientY - dragStart.y,
+      });
+    } else if (e.touches.length === 2) {
+      // قرص للتكبير والتصغير (Pinch-to-Zoom)
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const newDist = Math.hypot(dx, dy);
+
+      if (lastTouchDistance.current > 0) {
+        const scaleRatio = newDist / lastTouchDistance.current;
+        const newZoom = Math.min(Math.max(zoom * scaleRatio, 0.4), 10.0);
+
+        const cx = lastTouchCenter.current.x;
+        const cy = lastTouchCenter.current.y;
+        const newPanX = cx - (cx - pan.x) * (newZoom / zoom);
+        const newPanY = cy - (cy - pan.y) * (newZoom / zoom);
+
+        setZoom(newZoom);
+        setPan({ x: newPanX, y: newPanY });
+      }
+
+      lastTouchDistance.current = newDist;
+      lastTouchCenter.current = {
+        x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+        y: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+      };
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    if (e.touches.length === 0) {
+      setIsDragging(false);
+      lastTouchDistance.current = 0;
+    }
   };
 
   // ==========================================
@@ -1418,7 +1534,9 @@ export default function InteractiveBoardviewSimulator() {
     <div
       ref={containerRef}
       className={`bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border rounded-3xl overflow-hidden shadow-2xl flex flex-col ${
-        isFullscreen ? 'fixed inset-0 z-50 rounded-none' : 'min-h-[700px]'
+        isFullscreen
+          ? 'fixed inset-0 z-50 rounded-none'
+          : 'h-[calc(100dvh-56px)] lg:h-auto lg:min-h-[700px]'
       }`}
     >
       {/* 1. الشريط العلوي: العنوان والموديلات وأزرار التحكم */}
@@ -1710,9 +1828,9 @@ export default function InteractiveBoardviewSimulator() {
       </div>
 
       {/* 4. مساحة العمل: الكانفاس + اللوحة الجانبية لفحص المكون */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 relative min-h-[480px]">
-        {/* منطقة الكانفاس التفاعلي */}
-        <div className="lg:col-span-8 xl:col-span-9 relative bg-[#0a0f1d] overflow-hidden select-none flex items-center justify-center">
+      <div className="flex-1 flex flex-col lg:grid lg:grid-cols-12 relative min-h-0 overflow-hidden">
+        {/* منطقة الكانفاس التفاعلي — يملأ كامل الشاشة على الموبايل */}
+        <div className="flex-1 lg:col-span-8 xl:col-span-9 relative bg-[#0a0f1d] overflow-hidden select-none" style={{ minHeight: 0 }}>
           <canvas
             ref={canvasRef}
             onMouseDown={handleMouseDown}
@@ -1721,7 +1839,11 @@ export default function InteractiveBoardviewSimulator() {
             onMouseLeave={handleMouseUp}
             onClick={handleCanvasClick}
             onWheel={handleWheel}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
             className="w-full h-full cursor-crosshair block"
+            style={{ touchAction: 'none' }}
           />
 
           {/* أزرار التكبير والتصغير العائمة */}
@@ -1774,8 +1896,8 @@ export default function InteractiveBoardviewSimulator() {
           )}
         </div>
 
-        {/* اللوحة الجانبية: تفاصيل المكون النشط وقائم المسارات */}
-        <div className="lg:col-span-4 xl:col-span-3 bg-gray-50 dark:bg-gray-900/90 border-r border-gray-200 dark:border-gray-800 p-4 flex flex-col justify-between overflow-y-auto space-y-4">
+        {/* اللوحة الجانبية: تفاصيل المكون النشط وقائم المسارات — مخفية على الموبايل */}
+        <div className="hidden lg:flex lg:col-span-4 xl:col-span-3 bg-gray-50 dark:bg-gray-900/90 border-r border-gray-200 dark:border-gray-800 p-4 flex-col justify-between overflow-y-auto space-y-4">
           <div className="space-y-4">
             {/* بطاقة المكون المختار */}
             <div className="p-4 rounded-2xl bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border shadow-md space-y-3">
