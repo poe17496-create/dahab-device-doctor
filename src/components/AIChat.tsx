@@ -89,6 +89,9 @@ export default function AIChat() {
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [micErrorBanner, setMicErrorBanner] = useState<string | null>(null);
   const [showMicModal, setShowMicModal] = useState(false);
+  const [micModalError, setMicModalError] = useState<string | null>(null);
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
+  const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<any>(null);
@@ -230,14 +233,84 @@ export default function AIChat() {
     } catch {}
   };
 
-  // Text-to-Speech للردود الصوتية
-  const speakText = (text: string) => {
-    if (typeof window === 'undefined') return;
-    window.speechSynthesis?.cancel();
-    const cleanText = text.replace(/[*#_`~\[\]\(\)>]/g, ' ').replace(/\s+/g, ' ').trim();
+  // تهيئة أصوات النطق باللغة العربية عند فتح المكون
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      // إجبار المتصفح على تحميل الأصوات مبكراً
+      window.speechSynthesis.getVoices();
+      if (window.speechSynthesis.onvoiceschanged !== undefined) {
+        window.speechSynthesis.onvoiceschanged = () => {
+          window.speechSynthesis.getVoices();
+        };
+      }
+    }
+  }, []);
+
+  // Text-to-Speech للردود الصوتية مع دعم كامل لمتصفح Chrome و Edge ومنع توقف الصوت
+  const speakText = (text: string, msgId?: string) => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+      setToastMsg('المتصفح لا يدعم القراءة الصوتية');
+      return;
+    }
+
+    // إذا كان المساعد يقرأ نفس الرسالة حالياً، نوقفه فوراً (Toggle)
+    if (speakingMessageId && (!msgId || speakingMessageId === msgId)) {
+      window.speechSynthesis.cancel();
+      setSpeakingMessageId(null);
+      return;
+    }
+
+    // إيقاف أي قراءة صوتية جارية واستئناف المحرك إن كان متوقفاً
+    window.speechSynthesis.cancel();
+    try {
+      window.speechSynthesis.resume();
+    } catch {}
+
+    const cleanText = text
+      .replace(/[*#_`~\[\]\(\)>]/g, ' ')
+      .replace(/https?:\/\/\S+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (!cleanText) return;
+
     const utterance = new SpeechSynthesisUtterance(cleanText);
+    currentUtteranceRef.current = utterance; // حفظ المرجع لمنع Garbage Collection في Google Chrome
+    (window as any).__dahab_active_utterance = utterance;
+
     utterance.lang = 'ar-SA';
-    utterance.rate = 0.95;
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+
+    // محاولة اختيار صوت عربي متاح في نظام العميل
+    try {
+      const voices = window.speechSynthesis.getVoices();
+      const arabicVoice = voices.find(
+        (v) => v.lang.startsWith('ar') || v.name.toLowerCase().includes('arabic')
+      );
+      if (arabicVoice) {
+        utterance.voice = arabicVoice;
+        utterance.lang = arabicVoice.lang;
+      }
+    } catch {}
+
+    const targetId = msgId || Date.now().toString();
+
+    utterance.onstart = () => {
+      setSpeakingMessageId(targetId);
+    };
+
+    utterance.onend = () => {
+      setSpeakingMessageId(null);
+      currentUtteranceRef.current = null;
+    };
+
+    utterance.onerror = (e) => {
+      console.warn('Speech error:', e);
+      setSpeakingMessageId(null);
+      currentUtteranceRef.current = null;
+    };
+
     window.speechSynthesis.speak(utterance);
   };
 
@@ -453,18 +526,24 @@ export default function AIChat() {
 
   // طلب إذن الميكروفون المباشر من خلال تفاعل المستخدم (User Gesture)
   const handleRequestMicPermissionDirectly = async () => {
+    setMicModalError(null);
     if (!navigator.mediaDevices?.getUserMedia) {
-      setToastMsg('المتصفح لا يدعم الوصول للميكروفون');
+      setMicModalError('متصفحك الحالي لا يدعم واجهة الميكروفون المباشرة');
       return;
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.getTracks().forEach((t) => t.stop());
       setShowMicModal(false);
-      setToastMsg('✅ تم منح إذن الميكروفون بنجاح! جاري بدء الاستماع...');
-      setTimeout(handleVoiceInput, 300);
-    } catch (err) {
-      setToastMsg('⚠️ ما زال الميكروفون محظوراً. يرجى تفعيله من أيقونة القفل 🔒 أعلى المتصفح');
+      setToastMsg('✅ تم تفعيل الميكروفون بنجاح! جاري بدء الاستماع...');
+      setTimeout(() => {
+        handleVoiceInput();
+      }, 300);
+    } catch (err: any) {
+      console.warn('Microphone permission request rejected:', err);
+      setMicModalError(
+        'المتصفح حظر الميكروفون مسبقاً لهذا الموقع. يرجى إلغاء الحظر من أيقونة الإعدادات 🎛️ أو القفل 🔒 أعلى يسار شريط العنوان بجانب رابط الموقع، وتغيير الميكروفون إلى "سماح"، ثم الضغط على زر إعادة التحميل أدناه.'
+      );
     }
   };
 
@@ -581,12 +660,25 @@ export default function AIChat() {
                   </span>
                   <button
                     type="button"
-                    onClick={() => speakText(message.content)}
-                    className="flex items-center gap-1 hover:text-amber-500 transition px-2 py-0.5 rounded-lg hover:bg-gray-200/40 dark:hover:bg-gray-800"
-                    title="قراءة الرد صوتياً"
+                    onClick={() => speakText(message.content, message.id)}
+                    className={`flex items-center gap-1.5 transition px-2.5 py-1 rounded-xl text-[11px] font-bold ${
+                      speakingMessageId === message.id
+                        ? 'bg-amber-500 text-slate-950 shadow-md animate-pulse ring-2 ring-amber-400'
+                        : 'text-gray-500 hover:text-amber-500 hover:bg-gray-200/40 dark:hover:bg-gray-800'
+                    }`}
+                    title={speakingMessageId === message.id ? 'إيقاف القراءة الصوتية' : 'قراءة الرد صوتياً'}
                   >
-                    <Volume2 className="w-3.5 h-3.5 text-amber-500" />
-                    <span>استماع</span>
+                    {speakingMessageId === message.id ? (
+                      <>
+                        <span className="w-2 h-2 rounded-full bg-slate-950 animate-ping" />
+                        <span>⏹️ إيقاف</span>
+                      </>
+                    ) : (
+                      <>
+                        <Volume2 className="w-3.5 h-3.5 text-amber-500" />
+                        <span>استماع</span>
+                      </>
+                    )}
                   </button>
                 </div>
               )}
@@ -817,17 +909,35 @@ export default function AIChat() {
               <p className="font-bold text-amber-800 dark:text-amber-400">💡 خطوات الموافقة والتفعيل السريع:</p>
               <div className="flex items-start gap-2">
                 <span className="w-5 h-5 rounded-full bg-amber-500 text-slate-950 font-black text-[11px] flex items-center justify-center shrink-0 mt-0.5">1</span>
-                <span>اضغط على الزر الذهبي بالأسفل لإظهار نافذة الموافقة الرسمية من المتصفح واضغط <strong>"سماح" (Allow)</strong>.</span>
+                <span>اضغط على الزر الذهبي بالأسفل ليطلب المتصفح الإذن واضغط <strong>"سماح" (Allow)</strong>.</span>
               </div>
               <div className="flex items-start gap-2">
                 <span className="w-5 h-5 rounded-full bg-amber-500 text-slate-950 font-black text-[11px] flex items-center justify-center shrink-0 mt-0.5">2</span>
-                <span>إذا لم يظهر المربع، اضغط على <strong>أيقونة القفل 🔒</strong> بجانب رابط الموقع بأعلى المتصفح.</span>
+                <span>إذا كان المايك محظوراً بالمتصفح، انظر لأعلى يسار الشاشة بجانب الرابط واضغط على <strong>أيقونة الإعدادات 🎛️ أو القفل 🔒</strong>.</span>
               </div>
               <div className="flex items-start gap-2">
                 <span className="w-5 h-5 rounded-full bg-amber-500 text-slate-950 font-black text-[11px] flex items-center justify-center shrink-0 mt-0.5">3</span>
-                <span>اختر <strong>الأذونات (Permissions)</strong> ثم فعّل <strong>الميكروفون</strong> واجعله <strong>سماح</strong>.</span>
+                <span>أمام <strong>الميكروفون (Microphone)</strong> غيره إلى <strong>"سماح" (Allow)</strong> ثم اضغط "إعادة تحميل الصفحة".</span>
               </div>
             </div>
+
+            {/* رسالة الخطأ في حالة حظر المتصفح للإذن */}
+            {micModalError && (
+              <div className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs text-right leading-relaxed space-y-2.5 animate-fadeIn">
+                <div className="flex items-center gap-1.5 font-bold text-rose-800 dark:text-rose-200">
+                  <span className="text-base">⚠️</span>
+                  <span>الميكروفون محظور في متصفحك حالياً</span>
+                </div>
+                <p className="text-[11px]">{micModalError}</p>
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="w-full py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-95"
+                >
+                  <span>🔄 إعادة تحميل الصفحة الآن (بعد السماح بالمايك)</span>
+                </button>
+              </div>
+            )}
 
             <div className="flex flex-col gap-2 pt-2">
               <button
@@ -841,7 +951,10 @@ export default function AIChat() {
 
               <button
                 type="button"
-                onClick={() => setShowMicModal(false)}
+                onClick={() => {
+                  setShowMicModal(false);
+                  setMicModalError(null);
+                }}
                 className="w-full py-2 rounded-xl text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-xs font-bold transition"
               >
                 إلغاء
