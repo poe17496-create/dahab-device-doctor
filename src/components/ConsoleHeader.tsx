@@ -161,6 +161,17 @@ export default function ConsoleHeader({
           {/* زر الوضع النهاري والليلي */}
           <ThemeToggle />
 
+          {/* رابط الشروط القانونية والخصوصية السريع */}
+          <Link
+            href="/terms"
+            target="_blank"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-[#1F2937] hover:bg-gray-200 dark:hover:bg-[#374151] text-gray-700 dark:text-gray-300 text-xs font-bold transition shadow-sm"
+            title="شروط الاستخدام وإخلاء المسؤولية القانونية"
+          >
+            <span>📜</span>
+            <span className="hidden lg:inline">الشروط</span>
+          </Link>
+
           {/* حالة تسجيل الدخول */}
           {currentUser ? (
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-dahab-500/10 border border-dahab-500/30 text-[11px]">

@@ -107,8 +107,25 @@ export default function NavigationSidebar({ activeTab, onTabChange, isOpen, onCl
               );
             })}
 
+            {/* زر الشروط والخصوصية القانونية البارز */}
+            <div className="pt-2">
+              <a
+                href="/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={onClose}
+                className="w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold text-amber-700 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-all shadow-sm"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">📜</span>
+                  <span>شروط الاستخدام والخصوصية</span>
+                </div>
+                <span className="text-[10px] bg-amber-500/20 px-1.5 py-0.5 rounded text-amber-800 dark:text-amber-300 font-mono">قانوني</span>
+              </a>
+            </div>
+
             {/* زر التواصل السريع مع المطور */}
-            <div className="pt-4 mt-4 border-t border-gray-200 dark:border-[#1F2937]">
+            <div className="pt-2 mt-2 border-t border-gray-200 dark:border-[#1F2937]">
               <a
                 href="https://wa.me/201064147224"
                 target="_blank"

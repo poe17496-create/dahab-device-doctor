@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { ReferenceSource } from '@/lib/types';
-import { ExternalLink, BookOpen, Youtube, Cpu, MessageSquare, Wrench, Search } from 'lucide-react';
+import { ExternalLink, BookOpen, Youtube, Cpu, MessageSquare, Wrench, Search, Scale, Shield } from 'lucide-react';
 
 interface SourcesReferencesProps {
   sources: ReferenceSource[];
@@ -55,6 +55,51 @@ export default function SourcesReferences({ sources }: SourcesReferencesProps) {
               </div>
             </a>
           ))}
+        </div>
+
+        {/* وثائق المنظومة والشروط القانونية */}
+        <div className="w-full max-w-3xl pt-6 mt-4 border-t border-gray-200 dark:border-gray-800 text-right space-y-3" dir="rtl">
+          <div className="flex items-center gap-2">
+            <Scale className="w-4 h-4 text-dahab-500" />
+            <h4 className="font-bold text-xs text-gray-800 dark:text-gray-200">
+              الوثائق الرسمية والشروط الهندسية للمنظومة:
+            </h4>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <a
+              href="/terms"
+              target="_blank"
+              rel="noreferrer"
+              className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 transition flex items-center justify-between group shadow-sm"
+            >
+              <div>
+                <span className="font-bold text-xs text-amber-700 dark:text-amber-400 block group-hover:underline">
+                  📜 شروط الاستخدام وإخلاء المسؤولية
+                </span>
+                <span className="text-[11px] text-gray-500 dark:text-gray-400 block mt-0.5">
+                  قواعد حقن الفولت، التعليم الهندسي ومسؤولية الفحص
+                </span>
+              </div>
+              <ExternalLink className="w-4 h-4 text-amber-500 shrink-0" />
+            </a>
+
+            <a
+              href="/privacy"
+              target="_blank"
+              rel="noreferrer"
+              className="p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 transition flex items-center justify-between group shadow-sm"
+            >
+              <div>
+                <span className="font-bold text-xs text-emerald-700 dark:text-emerald-400 block group-hover:underline">
+                  🛡️ سياسة الخصوصية وسرية البيانات
+                </span>
+                <span className="text-[11px] text-gray-500 dark:text-gray-400 block mt-0.5">
+                  تشفير TLS وعدم مشاركة بيانات الأجهزة
+                </span>
+              </div>
+              <ExternalLink className="w-4 h-4 text-emerald-500 shrink-0" />
+            </a>
+          </div>
         </div>
       </div>
     );
@@ -117,6 +162,51 @@ export default function SourcesReferences({ sources }: SourcesReferencesProps) {
             </a>
           );
         })}
+      </div>
+
+      {/* وثائق المنظومة والشروط القانونية */}
+      <div className="pt-6 mt-6 border-t border-gray-200 dark:border-gray-800 text-right space-y-3" dir="rtl">
+        <div className="flex items-center gap-2">
+          <Scale className="w-4 h-4 text-dahab-500" />
+          <h4 className="font-bold text-xs text-gray-800 dark:text-gray-200">
+            الوثائق الرسمية والشروط الهندسية للمنظومة:
+          </h4>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <a
+            href="/terms"
+            target="_blank"
+            rel="noreferrer"
+            className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 transition flex items-center justify-between group shadow-sm"
+          >
+            <div>
+              <span className="font-bold text-xs text-amber-700 dark:text-amber-400 block group-hover:underline">
+                📜 شروط الاستخدام وإخلاء المسؤولية
+              </span>
+              <span className="text-[11px] text-gray-500 dark:text-gray-400 block mt-0.5">
+                قواعد حقن الفولت، التعليم الهندسي ومسؤولية الفحص
+              </span>
+            </div>
+            <ExternalLink className="w-4 h-4 text-amber-500 shrink-0" />
+          </a>
+
+          <a
+            href="/privacy"
+            target="_blank"
+            rel="noreferrer"
+            className="p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 transition flex items-center justify-between group shadow-sm"
+          >
+            <div>
+              <span className="font-bold text-xs text-emerald-700 dark:text-emerald-400 block group-hover:underline">
+                🛡️ سياسة الخصوصية وسرية البيانات
+              </span>
+              <span className="text-[11px] text-gray-500 dark:text-gray-400 block mt-0.5">
+                تشفير TLS وعدم مشاركة بيانات الأجهزة
+              </span>
+            </div>
+            <ExternalLink className="w-4 h-4 text-emerald-500 shrink-0" />
+          </a>
+        </div>
       </div>
     </div>
   );
