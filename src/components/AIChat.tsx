@@ -478,6 +478,11 @@ export default function AIChat() {
           setIsListening(false);
           if (event.error === 'not-allowed') {
             setShowMicModal(true);
+          } else if (event.error === 'audio-capture') {
+            setMicModalError(
+              '🔌 عطل هاردوير: لم يتم العثور على ميكروفون متصل بالكمبيوتر (No audio device found).\nيرجى توصيل سماعة رأس أو مايك خارجي بجهازك، أو استخدام الموبايل للتحدث.'
+            );
+            setShowMicModal(true);
           } else if (event.error === 'no-speech') {
             setToastMsg('لم يتم التقاط أي صوت، تحدث بوضوح بالقرب من المايك');
           }
@@ -532,6 +537,20 @@ export default function AIChat() {
       }, 1000);
     } catch (err: any) {
       console.warn('getUserMedia error:', err);
+      const errName = err?.name || '';
+      const errMsg = String(err?.message || '').toLowerCase();
+      const isNotFound =
+        errName === 'NotFoundError' ||
+        errName === 'DevicesNotFoundError' ||
+        errMsg.includes('not found') ||
+        errMsg.includes('can not be found') ||
+        errMsg.includes('cannot be found');
+
+      if (isNotFound) {
+        setMicModalError(
+          '🔌 عطل هاردوير: لم يتم العثور على ميكروفون متصل بجهازك (No audio input device found).\nجهاز الكمبيوتر لا يجد أي مايك أو سماعة هيدسيت متصلة. يرجى توصيل سماعة بها مايك، أو فتح المنظومة من متصفح الهاتف.'
+        );
+      }
       setShowMicModal(true);
     }
   };
@@ -550,6 +569,22 @@ export default function AIChat() {
       setMicModalError('متصفحك الحالي لا يدعم واجهة الميكروفون المباشرة');
       return;
     }
+
+    // 1. فحص وجود أجهزة إدخال صوتية فيزيائية
+    try {
+      if (navigator.mediaDevices.enumerateDevices) {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const hasAudioInput = devices.some((d) => d.kind === 'audioinput');
+        if (devices.length > 0 && !hasAudioInput) {
+          setMicModalError(
+            '🔌 عطل هاردوير: جهاز الكمبيوتر لا يحتوي على ميكروفون متصل (No Microphone Found).\nلا توجد أي سماعة أو مايك خارجي موصل بالكمبيوتر. يرجى توصيل سماعة أو استخدام متصفح الموبايل للتحدث الصوتي.'
+          );
+          return;
+        }
+      }
+    } catch {}
+
+    // 2. طلب الميكروفون الفعلي
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.getTracks().forEach((t) => t.stop());
@@ -560,9 +595,24 @@ export default function AIChat() {
       }, 300);
     } catch (err: any) {
       console.warn('Microphone permission request rejected:', err);
-      setMicModalError(
-        'المتصفح حظر الميكروفون مسبقاً لهذا الموقع. يرجى إلغاء الحظر من أيقونة الإعدادات 🎛️ أو القفل 🔒 أعلى يسار شريط العنوان بجانب رابط الموقع، وتغيير الميكروفون إلى "سماح"، ثم الضغط على زر إعادة التحميل أدناه.'
-      );
+      const errName = err?.name || '';
+      const errMsg = String(err?.message || '').toLowerCase();
+      const isNotFound =
+        errName === 'NotFoundError' ||
+        errName === 'DevicesNotFoundError' ||
+        errMsg.includes('not found') ||
+        errMsg.includes('can not be found') ||
+        errMsg.includes('cannot be found');
+
+      if (isNotFound) {
+        setMicModalError(
+          '🔌 عطل هاردوير: لم يتم العثور على ميكروفون متصل بالكمبيوتر (The object can not be found).\nالكمبيوتر لا يجد أي جهاز إدخال صوتي (مايك أو سماعة رأس موصلة). يرجى توصيل سماعة بها مايك بالكمبيوتر، أو تجربة المساعد من متصفح الهاتف المحمول، أو كتابة السؤال مباشرة.'
+        );
+      } else {
+        setMicModalError(
+          'المتصفح حظر الميكروفون مسبقاً لهذا الموقع. يرجى إلغاء الحظر من أيقونة الإعدادات 🎛️ أو القفل 🔒 أعلى يسار شريط العنوان بجانب رابط الموقع، وتغيير الميكروفون إلى "سماح"، ثم الضغط على زر إعادة التحميل أدناه.'
+        );
+      }
     }
   };
 
@@ -947,21 +997,35 @@ export default function AIChat() {
               </div>
             </div>
 
-            {/* رسالة الخطأ في حالة حظر المتصفح للإذن */}
+            {/* رسالة الخطأ في حالة حظر المتصفح للإذن أو عدم وجود جهاز مايك فيزيائي */}
             {micModalError && (
-              <div className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs text-right leading-relaxed space-y-2.5 animate-fadeIn">
-                <div className="flex items-center gap-1.5 font-bold text-rose-800 dark:text-rose-200">
-                  <span className="text-base">⚠️</span>
-                  <span>الميكروفون محظور في متصفحك حالياً</span>
+              <div
+                className={`p-3.5 rounded-2xl border text-xs text-right leading-relaxed space-y-2.5 animate-fadeIn ${
+                  micModalError.includes('عطل هاردوير') || micModalError.includes('لا يوجد')
+                    ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200'
+                    : 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300'
+                }`}
+              >
+                <div className="flex items-center gap-1.5 font-bold">
+                  <span className="text-base">
+                    {micModalError.includes('عطل هاردوير') ? '🔌' : '⚠️'}
+                  </span>
+                  <span>
+                    {micModalError.includes('عطل هاردوير')
+                      ? 'تنبيه أجهزة الصوت (Microphone Hardware)'
+                      : 'الميكروفون محظور في متصفحك حالياً'}
+                  </span>
                 </div>
-                <p className="text-[11px]">{micModalError}</p>
-                <button
-                  type="button"
-                  onClick={() => window.location.reload()}
-                  className="w-full py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-95"
-                >
-                  <span>🔄 إعادة تحميل الصفحة الآن (بعد السماح بالمايك)</span>
-                </button>
+                <p className="text-[11px] whitespace-pre-wrap leading-relaxed">{micModalError}</p>
+                {!micModalError.includes('عطل هاردوير') && (
+                  <button
+                    type="button"
+                    onClick={() => window.location.reload()}
+                    className="w-full py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-95"
+                  >
+                    <span>🔄 إعادة تحميل الصفحة الآن (بعد السماح بالمايك)</span>
+                  </button>
+                )}
               </div>
             )}
 
