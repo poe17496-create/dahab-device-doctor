@@ -1536,7 +1536,7 @@ export default function InteractiveBoardviewSimulator() {
       className={`bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border rounded-3xl overflow-hidden shadow-2xl flex flex-col ${
         isFullscreen
           ? 'fixed inset-0 z-50 rounded-none'
-          : 'h-[calc(100dvh-56px)] lg:h-auto lg:min-h-[700px]'
+          : 'h-[calc(100dvh-56px)] lg:h-[calc(100dvh-110px)] lg:min-h-[750px]'
       }`}
     >
       {/* 1. الشريط العلوي: العنوان والموديلات وأزرار التحكم */}

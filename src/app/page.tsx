@@ -564,8 +564,8 @@ export default function DahabFixAiConsole() {
                   </p>
                 </div>
               )}
-              {/* تبويب المساعد الذكي - يبقى متصلاً ومحملاً في الخلفية حتى لا تنقطع الإجابة عند التنقل بين التبويبات */}
-              <div className={`h-[calc(100vh-160px)] md:h-[650px] ${activeTab === 'ai-chat' ? 'block' : 'hidden'}`}>
+              {/* تبويب المساعد الذكي - يأخذ كامل ارتفاع الشاشة في وضع الديسكتوب بدون فراغ سفلي */}
+              <div className={`h-[calc(100dvh-150px)] md:h-[calc(100dvh-115px)] lg:h-[calc(100dvh-105px)] ${activeTab === 'ai-chat' ? 'block' : 'hidden'}`}>
                 <AIChat />
               </div>
             </div>
