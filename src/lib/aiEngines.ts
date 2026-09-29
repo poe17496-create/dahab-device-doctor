@@ -5,7 +5,7 @@ import { DiagnosticMetrics, DeviceSpecialty, PowerSupplyReadings } from './types
 import { enhanceArabicPrompt } from './middleEastFeatures';
 import { getAllActiveKeys } from './apiKeysStorage';
 
-export type AIEngine = 'deepseek' | 'gemini' | 'openai' | 'openrouter' | 'local';
+export type AIEngine = 'gemini' | 'openrouter' | 'local';
 
 export interface AIEngineConfig {
   id: AIEngine;
@@ -40,47 +40,29 @@ export function parseApiKeys(envVar: string | undefined): string[] {
  */
 export function getAvailableEngines(): AIEngineConfig[] {
   const activeKeys = getAllActiveKeys();
-  const deepseekKeys = activeKeys.deepseekKeys;
   const geminiKeys = activeKeys.geminiKeys;
   const openrouterKeys = activeKeys.openrouterKeys;
-  const openaiKeys = activeKeys.openaiKeys;
 
   return [
     {
-      id: 'deepseek',
-      name: 'DeepSeek Official 🧠 (الخارق في المنطق والدوائر)',
-      model: 'deepseek-chat / deepseek-reasoner',
-      apiKey: deepseekKeys[0] || '',
-      enabled: deepseekKeys.length > 0,
-      priority: 1,
-    },
-    {
       id: 'gemini',
-      name: 'Google Gemini',
+      name: 'Google Gemini ⚡ (فائق السرعة والمجاني)',
       model: 'gemini-2.0-flash / 1.5-flash',
       apiKey: geminiKeys[0] || '',
       enabled: geminiKeys.length > 0,
-      priority: 2,
+      priority: 1,
     },
     {
       id: 'openrouter',
-      name: 'OpenRouter (Llama & DeepSeek & Gemini)',
-      model: 'Llama 3.3 / Gemini / DeepSeek',
+      name: 'OpenRouter 🚀 (Llama 3.3 & DeepSeek & Gemini)',
+      model: 'Llama 3.3 70B / DeepSeek V3 / Gemini 2.0',
       apiKey: openrouterKeys[0] || '',
       enabled: openrouterKeys.length > 0,
       priority: 2,
     },
     {
-      id: 'openai',
-      name: 'OpenAI GPT-4o-mini',
-      model: 'gpt-4o-mini / gpt-4o',
-      apiKey: openaiKeys[0] || '',
-      enabled: openaiKeys.length > 0,
-      priority: 3,
-    },
-    {
       id: 'local',
-      name: 'المحرك الهندسي المحلي',
+      name: 'المحرك الهندسي المحلي الاحتياطي',
       model: 'Dahab-Local-v3',
       apiKey: '',
       enabled: true,
@@ -237,117 +219,7 @@ async function tryCallOpenRouter(
   throw lastError || new Error('فشلت استجابة OpenRouter');
 }
 
-/**
- * استدعاء OpenAI مع تجربة gpt-4o-mini و gpt-4o
- */
-async function tryCallOpenAI(
-  apiKey: string,
-  params: { prompt: string; imageBase64?: string; systemPrompt?: string }
-): Promise<AIResponse> {
-  let cleanKey = apiKey.trim();
-  if (cleanKey.startsWith('k-proj-')) {
-    cleanKey = 's' + cleanKey;
-  }
-  const client = new OpenAI({ apiKey: cleanKey });
 
-  const modelsToTry = ['gpt-4o-mini', 'gpt-4o', 'gpt-3.5-turbo'];
-
-  const messages: any[] = [
-    { role: 'system', content: params.systemPrompt || DAHAB_SYSTEM_PROMPT },
-    { role: 'user', content: params.prompt },
-  ];
-
-  if (params.imageBase64) {
-    const matches = params.imageBase64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-    if (matches && matches.length === 3) {
-      messages[1].content = [
-        { type: 'text', text: params.prompt },
-        {
-          type: 'image_url',
-          image_url: { url: params.imageBase64 },
-        },
-      ];
-    }
-  }
-
-  let lastError: any = null;
-
-  for (const model of modelsToTry) {
-    try {
-      const response = await client.chat.completions.create({
-        model,
-        messages,
-        max_tokens: 3000,
-      });
-
-      const text = response.choices[0]?.message?.content || '';
-      if (text.trim().length > 0) {
-        return {
-          text,
-          metrics: extractMetrics(text),
-          engine: 'openai',
-          modelUsed: model,
-        };
-      }
-    } catch (err: any) {
-      lastError = err;
-      console.warn(`OpenAI (${model}) failed:`, err?.message || err);
-      continue;
-    }
-  }
-
-  throw lastError || new Error('فشلت استجابة OpenAI');
-}
-
-/**
- * استدعاء محرك DeepSeek الرسمي 🧠 (الخارق في المنطق والدوائر)
- */
-async function tryCallDeepSeek(
-  apiKey: string,
-  params: { prompt: string; imageBase64?: string; systemPrompt?: string }
-): Promise<AIResponse> {
-  const cleanKey = apiKey.trim();
-  const client = new OpenAI({
-    apiKey: cleanKey,
-    baseURL: 'https://api.deepseek.com',
-  });
-
-  const modelsToTry = ['deepseek-chat', 'deepseek-reasoner'];
-
-  const messages: any[] = [
-    { role: 'system', content: params.systemPrompt || DAHAB_SYSTEM_PROMPT },
-    { role: 'user', content: params.prompt },
-  ];
-
-  let lastError: any = null;
-
-  for (const model of modelsToTry) {
-    try {
-      const response = await client.chat.completions.create({
-        model,
-        messages,
-        max_tokens: 3500,
-        temperature: 0.2,
-      });
-
-      const text = response.choices[0]?.message?.content || '';
-      if (text.trim().length > 0) {
-        return {
-          text,
-          metrics: extractMetrics(text),
-          engine: 'deepseek',
-          modelUsed: model,
-        };
-      }
-    } catch (err: any) {
-      lastError = err;
-      console.warn(`DeepSeek (${model}) failed:`, err?.message || err);
-      continue;
-    }
-  }
-
-  throw lastError || new Error('فشلت استجابة محرك DeepSeek');
-}
 
 /**
  * محرك تشخيص هندسي محلي عالي الذكاء (Fallback عند انقطاع السحابة بالكامل)
@@ -535,36 +407,19 @@ export async function callAIEngine(params: {
 
   console.log(`=== Active AI Keys: DeepSeek (${deepseekKeys.length}), Gemini (${geminiKeys.length}), OpenRouter (${openrouterKeys.length}), OpenAI (${openaiKeys.length}) ===`);
 
-  // تحديد ترتيب المزودين بناءً على التفضيل أو الأفضلية
-  // DeepSeek الرسمي في المقدمة لقوته الفائقة، يليه Gemini و OpenRouter
+  // تحديد ترتيب المزودين: Gemini المجاني فائق السرعة أولاً، ثم OpenRouter
   const providerOrder: AIEngine[] = [];
   if (params.preferredEngine && params.preferredEngine !== 'local') {
     providerOrder.push(params.preferredEngine);
   }
-  ['deepseek', 'gemini', 'openrouter', 'openai'].forEach((p) => {
+  ['gemini', 'openrouter'].forEach((p) => {
     if (!providerOrder.includes(p as AIEngine)) {
       providerOrder.push(p as AIEngine);
     }
   });
 
-  // تجربة المزودين حسب الترتيب
+  // تجربة المزودين حسب الترتيب (Google Gemini ثم OpenRouter)
   for (const provider of providerOrder) {
-    if (provider === 'deepseek' && deepseekKeys.length > 0) {
-      for (let i = 0; i < deepseekKeys.length; i++) {
-        const key = deepseekKeys[i];
-        try {
-          console.log(`Attempting DeepSeek (Key #${i + 1})...`);
-          const res = await tryCallDeepSeek(key, payload);
-          console.log(`✅ DeepSeek succeeded with model ${res.modelUsed}`);
-          return res;
-        } catch (err: any) {
-          const errMsg = `DeepSeek (Key #${i + 1}): ${err?.message || err}`;
-          console.error(errMsg);
-          errorsLog.push(errMsg);
-        }
-      }
-    }
-
     if (provider === 'gemini' && geminiKeys.length > 0) {
       for (let i = 0; i < geminiKeys.length; i++) {
         const key = geminiKeys[i];
@@ -591,22 +446,6 @@ export async function callAIEngine(params: {
           return res;
         } catch (err: any) {
           const errMsg = `OpenRouter (Key #${i + 1}): ${err?.message || err}`;
-          console.error(errMsg);
-          errorsLog.push(errMsg);
-        }
-      }
-    }
-
-    if (provider === 'openai' && openaiKeys.length > 0) {
-      for (let i = 0; i < openaiKeys.length; i++) {
-        const key = openaiKeys[i];
-        try {
-          console.log(`Attempting OpenAI (Key #${i + 1})...`);
-          const res = await tryCallOpenAI(key, payload);
-          console.log(`✅ OpenAI succeeded with model ${res.modelUsed}`);
-          return res;
-        } catch (err: any) {
-          const errMsg = `OpenAI (Key #${i + 1}): ${err?.message || err}`;
           console.error(errMsg);
           errorsLog.push(errMsg);
         }

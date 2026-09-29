@@ -12,13 +12,29 @@ import {
 import { DiagnosticMetrics, DeviceSpecialty, PowerSupplyReadings } from '@/lib/types';
 import { callAIEngine, createStreamingResponse, AIEngine } from '@/lib/aiEngines';
 import { buildExpertPromptContext } from '@/lib/expertKnowledge';
+import { checkRateLimit, sanitizeAndCheckTokenDrain } from '@/lib/securityRateLimiter';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {
+    // 🛡️ فحص حماية DDoS ومعدل الطلبات
+    const rateCheck = checkRateLimit(req, 25, 60 * 1000);
+    if (!rateCheck.allowed) {
+      return new Response(
+        `🛡️ تم تجاوز الحد المسموح للطلبات في الدقيقة (${rateCheck.resetInSec} ثانية متبقية). يرجى التمهل لحماية موارد السيرفر.`,
+        { status: 429 }
+      );
+    }
+
     const { prompt, specialty, deviceModel, readings, imageBase64, sessionId, preferredEngine, customKeys } =
       await req.json();
+
+    // 🛡️ فحص حماية استنزاف التوكن (Token Drain Protection)
+    const tokenCheck = sanitizeAndCheckTokenDrain(prompt || '');
+    if (!tokenCheck.valid) {
+      return new Response(tokenCheck.error || 'النص طويل جداً', { status: 400 });
+    }
 
     if (!prompt && !imageBase64) {
       return new Response('يجب إدخال وصف للعطل أو رفع صورة', { status: 400 });

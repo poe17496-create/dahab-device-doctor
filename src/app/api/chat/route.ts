@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callAIEngine } from '@/lib/aiEngines';
 import { buildExpertPromptContext } from '@/lib/expertKnowledge';
+import { checkRateLimit, sanitizeAndCheckTokenDrain } from '@/lib/securityRateLimiter';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +20,22 @@ function cleanAIResponse(text: string): string {
 
 export async function POST(req: NextRequest) {
   try {
+    // 🛡️ فحص حماية DDoS ومعدل الطلبات
+    const rateCheck = checkRateLimit(req, 25, 60 * 1000);
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: `🛡️ تم تجاوز الحد المسموح للطلبات (${rateCheck.resetInSec} ثانية متبقية). يرجى التمهل.` },
+        { status: 429 }
+      );
+    }
+
     const { message, imageBase64, chatHistory, customKeys } = await req.json();
+
+    // 🛡️ فحص حماية استنزاف التوكن (Token Drain Protection)
+    const tokenCheck = sanitizeAndCheckTokenDrain(message || '');
+    if (!tokenCheck.valid) {
+      return NextResponse.json({ error: tokenCheck.error }, { status: 400 });
+    }
 
     if (!message && !imageBase64) {
       return NextResponse.json({ error: 'الرسالة فارغة' }, { status: 400 });

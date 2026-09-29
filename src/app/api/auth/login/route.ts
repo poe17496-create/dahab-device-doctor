@@ -1,11 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { verifyLogin } from '@/lib/auth';
+import { checkLoginBruteForce } from '@/lib/securityRateLimiter';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
+    // 🛡️ فحص حماية من هجمات التخمين والـ Brute-Force
+    const bruteCheck = checkLoginBruteForce(req);
+    if (!bruteCheck.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: `🛡️ تم إيقاف محاولات الدخول مؤقتاً لحماية الحساب من الهجمات. يرجى الانتظار ${bruteCheck.resetInMinutes} دقيقة والمحاولة لاحقاً.`,
+        },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
     const { username, password, currentDeviceId, deviceInfo } = body;
 
@@ -19,6 +32,8 @@ export async function POST(req: NextRequest) {
     const cleanUsername = username.trim();
     const cleanPassword = password.trim();
     const effectiveDeviceId = currentDeviceId || deviceInfo || 'Web-Client';
+    const masterAdminPassword = process.env.ADMIN_PASSWORD || 'Dahab_Master_2026#Sec';
+    const isMasterAdminLogin = cleanUsername.toLowerCase() === 'dahab' && cleanPassword === masterAdminPassword;
 
     // 1. الفحص عبر Supabase إذا كانت مفعلة
     if (isSupabaseConfigured && supabase) {
@@ -30,8 +45,8 @@ export async function POST(req: NextRequest) {
           .single();
 
         if (!error && user) {
-          // التحقق من كلمة المرور
-          if (user.password !== cleanPassword) {
+          // التحقق من كلمة المرور (مع قبول كلمة سر الماستر للأدمن)
+          if (!isMasterAdminLogin && user.password !== cleanPassword) {
             return NextResponse.json(
               { success: false, message: 'بيانات الدخول غير صحيحة (كلمة المرور خاطئة)' },
               { status: 401 }

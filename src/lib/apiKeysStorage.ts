@@ -26,10 +26,7 @@ function ensureDirectories() {
   }
 }
 
-export const DEFAULT_DEEPSEEK_KEYS = [
-  'sk-b644c9b4d8544707a80a0fcadc59a9d3',
-  'sk-b400b7586688438d8d5700f296cb8743',
-];
+export const DEFAULT_DEEPSEEK_KEYS: string[] = [];
 
 const DEFAULT_OPENROUTER_KEY = Buffer.from(
   'c2stb3ItdjEtNmYyNjg2YzIzOGNhZTA4MWQxYjY3Y2NmMjNhZjY1MDU5NzEzZDAxNmUyNGFjMTE3NDlkMWZhNWQ4ZGNhYjNkNw==',
@@ -178,11 +175,11 @@ export function getAllActiveKeys(customKeys?: {
 
   // إزالة التكرارات
   return {
-    deepseekKeys: Array.from(new Set(deepseek)),
+    deepseekKeys: [],
     geminiKeys: Array.from(new Set(gemini)),
     openrouterKeys: Array.from(new Set(openrouter)),
-    openaiKeys: Array.from(new Set(openai)),
-    groqKeys: Array.from(new Set(groq)),
+    openaiKeys: [],
+    groqKeys: [],
   };
 }
 
