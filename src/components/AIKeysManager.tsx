@@ -350,7 +350,7 @@ export default function AIKeysManager() {
                 <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center text-xl">⚡</div>
                 <div>
                   <h3 className="text-sm font-black text-gray-900 dark:text-gray-100">Google Gemini</h3>
-                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">مجاني 100% — gemini-2.0-flash / 1.5-flash</p>
+                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">مجاني 100% — gemini-3.5-flash-lite / 3.5-flash</p>
                 </div>
               </div>
               {/* عداد المفاتيح */}

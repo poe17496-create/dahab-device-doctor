@@ -47,7 +47,7 @@ export function getAvailableEngines(): AIEngineConfig[] {
     {
       id: 'gemini',
       name: 'Google Gemini ⚡ (فائق السرعة والمجاني)',
-      model: 'gemini-2.0-flash / 1.5-flash',
+      model: 'gemini-3.5-flash-lite / 3.5-flash',
       apiKey: geminiKeys[0] || '',
       enabled: geminiKeys.length > 0,
       priority: 1,
@@ -94,11 +94,11 @@ async function tryCallGemini(
   params: { prompt: string; imageBase64?: string; systemPrompt?: string }
 ): Promise<AIResponse> {
   const modelsToTry = [
-    'gemini-2.0-flash',
-    'gemini-1.5-flash',
-    'gemini-2.0-flash-lite',
-    'gemini-1.5-pro',
-    'gemini-1.5-flash-8b',
+    'gemini-3.5-flash-lite',
+    'gemini-3.5-flash',
+    'gemini-3.6-flash',
+    'gemini-3.8-flash',
+    'gemini-3.7-flash',
   ];
 
   const genAI = new GoogleGenerativeAI(apiKey);
