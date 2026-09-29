@@ -60,6 +60,18 @@ export default function AIChat() {
   const [isListening, setIsListening] = useState(false);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
+
+  // تنظيف التعرف الصوتي عند إغلاق المكون
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch (e) {}
+      }
+    };
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -276,38 +288,95 @@ export default function AIChat() {
     return 'شكراً لسؤالك. يمكنني مساعدتك في تشخيص الأعطال، فهم المخططات، وتحليل البيانات. لدي أدوات متعددة في اللوحة يمكنني مساعدتك في استخدامها. هل يمكنك تقديم المزيد من التفاصيل حول المشكلة؟';
   };
 
-  const handleVoiceInput = () => {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert('ميزة التعرف على الصوت غير مدعومة في هذا المتصفح');
+  const handleVoiceInput = async () => {
+    // 1. إذا كان الميكروفون يستمع بالفعل، إيقافه عند الضغط مرة أخرى
+    if (isListening) {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {}
+      }
+      setIsListening(false);
       return;
     }
 
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    
-    recognition.lang = 'ar-SA';
-    recognition.continuous = false;
-    recognition.interimResults = false;
+    // 2. التحقق من دعم المتصفح
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
-    recognition.onstart = () => {
-      setIsListening(true);
-    };
+    if (!SpeechRecognition) {
+      alert('ميزة التعرف الصوتي غير مدعومة في متصفحك الحالي. يرجى استخدام متصفح Chrome أو Edge أو Safari.');
+      return;
+    }
 
-    recognition.onend = () => {
+    // 3. طلب إذن الميكروفون برمجياً إذا لزم الأمر لمنع الحجب الصامت
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach((track) => track.stop());
+      }
+    } catch (permErr: any) {
+      console.warn('Microphone permission check note:', permErr);
+      if (permErr?.name === 'NotAllowedError' || permErr?.name === 'PermissionDeniedError') {
+        alert('⚠️ تم حظر الميكروفون. يرجى تفعيل إذن الميكروفون من إعدادات المتصفح أو أيقونة القفل 🔒 بجانب الرابط.');
+        return;
+      }
+    }
+
+    try {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch (e) {}
+      }
+
+      const recognition = new SpeechRecognition();
+      recognitionRef.current = recognition;
+
+      recognition.lang = 'ar-EG'; // اللهجة العربية والمصرية
+      recognition.continuous = false;
+      recognition.interimResults = true; // كتابة الكلمات مباشرة أثناء النطق
+
+      let accumulated = '';
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event: any) => {
+        let interim = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            accumulated += event.results[i][0].transcript;
+          } else {
+            interim += event.results[i][0].transcript;
+          }
+        }
+        const textToDisplay = (accumulated || interim).trim();
+        if (textToDisplay) {
+          setInput(textToDisplay);
+        }
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
+        if (event.error === 'not-allowed') {
+          alert('⚠️ لم يتم منح إذن الميكروفون للموقع. يرجى السماح بالميكروفون لتشغيل ميزة الصوت.');
+        } else if (event.error === 'network') {
+          alert('⚠️ حدث خطأ في الاتصال بخدمة التعرف الصوتي. تأكد من اتصال الإنترنت.');
+        }
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.start();
+    } catch (err: any) {
+      console.error('Failed to start speech recognition:', err);
       setIsListening(false);
-    };
-
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      setInput(transcript);
-    };
-
-    recognition.onerror = (event: any) => {
-      console.error('Speech recognition error:', event.error);
-      setIsListening(false);
-    };
-
-    recognition.start();
+    }
   };
 
   return (
@@ -429,9 +498,11 @@ export default function AIChat() {
           </div>
           <button
             onClick={handleVoiceInput}
-            className={`p-2 rounded-xl transition-colors ${
+            type="button"
+            title={isListening ? 'إيقاف الاستماع (جاري التسجيل...)' : 'تحدث بالصوت بدلاً من الكتابة'}
+            className={`p-2.5 rounded-xl transition-all ${
               isListening 
-                ? 'bg-red-500 text-white animate-pulse' 
+                ? 'bg-rose-500 text-white animate-pulse shadow-lg ring-2 ring-rose-400' 
                 : 'bg-gray-100 dark:bg-[#1F2937] hover:bg-gray-200 dark:hover:bg-[#374151] text-gray-600 dark:text-gray-400'
             }`}
           >

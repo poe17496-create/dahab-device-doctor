@@ -526,11 +526,10 @@ export default function DahabFixAiConsole() {
                   </p>
                 </div>
               )}
-              {activeTab === 'ai-chat' && (
-                <div className="h-[calc(100vh-160px)] md:h-[650px]">
-                  <AIChat />
-                </div>
-              )}
+              {/* تبويب المساعد الذكي - يبقى متصلاً ومحملاً في الخلفية حتى لا تنقطع الإجابة عند التنقل بين التبويبات */}
+              <div className={`h-[calc(100vh-160px)] md:h-[650px] ${activeTab === 'ai-chat' ? 'block' : 'hidden'}`}>
+                <AIChat />
+              </div>
             </div>
           </div>
         </div>
