@@ -11,7 +11,7 @@ import {
 } from '@/lib/jsonMemory';
 import { DiagnosticMetrics, DeviceSpecialty, PowerSupplyReadings } from '@/lib/types';
 import { callAIEngine, createStreamingResponse, AIEngine } from '@/lib/aiEngines';
-import { findRelevantPatterns } from '@/lib/expertKnowledge';
+import { buildExpertPromptContext } from '@/lib/expertKnowledge';
 
 export const runtime = 'nodejs';
 
@@ -37,14 +37,10 @@ export async function POST(req: NextRequest) {
       historyContext,
     });
 
-    // البحث عن الأنماط الخبيرة ودمجها
-    const relevantPatterns = findRelevantPatterns(prompt || '', specialty);
-    if (relevantPatterns.length > 0) {
-      userPrompt += `\n\n### Expert Reference Data\n`;
-      userPrompt += `Rule X: If expert repair patterns are provided below, use them as primary reference and incorporate their specific component IDs (like PQ301, PU201, etc.) into your diagnosis.\n\n`;
-      relevantPatterns.forEach((p, index) => {
-        userPrompt += `Pattern ${index + 1}:\n- Symptom: ${p.symptom}\n- Solution: ${p.solution}\n- Category: ${p.category}\n\n`;
-      });
+    // استخراج بيانات المخططات والأنماط المرجعية المضغوطة ودمجها فوراً
+    const expertContext = buildExpertPromptContext(prompt || '', specialty, deviceModel);
+    if (expertContext) {
+      userPrompt += `\n${expertContext}`;
     }
 
     // تسجيل رسالة المستخدم في ملف الـ JSON

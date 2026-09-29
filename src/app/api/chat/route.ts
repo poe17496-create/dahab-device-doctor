@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callAIEngine } from '@/lib/aiEngines';
-import { findRelevantPatterns } from '@/lib/expertKnowledge';
+import { buildExpertPromptContext } from '@/lib/expertKnowledge';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,15 +45,8 @@ export async function POST(req: NextRequest) {
       contextPrompt += '--- نهاية السجل السابق ---\n\n';
     }
 
-    // البحث في الأنماط الخبيرة للمساعد
-    const expertPatterns = findRelevantPatterns(message || '', 'mobile-repair');
-    let expertContext = '';
-    if (expertPatterns.length > 0) {
-      expertContext = '\n\n### بيانات مرجعية من قاعدة الخبرات:\n';
-      expertPatterns.forEach((p, index) => {
-        expertContext += `نمط ${index + 1}:\n- الأعراض: ${p.symptom}\n- الحل: ${p.solution}\n- الفئة: ${p.category}\n\n`;
-      });
-    }
+    // استخراج بيانات المخططات والبوردات وقاعدة الخبرات المضغوطة للمساعد
+    const expertContext = buildExpertPromptContext(message || '');
 
     // System prompt للمساعد الذكي
     const systemPrompt = `أنت كبير مهندسي وفنيي الإلكترونيات ومستشار الصيانة الذكي في منظومة "دهب دكتور" (Dahab Device Doctor).
