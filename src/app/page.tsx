@@ -96,8 +96,9 @@ export default function DahabFixAiConsole() {
 
   // معالجة دخول الزائر من AuthGate
   const handleGuestAccess = (remaining: number) => {
+    const guestId = `guest_${Date.now()}`;
     const guestUser: any = {
-      id: `guest_${Date.now()}`,
+      id: guestId,
       username: 'guest',
       name: `زائر (${remaining} تجربة متبقية اليوم)`,
       role: 'guest',
@@ -107,6 +108,16 @@ export default function DahabFixAiConsole() {
     localStorage.setItem('dahab_current_user', JSON.stringify(guestUser));
     setGuestTrialsRemaining(remaining);
     setCurrentUser(guestUser);
+
+    // تسجيل دخول الزائر في الخادم للوحة التحكم
+    const deviceInfo = typeof window !== 'undefined'
+      ? `${navigator.platform || 'PC'} - ${navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop'}`
+      : 'Web Client';
+    fetch('/api/guests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ guestId, action: 'enter', deviceInfo, remaining }),
+    }).catch(() => {});
   };
 
   // جلب الجلسات السابقة من ملفات JSON عند فتح المنظومة
@@ -126,6 +137,21 @@ export default function DahabFixAiConsole() {
     checkAuth();
     fetchSessions();
   }, []);
+
+  // نبض دوري لتأكيد نشاط الزائر الحالي في لوحة التحكم
+  useEffect(() => {
+    if (!currentUser?.isGuest || !currentUser?.id) return;
+    const sendGuestHeartbeat = () => {
+      fetch('/api/guests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ guestId: currentUser.id, action: 'heartbeat' }),
+      }).catch(() => {});
+    };
+    sendGuestHeartbeat();
+    const interval = setInterval(sendGuestHeartbeat, 45000);
+    return () => clearInterval(interval);
+  }, [currentUser]);
 
   // اختيار جلسة سابقة من الذاكرة واسترجاع كامل حالتها
   const handleSelectSession = (sessionId: string) => {
@@ -238,6 +264,13 @@ export default function DahabFixAiConsole() {
       const updatedGuest = { ...currentUser, name: `زائر (${remaining} تجربة متبقية اليوم)` };
       localStorage.setItem('dahab_current_user', JSON.stringify(updatedGuest));
       setCurrentUser(updatedGuest);
+
+      // إخطار السيرفر بخصم تجربة
+      fetch('/api/guests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ guestId: currentUser.id, action: 'diagnose', remaining }),
+      }).catch(() => {});
     }
 
     setLoading(true);

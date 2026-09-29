@@ -332,58 +332,68 @@ export default function AIKeysManager() {
               G
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h4 className="text-sm font-black text-gray-900 dark:text-gray-100">
-                  Google Gemini API Keys (الأولوية 1 - الموصى به)
+                  Google AI Studio & Gemini API Keys (الأولوية 1 - تدوير مفاتيح متعددة)
                 </h4>
                 <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                   مجاني وسريع جداً
                 </span>
+                {geminiKeys.split('\n').map((k) => k.trim()).filter(Boolean).length > 0 && (
+                  <span className="text-[10px] px-2.5 py-0.5 rounded-full font-bold bg-sky-500/15 text-sky-600 dark:text-sky-400 font-mono">
+                    🔑 تم رصد {geminiKeys.split('\n').map((k) => k.trim()).filter(Boolean).length} مفتاح (تدوير تلقائي)
+                  </span>
+                )}
               </div>
               <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                تدعم مفاتيح Google الرسمية (مثل <code className="font-mono text-dahab-600 dark:text-dahab-400">AQ.Ab...</code> أو <code className="font-mono text-dahab-600 dark:text-dahab-400">AIzaSy...</code>) مع أحدث موديلات 2026 فائقة السرعة.
+                تدعم مفاتيح <strong className="text-sky-600 dark:text-sky-400">Google AI Studio</strong> الرسمية (تبدأ بـ <code className="font-mono text-dahab-600 dark:text-dahab-400 font-bold">AIzaSy...</code>). يمكنك وضع عدة مفاتيح تحت بعضها في الأسطر وسيقوم النظام بالتبديل التلقائي بينهم (Auto-Rotation) عند امتلاء كوتة أي مفتاح لضمان العمل المستمر 24/7 دون توقف.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <a
               href="https://aistudio.google.com/app/apikey"
               target="_blank"
               rel="noreferrer"
-              className="text-[11px] text-dahab-600 dark:text-dahab-400 hover:underline flex items-center gap-1"
+              className="text-[11px] text-dahab-600 dark:text-dahab-400 hover:underline flex items-center gap-1 font-bold"
             >
-              <span>منصة Google AI Studio</span>
+              <span>الحصول على مفتاح من Google AI Studio</span>
               <ExternalLink className="w-3 h-3" />
             </a>
 
             <button
               onClick={() => handleTestKey('gemini')}
               disabled={geminiStatus.status === 'testing'}
-              className="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-[11px] font-bold text-gray-800 dark:text-gray-200 transition flex items-center gap-1"
+              className="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-[11px] font-bold text-gray-800 dark:text-gray-200 transition flex items-center gap-1 cursor-pointer"
             >
               {geminiStatus.status === 'testing' ? (
                 <>
                   <RotateCw className="w-3 h-3 animate-spin text-dahab-500" />
-                  <span>جاري الفحص...</span>
+                  <span>جاري فحص المفاتيح...</span>
                 </>
               ) : (
                 <>
                   <Play className="w-3 h-3 text-dahab-500" />
-                  <span>اختبار المفتاح</span>
+                  <span>اختبار المفاتيح حياً ⚡</span>
                 </>
               )}
             </button>
           </div>
         </div>
 
-        <textarea
-          value={geminiKeys}
-          onChange={(e) => setGeminiKeys(e.target.value)}
-          placeholder={`الصق مفاتيح Google هنا (مفتاح في كل سطر إذا كان لديك أكثر من مفتاح):\nAQ.Ab8RN6xxxxxxxxxxxxxxxxxxxx\nAIzaSyxxxxxxxxxxxxxxxxxxxxxxx`}
-          rows={3}
-          className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-mono text-gray-800 dark:text-gray-200 outline-none focus:border-dahab-500 transition resize-y"
-        />
+        <div className="space-y-1.5">
+          <label className="text-[11px] font-bold text-gray-700 dark:text-gray-300 block">
+            أدخل مفاتيح Google AI Studio (مفتاح واحد في كل سطر):
+          </label>
+          <textarea
+            value={geminiKeys}
+            onChange={(e) => setGeminiKeys(e.target.value)}
+            placeholder={`الصق مفاتيح Google AI Studio هنا (مفتاح في كل سطر):\nAIzaSyAbc123xxxxxxxxxxxxxxxxxxxxxxxx\nAIzaSyDef456xxxxxxxxxxxxxxxxxxxxxxxx\nAIzaSyGhi789xxxxxxxxxxxxxxxxxxxxxxxx`}
+            rows={4}
+            className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-mono text-gray-800 dark:text-gray-200 outline-none focus:border-dahab-500 transition resize-y leading-relaxed"
+          />
+        </div>
 
         {/* نتيجة فحص Gemini */}
         {geminiStatus.status !== 'idle' && (

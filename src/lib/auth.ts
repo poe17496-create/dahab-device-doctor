@@ -19,6 +19,7 @@ export interface UserAccount {
   deviceInfo?: string;
   expiresAt?: string; // تاريخ انتهاء الصلاحية أو فارغ لغير محدود
   subscriptionDays?: number;
+  price?: number;
 }
 
 const BASE_DIR = process.env.VERCEL ? '/tmp' : process.cwd();

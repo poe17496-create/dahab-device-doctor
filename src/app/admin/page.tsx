@@ -27,6 +27,15 @@ import {
   User,
   Upload,
   FileArchive,
+  Pencil,
+  Search,
+  Download,
+  Eye,
+  DollarSign,
+  Globe,
+  Check,
+  RefreshCw,
+  RotateCw,
 } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import { UserAccount } from '@/lib/auth';
@@ -39,7 +48,7 @@ export default function AdminDashboardPage() {
   const [authError, setAuthError] = useState('');
   const [checkingAuth, setCheckingAuth] = useState(true);
 
-  const [activeTab, setActiveTab] = useState<'technicians' | 'keys' | 'schematics'>('technicians');
+  const [activeTab, setActiveTab] = useState<'technicians' | 'guests' | 'keys' | 'schematics'>('technicians');
   const [users, setUsers] = useState<any[]>([]);
   const [sessionsCount, setSessionsCount] = useState(0);
   const [hwCount, setHwCount] = useState(0);
@@ -57,12 +66,36 @@ export default function AdminDashboardPage() {
   const [successMsg, setSuccessMsg] = useState('');
   const [addError, setAddError] = useState('');
 
-  // حالة المخططات
+  // إحصائيات الدخل والزوار
+  const [guestCount, setGuestCount] = useState(0);
+  const [userPrice, setUserPrice] = useState('50');
+
+  // سجل الزائرين المتقدم
+  const [guestsList, setGuestsList] = useState<any[]>([]);
+  const [activeGuestsCount, setActiveGuestsCount] = useState(0);
+  const [todayGuestsCount, setTodayGuestsCount] = useState(0);
+  const [totalGuestDiagnoses, setTotalGuestDiagnoses] = useState(0);
+
+  // حالة تعديل مستخدم
+  const [editingUser, setEditingUser] = useState<any>(null);
+  const [editName, setEditName] = useState('');
+  const [editSpecialty, setEditSpecialty] = useState('');
+  const [editPassword, setEditPassword] = useState('');
+  const [editPrice, setEditPrice] = useState('50');
+  const [editSubscriptionDays, setEditSubscriptionDays] = useState('30');
+  const [editError, setEditError] = useState('');
+
+  // حالة المخططات والبحث عبر الإنترنت
   const [schematics, setSchematics] = useState<any[]>([]);
   const [uploadingSchematic, setUploadingSchematic] = useState(false);
   const [schematicName, setSchematicName] = useState('');
   const [schematicDevice, setSchematicDevice] = useState('');
   const [schematicCategory, setSchematicCategory] = useState<'mobile' | 'laptop' | 'desktop' | 'other'>('mobile');
+
+  // البحث وسحب المخططات من الإنترنت
+  const [onlineQuery, setOnlineQuery] = useState('');
+  const [isSearchingOnline, setIsSearchingOnline] = useState(false);
+  const [onlineResults, setOnlineResults] = useState<any[]>([]);
 
   useEffect(() => {
     if (successMsg) {
@@ -82,6 +115,9 @@ export default function AdminDashboardPage() {
         }
       } catch (e) {}
     }
+    const today = new Date().toISOString().split('T')[0];
+    const used = parseInt(localStorage.getItem('dahab_guest_usage_' + today) || '0', 10);
+    setGuestCount(used);
     setCheckingAuth(false);
   }, []);
 
@@ -104,6 +140,19 @@ export default function AdminDashboardPage() {
         setHwCount(hw);
         setSwCount(sw);
       }
+
+      // جلب سجل الزائرين المباشر
+      try {
+        const guestsRes = await fetch('/api/guests');
+        if (guestsRes.ok) {
+          const guestsData = await guestsRes.json();
+          setGuestsList(guestsData.guests || []);
+          setActiveGuestsCount(guestsData.activeCount || 0);
+          setTodayGuestsCount(guestsData.todayCount || 0);
+          setTotalGuestDiagnoses(guestsData.totalDiagnoses || 0);
+          setGuestCount(guestsData.todayCount || 0);
+        }
+      } catch (err) {}
     } catch (e) {
       console.error(e);
     } finally {
@@ -207,7 +256,8 @@ export default function AdminDashboardPage() {
           role,
           specialty,
           password,
-          subscriptionDays: subscriptionDays === 'unlimited' ? undefined : Number(subscriptionDays),
+          subscriptionDays: subscriptionDays === 'unlimited' ? 'unlimited' : Number(subscriptionDays),
+          price: Number(userPrice) || 50,
         }),
       });
 
@@ -218,6 +268,7 @@ export default function AdminDashboardPage() {
         setUsername('');
         setSpecialty('');
         setSubscriptionDays('30');
+        setUserPrice('50');
         fetchData();
       } else {
         const data = await res.json().catch(() => ({}));
@@ -233,9 +284,105 @@ export default function AdminDashboardPage() {
     if (!confirm('هل تريد بالتأكيد حذف هذا المستخدم نهائياً؟')) return;
     try {
       await fetch(`/api/users?id=${id}`, { method: 'DELETE' });
+      setSuccessMsg('تم حذف الحساب بنجاح');
       fetchData();
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleEditUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEditError('');
+    try {
+      const res = await fetch('/api/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingUser.id,
+          action: 'updateUser',
+          name: editName,
+          specialty: editSpecialty,
+          password: editPassword,
+          price: Number(editPrice) || 0,
+          subscriptionDays: editSubscriptionDays === 'unlimited' ? 'unlimited' : Number(editSubscriptionDays),
+        }),
+      });
+      if (res.ok) {
+        setEditingUser(null);
+        setSuccessMsg('✅ تم تعديل بيانات الفني وفتح/تحديث الصلاحية بنجاح!');
+        fetchData();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setEditError(data.error || 'فشل في تعديل بيانات الفني.');
+      }
+    } catch (e) {
+      console.error(e);
+      setEditError('فشل في التعديل.');
+    }
+  };
+
+  // إدارة سجلات الزائرين
+  const handleDeleteGuest = async (id: string) => {
+    if (!confirm('هل تريد حذف سجل هذا الزائر؟')) return;
+    try {
+      await fetch(`/api/guests?id=${id}`, { method: 'DELETE' });
+      setSuccessMsg('تم حذف سجل الزائر');
+      fetchData();
+    } catch (e) {}
+  };
+
+  const handleClearAllGuests = async () => {
+    if (!confirm('هل تريد مسح سجل الزوار بالكامل؟')) return;
+    try {
+      await fetch(`/api/guests?all=true`, { method: 'DELETE' });
+      setSuccessMsg('تم مسح سجل الزوار بنجاح');
+      fetchData();
+    } catch (e) {}
+  };
+
+  // البحث وسحب المخططات من الإنترنت
+  const handleSearchOnlineSchematics = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!onlineQuery.trim()) return;
+    setIsSearchingOnline(true);
+    try {
+      const res = await fetch('/api/admin/schematics-search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: onlineQuery, category: schematicCategory }),
+      });
+      const data = await res.json();
+      setOnlineResults(data.results || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSearchingOnline(false);
+    }
+  };
+
+  const handlePullSchematic = (sch: any) => {
+    const existing = JSON.parse(localStorage.getItem('dahab_schematics') || '[]');
+    const newSch = {
+      id: `sch_pulled_${Date.now()}`,
+      name: sch.name,
+      device: sch.device,
+      category: sch.category,
+      fileName: sch.fileName,
+      fileSize: sch.fileSize,
+      source: sch.source,
+      keyICs: sch.keyICs,
+      extractedSummary: sch.extractedSummary,
+      uploadedAt: new Date().toISOString(),
+      isPulledFromWeb: true,
+    };
+    existing.unshift(newSch);
+    try {
+      localStorage.setItem('dahab_schematics', JSON.stringify(existing));
+      setSchematics(existing);
+      setSuccessMsg(`✅ تم سحب وإضافة المخطط "${sch.name}" للمنظومة بنجاح!`);
+    } catch (err) {
+      alert('تم إضافة المخطط إلى المنظومة.');
     }
   };
 
@@ -435,7 +582,7 @@ export default function AdminDashboardPage() {
         )}
 
         {/* أزرار التبديل بين التبويبات في لوحة التحكم */}
-        <div className="flex items-center gap-2 p-1.5 bg-gray-200/70 dark:bg-gray-900 rounded-2xl max-w-fit border border-gray-300/50 dark:border-gray-800">
+        <div className="flex flex-wrap items-center gap-2 p-1.5 bg-gray-200/70 dark:bg-gray-900 rounded-2xl max-w-fit border border-gray-300/50 dark:border-gray-800">
           <button
             onClick={() => setActiveTab('technicians')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition ${
@@ -446,6 +593,24 @@ export default function AdminDashboardPage() {
           >
             <Users className="w-4 h-4" />
             <span>إدارة المهندسين والاشتراكات ({users.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('guests')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition ${
+              activeTab === 'guests'
+                ? 'bg-white dark:bg-workshop-card text-dahab-600 dark:text-dahab-400 shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+            }`}
+          >
+            <Eye className="w-4 h-4 text-amber-500" />
+            <span>سجل الزائرين والتجارب ({guestsList.length})</span>
+            {activeGuestsCount > 0 && (
+              <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-500">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                {activeGuestsCount} متصل
+              </span>
+            )}
           </button>
 
           <button
@@ -476,10 +641,289 @@ export default function AdminDashboardPage() {
         {/* تبويب المفاتيح */}
         {activeTab === 'keys' && <AIKeysManager />}
 
+        {/* تبويب الزائرين والتجارب المجانية */}
+        {activeTab === 'guests' && (
+          <div className="space-y-5 animate-fadeIn">
+            {/* كروت إحصائيات الزائرين */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="p-4 rounded-2xl bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border shadow-lg space-y-1">
+                <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center justify-between">
+                  <span>الزائرون المتصلون الآن (Live)</span>
+                  <Radio className="w-4 h-4 text-emerald-500 animate-pulse" />
+                </div>
+                <div className="text-3xl font-black font-mono text-emerald-600 dark:text-emerald-400">
+                  {activeGuestsCount}
+                </div>
+                <div className="text-[10px] text-gray-400">زائر نشط حالياً يجرب المنظومة</div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border shadow-lg space-y-1">
+                <div className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center justify-between">
+                  <span>زوار اليوم الجدد</span>
+                  <Users className="w-4 h-4 text-amber-500" />
+                </div>
+                <div className="text-3xl font-black font-mono text-amber-600 dark:text-amber-400">
+                  {todayGuestsCount}
+                </div>
+                <div className="text-[10px] text-gray-400">زوار دخلوا بوضع التجربة اليوم</div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border shadow-lg space-y-1">
+                <div className="text-xs font-bold text-sky-600 dark:text-sky-400 flex items-center justify-between">
+                  <span>إجمالي فحوصات الزوار</span>
+                  <Activity className="w-4 h-4 text-sky-500" />
+                </div>
+                <div className="text-3xl font-black font-mono text-sky-600 dark:text-sky-400">
+                  {totalGuestDiagnoses}
+                </div>
+                <div className="text-[10px] text-gray-400">تشخيص أجراه الزوار بدون اشتراك</div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border shadow-lg space-y-1">
+                <div className="text-xs font-bold text-dahab-600 dark:text-dahab-400 flex items-center justify-between">
+                  <span>إجمالي الزوار المسجلين</span>
+                  <Eye className="w-4 h-4 text-dahab-500" />
+                </div>
+                <div className="text-3xl font-black font-mono text-dahab-600 dark:text-dahab-400">
+                  {guestsList.length}
+                </div>
+                <div className="text-[10px] text-gray-400">سجل زائر في قاعدة البيانات</div>
+              </div>
+            </div>
+
+            {/* جدول الزائرين المباشر */}
+            <div className="p-5 rounded-3xl bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border shadow-xl space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 dark:border-gray-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <Eye className="w-5 h-5 text-dahab-500" />
+                  <div>
+                    <h2 className="text-base font-black text-gray-900 dark:text-gray-100">
+                      مراقبة الزوار وتجارب الـ 5 محاولات المجانية (Live Guests Monitor)
+                    </h2>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                      يتم حفظ ومتابعة كل زائر يجرب المنظومة مع عدد الفحوصات المستهلكة وحالة اتصاله الحية
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={fetchData}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-xs font-bold transition"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>تحديث</span>
+                  </button>
+                  {guestsList.length > 0 && (
+                    <button
+                      onClick={handleClearAllGuests}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold transition"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>مسح السجل</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {guestsList.length === 0 ? (
+                <div className="text-center py-10 text-gray-400 space-y-2">
+                  <Eye className="w-12 h-12 mx-auto opacity-30" />
+                  <p className="text-sm font-bold">لا يوجد زوار مسجلون حالياً</p>
+                  <p className="text-xs">عندما يضغط أي شخص على &quot;دخول كزائر&quot; سيظهر نشاطه هنا مباشرة</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-right text-xs">
+                    <thead className="bg-gray-100 dark:bg-gray-900/80 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-200 dark:border-gray-800">
+                      <tr>
+                        <th className="p-3">معرف الزائر</th>
+                        <th className="p-3">حالة الاتصال (Live)</th>
+                        <th className="p-3">الجهاز والمتصفح</th>
+                        <th className="p-3">الفحوصات المستهلكة</th>
+                        <th className="p-3">المحاولات المتبقية اليوم</th>
+                        <th className="p-3">وقت الدخول</th>
+                        <th className="p-3">آخر نشاط</th>
+                        <th className="p-3 text-center">إجراءات</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                      {guestsList.map((g) => (
+                        <tr key={g.id} className="hover:bg-gray-50 dark:hover:bg-gray-850/50 transition">
+                          <td className="p-3 font-mono font-bold text-gray-900 dark:text-gray-100">
+                            {g.id}
+                          </td>
+                          <td className="p-3">
+                            {g.isOnline ? (
+                              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-[10px] border border-emerald-500/20 max-w-fit">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                <span>متصل الآن</span>
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                                <Laptop className="w-3 h-3" />
+                                <span>غير متصل</span>
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-3 text-gray-600 dark:text-gray-300">
+                            {g.deviceInfo || 'متصفح ويب'}
+                          </td>
+                          <td className="p-3 font-mono font-bold text-dahab-600 dark:text-dahab-400">
+                            {g.diagnosesCount || 0} فحص
+                          </td>
+                          <td className="p-3">
+                            <span className={`font-bold px-2 py-0.5 rounded-full text-[10px] ${
+                              (g.remainingTrials ?? 5) > 0
+                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                                : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
+                            }`}>
+                              متبقي {g.remainingTrials ?? 5} من 5
+                            </span>
+                          </td>
+                          <td className="p-3 text-gray-500 font-mono text-[11px]">
+                            {new Date(g.createdAt).toLocaleTimeString('ar-EG')} - {new Date(g.createdAt).toLocaleDateString('ar-EG')}
+                          </td>
+                          <td className="p-3 text-gray-500 font-mono text-[11px]">
+                            {new Date(g.lastSeenAt).toLocaleTimeString('ar-EG')}
+                          </td>
+                          <td className="p-3 text-center">
+                            <button
+                              onClick={() => handleDeleteGuest(g.id)}
+                              className="p-1.5 text-gray-400 hover:text-rose-500 rounded-lg transition"
+                              title="حذف هذا السجل"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* تبويب المخططات */}
         {activeTab === 'schematics' && (
           <div className="space-y-5">
-            {/* رفع مخطط جديد */}
+            {/* أداة البحث وسحب المخططات من الإنترنت */}
+            <div className="p-5 rounded-3xl bg-gradient-to-br from-amber-500/10 via-white dark:via-workshop-card to-dahab-500/5 border border-dahab-500/40 shadow-xl space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-dahab-500/20 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-dahab-500/20 text-dahab-500 flex items-center justify-center font-bold">
+                    <Globe className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-black text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                      <span>محرك البحث وسحب المخططات من الإنترنت 🌐</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-dahab-500/20 text-dahab-600 dark:text-dahab-400">
+                        سحب فوري (Auto-Pull)
+                      </span>
+                    </h2>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                      ابحث بالاسم أو رقم البوردة (مثلاً: iPhone 14 Pro Max, MacBook A2338, NM-C921, RTX 4090) وسيتم سحب المخطط وحفظه بالمنظومة فوراً
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <form onSubmit={handleSearchOnlineSchematics} className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-gray-400 absolute right-3.5 top-3.5" />
+                  <input
+                    type="text"
+                    value={onlineQuery}
+                    onChange={(e) => setOnlineQuery(e.target.value)}
+                    placeholder="اكتب اسم الجهاز أو رقم البوردة للبحث وسحب مخططه (مثلاً: iPhone 13 Pro Max أو Dell LA-J191P)..."
+                    className="w-full pr-10 pl-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-xs outline-none focus:border-dahab-500 font-sans"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSearchingOnline || !onlineQuery.trim()}
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-dahab-500 to-amber-600 hover:from-dahab-600 hover:to-amber-700 text-slate-950 font-black text-xs transition shadow-md shadow-dahab-500/20 disabled:opacity-50 flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+                >
+                  {isSearchingOnline ? (
+                    <>
+                      <RotateCw className="w-4 h-4 animate-spin" />
+                      <span>جاري البحث في المستودعات...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Globe className="w-4 h-4" />
+                      <span>بحث وسحب المخططات 🔍</span>
+                    </>
+                  )}
+                </button>
+              </form>
+
+              {/* نتائج البحث المباشرة مع زر السحب */}
+              {onlineResults.length > 0 && (
+                <div className="space-y-3 pt-2">
+                  <div className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                    <CheckCircle className="w-4 h-4 text-emerald-500" />
+                    <span>تم العثور على {onlineResults.length} مخطط متاح للسحب:</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {onlineResults.map((sch) => (
+                      <div
+                        key={sch.id}
+                        className="p-3.5 rounded-2xl bg-white dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 space-y-2.5 shadow-sm hover:border-dahab-500/50 transition"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <h4 className="font-bold text-xs text-gray-900 dark:text-gray-100">{sch.name}</h4>
+                            <p className="text-[10px] text-gray-400 font-mono mt-0.5">
+                              {sch.fileName} • {sch.fileSize} • {sch.format}
+                            </p>
+                          </div>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
+                            {sch.source}
+                          </span>
+                        </div>
+
+                        {sch.keyICs && sch.keyICs.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {sch.keyICs.map((ic: string, i: number) => (
+                              <span key={i} className="text-[9px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-mono">
+                                {ic}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed">
+                          {sch.description || sch.extractedSummary}
+                        </p>
+
+                        <div className="pt-1 flex items-center justify-between">
+                          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                            <Check className="w-3 h-3" />
+                            <span>جاهز للدمج بالذكاء الاصطناعي</span>
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={() => handlePullSchematic(sch)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-dahab-500 hover:bg-dahab-600 text-slate-950 font-bold text-xs transition shadow-sm cursor-pointer"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            <span>سحب وإضافة للمنظومة 📥</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* رفع مخطط جديد يدوي */}
             <div className="p-5 rounded-3xl bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border shadow-xl space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 dark:border-gray-800 pb-3">
                 <div className="flex items-center gap-2">
@@ -700,6 +1144,28 @@ export default function AdminDashboardPage() {
                 </div>
                 <div className="text-[10px] text-gray-400">فني ومهندس مصرح لهم</div>
               </div>
+
+              <div className="p-4 rounded-2xl bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border shadow-lg space-y-1">
+                <div className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center justify-between">
+                  <span>زائرون اليوم</span>
+                  <Users className="w-4 h-4 text-amber-500" />
+                </div>
+                <div className="text-3xl font-black font-mono text-amber-600 dark:text-amber-400">
+                  {guestCount}
+                </div>
+                <div className="text-[10px] text-gray-400">فحص كزائر (بدون حساب)</div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border shadow-lg space-y-1">
+                <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center justify-between">
+                  <span>الدخل الشهري المقدر</span>
+                  <DollarSign className="w-4 h-4 text-emerald-500" />
+                </div>
+                <div className="text-3xl font-black font-mono text-emerald-600 dark:text-emerald-400">
+                  {users.filter(u => u.role !== 'admin' && u.active).reduce((sum, u) => sum + (Number(u.price) || 50), 0)} ج.م
+                </div>
+                <div className="text-[10px] text-gray-400">إجمالي دخل اشتراكات الفنيين النشطين شهرياً</div>
+              </div>
             </div>
 
             {/* قسم إدارة المستخدمين والفنيين */}
@@ -738,6 +1204,7 @@ export default function AdminDashboardPage() {
                       <th className="p-3">اسم الدخول</th>
                       <th className="p-3">حالة الاتصال (Live)</th>
                       <th className="p-3">صلاحية الاشتراك</th>
+                      <th className="p-3 text-center">سعر الاشتراك</th>
                       <th className="p-3">التخصص</th>
                       <th className="p-3">الحالة</th>
                       <th className="p-3 text-center">تمديد الاشتراك / إدارة الجلسة</th>
@@ -806,6 +1273,10 @@ export default function AdminDashboardPage() {
                             )}
                           </td>
 
+                          <td className="p-3 text-center font-mono font-bold text-dahab-600 dark:text-dahab-400">
+                            {u.role === 'admin' ? 'مجاني' : `${u.price || 50} ج.م`}
+                          </td>
+
                           <td className="p-3 text-gray-600 dark:text-gray-400 max-w-xs truncate">
                             {u.specialty || 'صيانة عامة'}
                           </td>
@@ -864,15 +1335,33 @@ export default function AdminDashboardPage() {
                                 </button>
                               )}
 
-                              {/* زر الحذف */}
+                              {/* أزرار التعديل والحذف */}
                               {u.username !== 'dahab' && (
-                                <button
-                                  onClick={() => handleDeleteUser(u.id)}
-                                  className="p-1 text-gray-400 hover:text-rose-500 rounded-lg transition"
-                                  title="حذف الحساب نهائياً"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
+                                <>
+                                  <button
+                                    onClick={() => {
+                                      setEditingUser(u);
+                                      setEditName(u.name);
+                                      setEditSpecialty(u.specialty || '');
+                                      setEditPassword('');
+                                      setEditPrice(String(u.price || 50));
+                                      setEditSubscriptionDays(u.expiresAt ? '30' : 'unlimited');
+                                    }}
+                                    className="flex items-center gap-1 px-2.5 py-1 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 bg-amber-500/10 rounded-lg transition font-bold text-[11px]"
+                                    title="تعديل بيانات الحساب وفتح المدة أو تحديد الأيام"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                    <span>تعديل</span>
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteUser(u.id)}
+                                    className="flex items-center gap-1 px-2 py-1 text-rose-500 hover:bg-rose-500/20 bg-rose-500/10 rounded-lg transition font-bold text-[11px]"
+                                    title="حذف الحساب نهائياً"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <span>حذف</span>
+                                  </button>
+                                </>
                               )}
                             </div>
                           </td>
@@ -957,6 +1446,19 @@ export default function AdminDashboardPage() {
 
                 <div>
                   <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">
+                    السعر الشهري (جنيه):
+                  </label>
+                  <input
+                    type="number"
+                    value={userPrice}
+                    onChange={(e) => setUserPrice(e.target.value)}
+                    placeholder="50"
+                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-xs outline-none focus:border-dahab-500 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">
                     كلمة المرور الحصرية:
                   </label>
                   <input
@@ -990,6 +1492,113 @@ export default function AdminDashboardPage() {
                     className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-dahab-500 to-amber-600 hover:from-dahab-600 hover:to-amber-700 text-slate-950 font-black text-xs transition shadow-md shadow-dahab-500/25"
                   >
                     إصدار وتفعيل الحساب فوراً 🚀
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* مودال تعديل حساب فني */}
+        {editingUser && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+            <div className="bg-white dark:bg-workshop-card border border-gray-200 dark:border-dahab-500/40 rounded-3xl w-full max-w-lg p-6 shadow-2xl space-y-4">
+              <h3 className="font-black text-base text-gray-900 dark:text-gray-100 border-b border-gray-100 dark:border-gray-800 pb-2">
+                تعديل بيانات الفني ({editingUser.username})
+              </h3>
+
+              <form onSubmit={handleEditUser} className="space-y-3">
+                <div>
+                  <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">
+                    الاسم بالكامل:
+                  </label>
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-xs outline-none focus:border-dahab-500"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">
+                      التخصص الفني:
+                    </label>
+                    <input
+                      type="text"
+                      value={editSpecialty}
+                      onChange={(e) => setEditSpecialty(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-xs outline-none focus:border-dahab-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">
+                      السعر الشهري (ج.م):
+                    </label>
+                    <input
+                      type="number"
+                      value={editPrice}
+                      onChange={(e) => setEditPrice(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-xs outline-none focus:border-dahab-500 font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">
+                      صلاحية الحساب / فتح المدة:
+                    </label>
+                    <select
+                      value={editSubscriptionDays}
+                      onChange={(e) => setEditSubscriptionDays(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-xs outline-none focus:border-dahab-500 font-bold"
+                    >
+                      <option value="unlimited">∞ فتح المدة (دائم ومفتوح مدى الحياة)</option>
+                      <option value="30">شهر واحد (30 يوم)</option>
+                      <option value="90">3 أشهر (90 يوم)</option>
+                      <option value="180">6 أشهر (نصف سنة)</option>
+                      <option value="365">سنة كاملة (365 يوم)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">
+                    تغيير كلمة المرور (اتركه فارغاً لعدم التغيير):
+                  </label>
+                  <input
+                    type="password"
+                    value={editPassword}
+                    onChange={(e) => setEditPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-xs outline-none focus:border-dahab-500 font-mono"
+                  />
+                </div>
+
+                {editError && (
+                  <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-300 text-xs">
+                    {editError}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-gray-800">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingUser(null);
+                      setEditError('');
+                    }}
+                    className="px-4 py-2 rounded-xl text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-dahab-500 to-amber-600 hover:from-dahab-600 hover:to-amber-700 text-slate-950 font-black text-xs transition shadow-md shadow-dahab-500/25"
+                  >
+                    حفظ التعديلات 💾
                   </button>
                 </div>
               </form>
