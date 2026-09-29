@@ -174,9 +174,18 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* فوتر بسيط */}
-      <div className="text-center text-xs text-gray-400 pt-4">
-        منظومة Dahab Device Doctor © 2026 - تطوير المهندس إسلام دهب
+      {/* فوتر بسيط مع روابط الشروط والخصوصية */}
+      <div className="text-center text-xs text-gray-400 pt-4 space-y-1">
+        <div>منظومة Dahab Device Doctor © 2026 - تطوير المهندس إسلام دهب</div>
+        <div className="flex items-center justify-center gap-3">
+          <a href="/terms" target="_blank" rel="noopener noreferrer" className="hover:text-dahab-500 transition underline underline-offset-2">
+            شروط الاستخدام
+          </a>
+          <span className="text-gray-300">|</span>
+          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-dahab-500 transition underline underline-offset-2">
+            سياسة الخصوصية
+          </a>
+        </div>
       </div>
     </main>
   );

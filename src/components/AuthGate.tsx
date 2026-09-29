@@ -298,6 +298,15 @@ export default function AuthGate({ onAuthenticated, onGuestAccess }: AuthGatePro
           </a>
         </div>
         <div className="text-slate-500">© 2026 دهب سوفت وير</div>
+        <div className="flex items-center gap-2 text-slate-400">
+          <a href="/terms" target="_blank" rel="noopener noreferrer" className="hover:text-dahab-400 transition underline underline-offset-2">
+            شروط الاستخدام
+          </a>
+          <span>•</span>
+          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-dahab-400 transition underline underline-offset-2">
+            سياسة الخصوصية
+          </a>
+        </div>
       </footer>
     </div>
   );

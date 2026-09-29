@@ -122,10 +122,33 @@ export default function NavigationSidebar({ activeTab, onTabChange, isOpen, onCl
           </nav>
 
           {/* Sidebar Footer */}
-          <div className="p-4 border-t border-gray-200 dark:border-[#1F2937]">
+          <div className="p-4 border-t border-gray-200 dark:border-[#1F2937] space-y-3">
+            {/* روابط الشروط والخصوصية */}
+            <div className="flex items-center justify-center gap-3 text-[11px]">
+              <a
+                href="/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-gray-500 dark:text-gray-400 hover:text-dahab-600 dark:hover:text-dahab-400 transition font-medium"
+              >
+                <Lock className="w-3 h-3" />
+                <span>شروط الاستخدام</span>
+              </a>
+              <span className="text-gray-300 dark:text-gray-700">|</span>
+              <a
+                href="/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-gray-500 dark:text-gray-400 hover:text-dahab-600 dark:hover:text-dahab-400 transition font-medium"
+              >
+                <Lock className="w-3 h-3" />
+                <span>سياسة الخصوصية</span>
+              </a>
+            </div>
+
             <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
               <p>© 2026 دهب دكتور</p>
-              <p className="mt-1">الأول في الشرق الأوسط 🏆</p>
+              <p className="mt-0.5">الأول في الشرق الأوسط 🏆</p>
             </div>
           </div>
         </div>

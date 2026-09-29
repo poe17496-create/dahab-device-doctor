@@ -604,6 +604,22 @@ export default function DahabFixAiConsole() {
           </div>
         </div>
       </div>
+      {/* فوتر ثابت أسفل الصفحة يحتوي روابط الشروط والخصوصية - يظهر فقط في وضع الديسكتوب */}
+      <div className="hidden lg:flex items-center justify-center gap-6 py-2 border-t border-gray-200 dark:border-[#1F2937] bg-white/80 dark:bg-[#0B0F17]/80 backdrop-blur-sm text-[11px] text-gray-400 dark:text-gray-500 shrink-0">
+        <span>© 2026 منظومة دهب دكتور الهندسية — <strong className="text-dahab-500">dahabsoftware.site</strong></span>
+        <span className="text-gray-300 dark:text-gray-700">•</span>
+        <a href="/terms" target="_blank" rel="noopener noreferrer" className="hover:text-dahab-500 transition font-medium underline underline-offset-2">
+          شروط الاستخدام
+        </a>
+        <span className="text-gray-300 dark:text-gray-700">•</span>
+        <a href="/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-dahab-500 transition font-medium underline underline-offset-2">
+          سياسة الخصوصية
+        </a>
+        <span className="text-gray-300 dark:text-gray-700">•</span>
+        <a href="https://wa.me/201064147224" target="_blank" rel="noopener noreferrer" className="hover:text-emerald-500 transition font-medium">
+          💬 دعم فني
+        </a>
+      </div>
 
       {/* شريط التنقل السفلي للموبايل فقط (يختفي عند تفعيل وضع الديسكتوب) */}
       {!isDesktopMode && (
