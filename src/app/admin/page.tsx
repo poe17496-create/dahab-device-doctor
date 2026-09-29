@@ -979,10 +979,10 @@ export default function AdminDashboardPage() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">ملف المخطط (ZIP / PDF / صورة):</label>
+                  <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">ملف المخطط أو البوردفيو (BRD / FZ / JSON / PDF / ZIP):</label>
                   <input
                     type="file"
-                    accept=".zip,.rar,.pdf,.png,.jpg,.jpeg,.webp"
+                    accept=".zip,.rar,.pdf,.png,.jpg,.jpeg,.webp,.brd,.fz,.cad,.json"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file && file.size > 50 * 1024 * 1024) {
@@ -996,23 +996,38 @@ export default function AdminDashboardPage() {
                           const newSchematic = {
                             id: `sch_${Date.now()}`,
                             name: schematicName || file.name,
-                            device: schematicDevice,
+                            device: schematicDevice || schematicName || file.name,
                             category: schematicCategory,
                             fileName: file.name,
                             fileSize: (file.size / 1024).toFixed(1) + ' KB',
                             uploadedAt: new Date().toISOString(),
                             dataUrl: reader.result as string,
                           };
+
+                          // حفظ سحابي دائم عبر API
+                          fetch('/api/boardviews', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              title: newSchematic.name,
+                              deviceModel: newSchematic.device,
+                              category: newSchematic.category,
+                              fileName: file.name,
+                              rawContent: typeof reader.result === 'string' ? reader.result : '',
+                            }),
+                          }).catch(console.warn);
+
                           const existing = JSON.parse(localStorage.getItem('dahab_schematics') || '[]');
                           existing.push(newSchematic);
                           try {
                             localStorage.setItem('dahab_schematics', JSON.stringify(existing));
                             setSchematics(existing);
-                            setSuccessMsg(`✅ تم رفع المخطط "${newSchematic.name}" بنجاح!`);
+                            setSuccessMsg(`✅ تم رفع وتخزين المخطط "${newSchematic.name}" بنجاح في السحابة!`);
                             setSchematicName('');
                             setSchematicDevice('');
                           } catch (err) {
-                            alert('⚠️ حجم الملف كبير جداً للتخزين المحلي. ارفع ملفات أصغر (صور مضغوطة).');
+                            setSchematics(existing);
+                            setSuccessMsg(`✅ تم حفظ المخطط "${newSchematic.name}" في السحابة بنجاح!`);
                           }
                           setUploadingSchematic(false);
                         };

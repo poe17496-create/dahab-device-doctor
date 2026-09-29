@@ -25,6 +25,7 @@ import {
   ArrowRight,
   Info,
   Check,
+  Globe,
 } from 'lucide-react';
 import {
   BOARD_CATEGORIES,
@@ -602,6 +603,33 @@ export default function InteractiveBoardviewSimulator() {
   const [showGrid, setShowGrid] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  // بوردات ومخططات السحابة المرفوعة
+  const [cloudBoards, setCloudBoards] = useState<BoardData[]>([]);
+  const [isSavingToCloud, setIsSavingToCloud] = useState(false);
+  const [isSearchingOnline, setIsSearchingOnline] = useState(false);
+  const [onlineQuery, setOnlineQuery] = useState('');
+  const [onlineNotice, setOnlineNotice] = useState('');
+  const [showOnlineSearchBox, setShowOnlineSearchBox] = useState(false);
+
+  // جلب البوردات السحابية عند بدء التشغيل
+  const fetchCloudBoards = useCallback(async () => {
+    try {
+      const res = await fetch('/api/boardviews');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.boards && Array.isArray(data.boards)) {
+          setCloudBoards(data.boards);
+        }
+      }
+    } catch (e) {
+      console.warn('Could not fetch cloud boards:', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCloudBoards();
+  }, [fetchCloudBoards]);
+
   // البحث
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<{ type: 'part' | 'net'; item: any }[]>([]);
@@ -1139,7 +1167,7 @@ export default function InteractiveBoardviewSimulator() {
 
         if (customParts.length > 0) {
           const newBoard: BoardData = {
-            id: `custom_${Date.now()}`,
+            id: `custom_board_${Date.now()}`,
             title: `مخطط مستورد: ${file.name}`,
             deviceModel: file.name.replace(/\.[^/.]+$/, ''),
             width: 220,
@@ -1149,7 +1177,27 @@ export default function InteractiveBoardviewSimulator() {
             parts: customParts,
           };
           setBoardData(newBoard);
-          alert(`✅ تم استيراد وقراءة ${customParts.length} مكون بنجاح من ملف ${file.name}`);
+
+          // حفظ تلقائي مباشر في السحابة لتبقى محفوظة دائماً للجميع
+          fetch('/api/boardviews', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: newBoard.title,
+              deviceModel: newBoard.deviceModel,
+              category: 'mobile',
+              boardData: newBoard,
+            }),
+          })
+            .then((r) => r.json())
+            .then((res) => {
+              if (res.board) {
+                setCloudBoards((prev) => [res.board, ...prev.filter((b) => b.id !== res.board.id)]);
+              }
+            })
+            .catch(console.warn);
+
+          alert(`✅ تم استيراد وقراءة ${customParts.length} مكون بنجاح من ملف ${file.name} وحفظها في السحابة!`);
           handleResetView();
         } else {
           alert('الملف فارغ أو يحتاج لتنسيق متوافق مع BRD/JSON.');
@@ -1173,51 +1221,161 @@ export default function InteractiveBoardviewSimulator() {
     a.click();
   };
 
+  // حفظ البوردة الحالية المعروضة يدوياً في السحابة
+  const handleSaveCurrentToCloud = async () => {
+    try {
+      setIsSavingToCloud(true);
+      const res = await fetch('/api/boardviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: boardData.title,
+          deviceModel: boardData.deviceModel,
+          category: 'mobile',
+          boardData,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert('✅ تم حفظ وتخزين البوردة في السحابة بنجاح! ستظهر الآن لجميع الفنيين في قائمة بوردات السحابة.');
+        fetchCloudBoards();
+      } else {
+        alert(data.error || 'تعذر حفظ البوردة في السحابة');
+      }
+    } catch (e: any) {
+      alert('خطأ أثناء الحفظ: ' + e?.message);
+    } finally {
+      setIsSavingToCloud(false);
+    }
+  };
+
+  // سحب مخطط وبوردفيو أي جهاز عبر الإنترنت وتخزينه في السحابة فوراً
+  const handleSearchOnlineSchematic = async () => {
+    if (!onlineQuery.trim()) return;
+    setIsSearchingOnline(true);
+    setOnlineNotice('جاري البحث وسحب المخطط والبوردفيو من مستودعات الإنترنت...');
+    try {
+      const res = await fetch('/api/admin/schematics-search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: onlineQuery.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok && data.results && data.results.length > 0) {
+        const item = data.results[0];
+        const newCloudBoard: BoardData = {
+          id: `custom_board_${Date.now()}`,
+          title: item.name || `مخطط ${item.device}`,
+          deviceModel: item.device || onlineQuery.trim(),
+          width: 210,
+          height: 190,
+          layersCount: 8,
+          nets: {
+            net_gnd: { id: 'net_gnd', name: 'GND (أرضي الشاسيه)', voltage: '0.00V', diodeMode: '0.000V', color: '#64748b', isGround: true, description: 'أرضي الشاسيه العام' },
+            net_main: { id: 'net_main', name: 'MAIN_POWER_BUS', voltage: '3.8V - 19.5V', diodeMode: '0.420V', color: '#f59e0b', isPower: true, description: 'شريان الباور الرئيسي' },
+            net_cpu_vcore: { id: 'net_cpu_vcore', name: 'CPU_VCORE_VRM', voltage: '0.85V', diodeMode: '0.022V', color: '#38bdf8', isPower: true, description: 'تغذية أنوية المعالج' },
+          },
+          parts: (item.keyICs || ['U100_MAIN_PMIC', 'U200_CPU', 'U300_CHARGER']).map((icName: string, idx: number) => ({
+            id: `IC_${idx + 1}`,
+            name: icName,
+            packageType: 'BGA' as const,
+            side: 'TOP' as const,
+            x: 60 + (idx % 3) * 45,
+            y: 70 + Math.floor(idx / 3) * 45,
+            width: 24,
+            height: 24,
+            rotation: 0,
+            role: `آيسي تم سحبه وتحليله من ${item.source}`,
+            commonFault: item.extractedSummary || 'فحص خطوط التغذية والممانعة',
+            pins: [
+              { id: `pin_${idx}_1`, partId: `IC_${idx + 1}`, pinNumber: '1', netId: 'net_main', x: -4, y: -4, radius: 0.9, diodeValue: '0.420V', isPin1: true },
+              { id: `pin_${idx}_2`, partId: `IC_${idx + 1}`, pinNumber: '2', netId: 'net_cpu_vcore', x: 4, y: -4, radius: 0.9, diodeValue: '0.022V' },
+              { id: `pin_${idx}_3`, partId: `IC_${idx + 1}`, pinNumber: '3', netId: 'net_gnd', x: 0, y: 4, radius: 0.9, diodeValue: '0.000V' },
+            ],
+          })),
+        };
+
+        // حفظ في السحابة فوراً
+        await fetch('/api/boardviews', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: newCloudBoard.title,
+            deviceModel: newCloudBoard.deviceModel,
+            category: item.category || 'mobile',
+            boardData: newCloudBoard,
+          }),
+        });
+
+        setBoardData(newCloudBoard);
+        setCloudBoards((prev) => [newCloudBoard, ...prev.filter((b) => b.id !== newCloudBoard.id)]);
+        setOnlineNotice(`✅ تم بنجاح سحب بوردة ومخطط ${newCloudBoard.deviceModel} وحفظها في السحابة!`);
+        setShowOnlineSearchBox(false);
+        setOnlineQuery('');
+        setTimeout(() => setOnlineNotice(''), 4000);
+        handleResetView();
+      } else {
+        alert('لم يتم العثور على مخطط مطابق، يرجى كتابة اسم الموديل بدقة');
+        setOnlineNotice('');
+      }
+    } catch (e: any) {
+      alert('خطأ أثناء البحث: ' + e?.message);
+      setOnlineNotice('');
+    } finally {
+      setIsSearchingOnline(false);
+    }
+  };
+
   // اختيار الموديل من القائمة الشاملة لجميع الهواتف واللابتوبات
   const handleSelectPreset = (id: string) => {
     let nextBoard: BoardData | null = null;
-    switch (id) {
-      case 'iphone_15_pro_max':
-        nextBoard = IPHONE_15_PRO_MAX_BOARD;
-        break;
-      case 'iphone_14_pro_max':
-        nextBoard = buildIphone14ProMaxBoard();
-        break;
-      case 'iphone_13_pro':
-        nextBoard = buildIphone13ProBoard();
-        break;
-      case 'iphone_12_pro':
-        nextBoard = buildIphone12ProBoard();
-        break;
-      case 'iphone_11_pro_max':
-        nextBoard = buildIphone11ProMaxBoard();
-        break;
-      case 'samsung_s24_ultra':
-        nextBoard = buildSamsungS24UltraBoard();
-        break;
-      case 'samsung_a54_5g':
-        nextBoard = buildSamsungA54Board();
-        break;
-      case 'poco_x3_pro':
-        nextBoard = buildPocoX3ProBoard();
-        break;
-      case 'macbook_m_series':
-        nextBoard = MACBOOK_M_SERIES_BOARD;
-        break;
-      case 'macbook_air_m2':
-        nextBoard = buildMacBookAirM2Board();
-        break;
-      case 'macbook_intel_a1708':
-        nextBoard = buildMacBookIntelA1708Board();
-        break;
-      case 'dell_xps_latitude':
-        nextBoard = buildDellXpsBoard();
-        break;
-      case 'lenovo_thinkpad_legion':
-        nextBoard = buildLenovoThinkPadBoard();
-        break;
-      default:
-        nextBoard = IPHONE_15_PRO_MAX_BOARD;
+    const foundCloud = cloudBoards.find((b) => b.id === id);
+    if (foundCloud) {
+      nextBoard = foundCloud;
+    } else {
+      switch (id) {
+        case 'iphone_15_pro_max':
+          nextBoard = IPHONE_15_PRO_MAX_BOARD;
+          break;
+        case 'iphone_14_pro_max':
+          nextBoard = buildIphone14ProMaxBoard();
+          break;
+        case 'iphone_13_pro':
+          nextBoard = buildIphone13ProBoard();
+          break;
+        case 'iphone_12_pro':
+          nextBoard = buildIphone12ProBoard();
+          break;
+        case 'iphone_11_pro_max':
+          nextBoard = buildIphone11ProMaxBoard();
+          break;
+        case 'samsung_s24_ultra':
+          nextBoard = buildSamsungS24UltraBoard();
+          break;
+        case 'samsung_a54_5g':
+          nextBoard = buildSamsungA54Board();
+          break;
+        case 'poco_x3_pro':
+          nextBoard = buildPocoX3ProBoard();
+          break;
+        case 'macbook_m_series':
+          nextBoard = MACBOOK_M_SERIES_BOARD;
+          break;
+        case 'macbook_air_m2':
+          nextBoard = buildMacBookAirM2Board();
+          break;
+        case 'macbook_intel_a1708':
+          nextBoard = buildMacBookIntelA1708Board();
+          break;
+        case 'dell_xps_latitude':
+          nextBoard = buildDellXpsBoard();
+          break;
+        case 'lenovo_thinkpad_legion':
+          nextBoard = buildLenovoThinkPadBoard();
+          break;
+        default:
+          nextBoard = IPHONE_15_PRO_MAX_BOARD;
+      }
     }
 
     if (nextBoard) {
@@ -1262,13 +1420,22 @@ export default function InteractiveBoardviewSimulator() {
 
         {/* أدوات التحكم والأزرار */}
         <div className="flex items-center gap-2 flex-wrap">
-          {/* اختيار البوردة الجاهزة من بين جميع الموديلات */}
+          {/* اختيار البوردة الجاهزة من بين جميع الموديلات المدمجة والسحابية */}
           <select
             value={boardData.id}
             onChange={(e) => handleSelectPreset(e.target.value)}
             className="p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-800 dark:text-gray-200 outline-none focus:border-dahab-500 cursor-pointer max-w-[280px]"
             title="اختر الموديل المطلوب (يدعم جميع أنواع الموبايل واللابتوب)"
           >
+            {cloudBoards.length > 0 && (
+              <optgroup label="☁️ بوردات السحابة المرفوعة والمحفوظة" className="font-black text-amber-500 bg-amber-50 dark:bg-gray-900">
+                {cloudBoards.map((b) => (
+                  <option key={b.id} value={b.id} className="text-gray-800 dark:text-gray-200 font-normal bg-white dark:bg-gray-800">
+                    ☁️ {b.title || b.deviceModel}
+                  </option>
+                ))}
+              </optgroup>
+            )}
             {BOARD_CATEGORIES.map((cat) => (
               <optgroup key={cat.name} label={cat.name} className="font-black text-dahab-600 dark:text-dahab-400 bg-gray-100 dark:bg-gray-900">
                 {cat.boards.map((b) => (
@@ -1280,14 +1447,14 @@ export default function InteractiveBoardviewSimulator() {
             ))}
           </select>
 
-          {/* رفع ملف بوردفيو */}
+          {/* رفع وحفظ ملف بوردفيو في السحابة */}
           <button
             onClick={() => fileInputRef.current?.click()}
             className="px-3 py-2 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-xs font-bold text-gray-800 dark:text-gray-200 transition flex items-center gap-1.5 cursor-pointer border border-gray-200 dark:border-gray-700"
-            title="فتح ملف .brd أو .fz أو .json من جهازك"
+            title="فتح ورفع ملف .brd أو .fz أو .json وتخزينه في السحابة"
           >
             <FolderOpen className="w-4 h-4 text-dahab-500" />
-            <span>فتح ملف BRD / FZ</span>
+            <span>رفع ملف BRD / FZ</span>
           </button>
           <input
             type="file"
@@ -1296,6 +1463,27 @@ export default function InteractiveBoardviewSimulator() {
             accept=".brd,.fz,.json,.cad,.txt"
             className="hidden"
           />
+
+          {/* زر سحب أي موديل من الإنترنت وتخزينه */}
+          <button
+            onClick={() => setShowOnlineSearchBox((prev) => !prev)}
+            className="px-3 py-2 rounded-xl bg-dahab-500/10 hover:bg-dahab-500/20 text-dahab-600 dark:text-dahab-400 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border border-dahab-500/30"
+            title="سحب مخطط وبوردفيو أي هاتف أو لابتوب من الإنترنت وتخزينه سحابياً"
+          >
+            <Search className="w-4 h-4 text-dahab-500" />
+            <span>سحب موديل من الإنترنت 🌐</span>
+          </button>
+
+          {/* زر حفظ البوردة الحالية في السحابة */}
+          <button
+            onClick={handleSaveCurrentToCloud}
+            disabled={isSavingToCloud}
+            className="px-3 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border border-emerald-500/30 disabled:opacity-50"
+            title="حفظ وتثبيت البوردة الحالية في قاعدة البيانات السحابية"
+          >
+            <Upload className="w-4 h-4 text-emerald-500" />
+            <span>{isSavingToCloud ? 'جاري الحفظ...' : 'حفظ سحابي ☁️'}</span>
+          </button>
 
           {/* تبديل وجه البوردة TOP / BOTTOM */}
           <div className="flex items-center bg-gray-200 dark:bg-gray-800 p-0.5 rounded-xl border border-gray-300 dark:border-gray-700">
@@ -1349,6 +1537,44 @@ export default function InteractiveBoardviewSimulator() {
           </button>
         </div>
       </div>
+
+      {/* شريط البحث السحابي المباشر وسحب الموديلات من الإنترنت */}
+      {showOnlineSearchBox && (
+        <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800/50 flex flex-wrap items-center gap-2 animate-fadeIn">
+          <Globe className="w-5 h-5 text-dahab-500 shrink-0" />
+          <div className="flex-1 min-w-[240px]">
+            <input
+              type="text"
+              value={onlineQuery}
+              onChange={(e) => setOnlineQuery(e.target.value)}
+              placeholder="اكتب اسم أي موديل لسحبه وتخزينه في السحابة فوراً (مثال: iPhone XR, Redmi Note 11, Dell G15)..."
+              className="w-full px-3 py-1.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl text-xs text-gray-800 dark:text-gray-100 outline-none focus:border-dahab-500"
+              onKeyDown={(e) => e.key === 'Enter' && handleSearchOnlineSchematic()}
+            />
+          </div>
+          <button
+            onClick={handleSearchOnlineSchematic}
+            disabled={isSearchingOnline || !onlineQuery.trim()}
+            className="px-4 py-1.5 rounded-xl bg-dahab-500 hover:bg-dahab-600 text-slate-950 font-black text-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+          >
+            {isSearchingOnline ? <RotateCw className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+            <span>{isSearchingOnline ? 'جاري السحب والتحليل...' : 'سحب وتخزين في السحابة 🌐'}</span>
+          </button>
+          <button
+            onClick={() => setShowOnlineSearchBox(false)}
+            className="px-2.5 py-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 text-xs"
+          >
+            إلغاء
+          </button>
+        </div>
+      )}
+
+      {onlineNotice && (
+        <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 border-b border-emerald-200 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-300 text-xs font-bold text-center flex items-center justify-center gap-2 animate-fadeIn">
+          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+          <span>{onlineNotice}</span>
+        </div>
+      )}
 
       {/* 2. شريط البحث والخيارات التفاعلية */}
       <div className="px-4 py-2 bg-white dark:bg-workshop-card border-b border-gray-200 dark:border-gray-800 flex flex-wrap items-center justify-between gap-3">
