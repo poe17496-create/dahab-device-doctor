@@ -88,6 +88,7 @@ export default function AIChat() {
   const [isRecordingAudio, setIsRecordingAudio] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [micErrorBanner, setMicErrorBanner] = useState<string | null>(null);
+  const [showMicModal, setShowMicModal] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<any>(null);
@@ -326,7 +327,7 @@ export default function AIChat() {
     }
   };
 
-  // نظام المايكروفون الذكي المزدوج (Web Speech + PWA MediaRecorder Fallback)
+  // نظام المايكروفون الذكي المزدوج (Web Speech + MediaRecorder Fallback)
   const handleVoiceInput = async () => {
     setMicErrorBanner(null);
 
@@ -344,25 +345,10 @@ export default function AIChat() {
       return;
     }
 
-    // 2. طلب إذن الميكروفون مباشرةً — هذا يطلع الـ dialog التلقائي في المتصفح
-    if (navigator.mediaDevices?.getUserMedia) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        // تم منح الإذن — نوقف الـ stream الاختباري ونكمل
-        stream.getTracks().forEach((track) => track.stop());
-      } catch (permErr: any) {
-        if (permErr?.name === 'NotAllowedError' || permErr?.name === 'PermissionDeniedError' || permErr?.name === 'SecurityError') {
-          setMicErrorBanner('🔒 تم رفض إذن الميكروفون.\n\n• على المتصفح: انقر على أيقونة القفل 🔒 بجانب الرابط في الشريط العلوي ← "الإعدادات" ← اختر "السماح" للميكروفون.\n• على الموبايل: اذهب لإعدادات الجهاز ← التطبيقات ← المتصفح ← الأذونات ← فعّل الميكروفون.\nثم أعد تحميل الصفحة وجرب مجدداً.');
-          return;
-        }
-        // أخطاء أخرى (AbortError, etc.) نتجاهلها ونكمل
-      }
-    }
-
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
-    // 3. إذا كان Web Speech API مدعوماً (Chrome, Edge, Safari الحديث)
+    // 2. إذا كان Web Speech API مدعوماً (Chrome, Edge, Safari الحديث)
     if (SpeechRecognition) {
       try {
         if (recognitionRef.current) {
@@ -378,7 +364,10 @@ export default function AIChat() {
 
         let accumulated = '';
 
-        recognition.onstart = () => { setIsListening(true); };
+        recognition.onstart = () => {
+          setIsListening(true);
+          setMicErrorBanner(null);
+        };
 
         recognition.onresult = (event: any) => {
           let interim = '';
@@ -396,9 +385,9 @@ export default function AIChat() {
         recognition.onerror = (event: any) => {
           setIsListening(false);
           if (event.error === 'not-allowed') {
-            setMicErrorBanner('🔒 تم رفض إذن الميكروفون. افتح إعدادات المتصفح أو انقر على أيقونة القفل 🔒 بجانب الرابط واختر "السماح".');
+            setShowMicModal(true);
           } else if (event.error === 'no-speech') {
-            setMicErrorBanner('🎙️ لم يتم التقاط أي صوت. تأكد أن الميكروفون يعمل وتحدث بوضوح.');
+            setToastMsg('لم يتم التقاط أي صوت، تحدث بوضوح بالقرب من المايك');
           }
         };
 
@@ -407,17 +396,17 @@ export default function AIChat() {
         recognition.start();
         return;
       } catch (e) {
-        console.warn('Web Speech API failed, falling back to MediaRecorder:', e);
+        console.warn('SpeechRecognition failed, falling back to MediaRecorder:', e);
       }
     }
 
-    // 4. Fallback: تسجيل صوتي أصلي (MediaRecorder) لمتصفحات فايرفوكس والـ PWA
+    // 3. Fallback: تسجيل صوتي مباشر (MediaRecorder) لمتصفحات الموبايل والـ PWA
     startAudioRecordingFallback();
   };
 
   const startAudioRecordingFallback = async () => {
     if (!navigator.mediaDevices?.getUserMedia) {
-      alert('الميكروفون غير مدعوم في هذا المتصفح. يرجى استخدام متصفح Google Chrome أو Edge.');
+      setShowMicModal(true);
       return;
     }
 
@@ -438,8 +427,8 @@ export default function AIChat() {
         setRecordingSeconds(0);
 
         if (audioChunksRef.current.length > 0) {
-          setInput((prev) => (prev ? prev + ' [تسجيل صوتي مرفق]' : 'تم تسجيل صوتك للفحص'));
-          setToastMsg('تم التقاط التسجيل الصوتي بنجاح 🎙️');
+          setInput((prev) => (prev ? prev + ' [سؤال صوتي مرفق]' : 'تحليل العطل من التسجيل الصوتي'));
+          setToastMsg('تم حفظ تسجيلك الصوتي بنجاح، يمكنك الضغط على إرسال الآن 🎙️');
         }
       };
 
@@ -450,7 +439,8 @@ export default function AIChat() {
         setRecordingSeconds((prev) => prev + 1);
       }, 1000);
     } catch (err: any) {
-      alert('⚠️ تعذر تشغيل الميكروفون. تأكد من إعطاء إذن الوصول للميكروفون في جهازك.');
+      console.warn('getUserMedia error:', err);
+      setShowMicModal(true);
     }
   };
 
@@ -459,6 +449,23 @@ export default function AIChat() {
       mediaRecorderRef.current.stop();
     }
     setIsRecordingAudio(false);
+  };
+
+  // طلب إذن الميكروفون المباشر من خلال تفاعل المستخدم (User Gesture)
+  const handleRequestMicPermissionDirectly = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setToastMsg('المتصفح لا يدعم الوصول للميكروفون');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((t) => t.stop());
+      setShowMicModal(false);
+      setToastMsg('✅ تم منح إذن الميكروفون بنجاح! جاري بدء الاستماع...');
+      setTimeout(handleVoiceInput, 300);
+    } catch (err) {
+      setToastMsg('⚠️ ما زال الميكروفون محظوراً. يرجى تفعيله من أيقونة القفل 🔒 أعلى المتصفح');
+    }
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -784,6 +791,61 @@ export default function AIChat() {
                   </div>
                 ))
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal تفعيل الميكروفون المباشر */}
+      {showMicModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white dark:bg-[#111827] border border-dahab-500/40 rounded-3xl max-w-md w-full shadow-2xl p-6 text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-dahab-500 to-amber-500 text-slate-950 flex items-center justify-center mx-auto shadow-lg shadow-dahab-500/30 animate-pulse">
+              <Mic className="w-8 h-8" />
+            </div>
+
+            <div>
+              <h3 className="text-base font-black text-gray-900 dark:text-gray-100">
+                السماح بإذن الميكروفون للمنظومة
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                للتحدث صوتياً مع المساعد الذكي، يحتاج المتصفح لموافقتك على إذن الصوت
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-right space-y-2 text-xs text-gray-700 dark:text-gray-300">
+              <p className="font-bold text-amber-800 dark:text-amber-400">💡 خطوات الموافقة والتفعيل السريع:</p>
+              <div className="flex items-start gap-2">
+                <span className="w-5 h-5 rounded-full bg-amber-500 text-slate-950 font-black text-[11px] flex items-center justify-center shrink-0 mt-0.5">1</span>
+                <span>اضغط على الزر الذهبي بالأسفل لإظهار نافذة الموافقة الرسمية من المتصفح واضغط <strong>"سماح" (Allow)</strong>.</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="w-5 h-5 rounded-full bg-amber-500 text-slate-950 font-black text-[11px] flex items-center justify-center shrink-0 mt-0.5">2</span>
+                <span>إذا لم يظهر المربع، اضغط على <strong>أيقونة القفل 🔒</strong> بجانب رابط الموقع بأعلى المتصفح.</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="w-5 h-5 rounded-full bg-amber-500 text-slate-950 font-black text-[11px] flex items-center justify-center shrink-0 mt-0.5">3</span>
+                <span>اختر <strong>الأذونات (Permissions)</strong> ثم فعّل <strong>الميكروفون</strong> واجعله <strong>سماح</strong>.</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 pt-2">
+              <button
+                type="button"
+                onClick={handleRequestMicPermissionDirectly}
+                className="w-full py-3 rounded-2xl bg-gradient-to-r from-dahab-500 to-amber-600 hover:from-dahab-600 hover:to-amber-700 text-slate-950 font-black text-xs transition shadow-lg shadow-dahab-500/25 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+              >
+                <Mic className="w-4 h-4 fill-slate-950" />
+                <span>🎙️ طلب إذن المتصفح الآن (اضغط للموافقة)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowMicModal(false)}
+                className="w-full py-2 rounded-xl text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-xs font-bold transition"
+              >
+                إلغاء
+              </button>
             </div>
           </div>
         </div>
