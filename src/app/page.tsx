@@ -158,16 +158,34 @@ export default function DahabFixAiConsole() {
     }).catch(() => {});
   };
 
-  // جلب الجلسات السابقة من ملفات JSON عند فتح المنظومة
+  // جلب الجلسات السابقة من ملفات JSON مع نسخة احتياطية في localStorage
   const fetchSessions = async () => {
     try {
-      const res = await fetch('/api/memory');
+      const res = await fetch('/api/memory', { cache: 'no-store' });
       const data = await res.json();
-      if (data.sessions) {
+      if (data.sessions && data.sessions.length > 0) {
         setSessions(data.sessions);
+        // حفظ نسخة احتياطية محلية
+        try {
+          localStorage.setItem('dahab_sessions_backup', JSON.stringify(data.sessions.slice(0, 50)));
+        } catch {}
+      } else {
+        // إذا كان السيرفر فارغاً (cold start)، نحمّل من النسخة الاحتياطية
+        try {
+          const backup = localStorage.getItem('dahab_sessions_backup');
+          if (backup) {
+            const parsed = JSON.parse(backup);
+            if (Array.isArray(parsed) && parsed.length > 0) setSessions(parsed);
+          }
+        } catch {}
       }
     } catch (e) {
       console.error('فشل في جلب جلسات الذاكرة:', e);
+      // fallback: قراءة من النسخة الاحتياطية المحلية
+      try {
+        const backup = localStorage.getItem('dahab_sessions_backup');
+        if (backup) setSessions(JSON.parse(backup));
+      } catch {}
     }
   };
 

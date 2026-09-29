@@ -47,7 +47,7 @@ const DEFAULT_USERS: UserAccount[] = [
 const DELETED_FILE = path.join(DATA_DIR, 'deleted_users.json');
 let inMemoryDeletedSet = new Set<string>();
 
-function getDeletedUserIds(): Set<string> {
+export function getDeletedUserIds(): Set<string> {
   try {
     if (fs.existsSync(DELETED_FILE)) {
       const data = JSON.parse(fs.readFileSync(DELETED_FILE, 'utf-8'));

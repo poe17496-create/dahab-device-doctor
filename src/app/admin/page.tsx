@@ -123,7 +123,7 @@ export default function AdminDashboardPage() {
 
   const fetchData = async () => {
     try {
-      const usersRes = await fetch('/api/users');
+      const usersRes = await fetch('/api/users', { cache: 'no-store' });
       const usersData = await usersRes.json();
       if (usersData.users) setUsers(usersData.users);
 

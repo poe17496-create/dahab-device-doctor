@@ -87,6 +87,7 @@ export default function AIChat() {
   // حالة التسجيل الصوتي البديل (MediaRecorder للـ PWA والمتصفحات التي لا تدعم Web Speech)
   const [isRecordingAudio, setIsRecordingAudio] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [micErrorBanner, setMicErrorBanner] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<any>(null);
@@ -326,12 +327,12 @@ export default function AIChat() {
 
   // نظام المايكروفون الذكي المزدوج (Web Speech + PWA MediaRecorder Fallback)
   const handleVoiceInput = async () => {
+    setMicErrorBanner(null);
+
     // 1. إذا كان الميكروفون يستمع بالفعل، نوقفه فوراً (Toggle)
     if (isListening) {
       if (recognitionRef.current) {
-        try {
-          recognitionRef.current.stop();
-        } catch {}
+        try { recognitionRef.current.stop(); } catch {}
       }
       setIsListening(false);
       return;
@@ -342,30 +343,38 @@ export default function AIChat() {
       return;
     }
 
+    // 2. فحص صلاحية الميكروفون أولاً
+    if (navigator.permissions) {
+      try {
+        const status = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+        if (status.state === 'denied') {
+          setMicErrorBanner('🔒 تم حظر الميكروفون في إعدادات المتصفح. انقر على أيقونة القفل 🔒 بجانب الرابط في الشريط العلوي واختر "السماح للميكروفون"، ثم أعد تحميل الصفحة.');
+          return;
+        }
+      } catch {}
+    }
+
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
-    // 2. إذا كان Web Speech API مدعوماً (Chrome, Edge, Safari الحديث)
+    // 3. إذا كان Web Speech API مدعوماً (Chrome, Edge, Safari الحديث)
     if (SpeechRecognition) {
       try {
-        // طلب إذن الميكروفون برمجياً لمنع الحظر الصامت بالـ PWA
+        // طلب إذن الميكروفون برمجياً
         if (navigator.mediaDevices?.getUserMedia) {
           try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             stream.getTracks().forEach((track) => track.stop());
           } catch (permErr: any) {
-            console.warn('Microphone permission warning:', permErr);
             if (permErr?.name === 'NotAllowedError' || permErr?.name === 'PermissionDeniedError') {
-              alert('⚠️ تم حظر الميكروفون. يرجى السماح بالميكروفون من إعدادات المتصفح أو أيقونة القفل 🔒 بجانب الرابط.');
+              setMicErrorBanner('🔒 تم رفض إذن الميكروفون. افتح إعدادات المتصفح أو انقر على أيقونة القفل 🔒 بجانب الرابط واختر "السماح". ثم أعد المحاولة.');
               return;
             }
           }
         }
 
         if (recognitionRef.current) {
-          try {
-            recognitionRef.current.abort();
-          } catch {}
+          try { recognitionRef.current.abort(); } catch {}
         }
 
         const recognition = new SpeechRecognition();
@@ -377,9 +386,7 @@ export default function AIChat() {
 
         let accumulated = '';
 
-        recognition.onstart = () => {
-          setIsListening(true);
-        };
+        recognition.onstart = () => { setIsListening(true); };
 
         recognition.onresult = (event: any) => {
           let interim = '';
@@ -391,22 +398,19 @@ export default function AIChat() {
             }
           }
           const textToDisplay = (accumulated || interim).trim();
-          if (textToDisplay) {
-            setInput(textToDisplay);
-          }
+          if (textToDisplay) setInput(textToDisplay);
         };
 
         recognition.onerror = (event: any) => {
-          console.error('Speech recognition error:', event.error);
           setIsListening(false);
           if (event.error === 'not-allowed') {
-            alert('⚠️ لم يتم منح إذن الميكروفون للموقع أو التطبيق المثبت.');
+            setMicErrorBanner('🔒 تم رفض إذن الميكروفون. افتح إعدادات المتصفح أو انقر على أيقونة القفل 🔒 بجانب الرابط واختر "السماح".');
+          } else if (event.error === 'no-speech') {
+            setMicErrorBanner('🎙️ لم يتم التقاط أي صوت. تأكد أن الميكروفون يعمل وتحدث بوضوح.');
           }
         };
 
-        recognition.onend = () => {
-          setIsListening(false);
-        };
+        recognition.onend = () => { setIsListening(false); };
 
         recognition.start();
         return;
@@ -415,7 +419,7 @@ export default function AIChat() {
       }
     }
 
-    // 3. Fallback: تسجيل صوتي أصلي (MediaRecorder) لمتصفحات فايرفوكس والـ PWA القديمة
+    // 4. Fallback: تسجيل صوتي أصلي (MediaRecorder) لمتصفحات فايرفوكس والـ PWA
     startAudioRecordingFallback();
   };
 
@@ -627,6 +631,23 @@ export default function AIChat() {
             </button>
           </div>
         )}
+
+        {/* بانر خطأ الميكروفون — يظهر داخل الشات بدل popup متصفح */}
+        {micErrorBanner && (
+          <div className="mb-2 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 flex items-start gap-2 text-xs text-amber-800 dark:text-amber-300 animate-fadeIn">
+            <span className="shrink-0 mt-0.5 text-base">⚠️</span>
+            <p className="flex-1 leading-relaxed">{micErrorBanner}</p>
+            <button
+              type="button"
+              onClick={() => setMicErrorBanner(null)}
+              className="shrink-0 text-amber-500 hover:text-amber-700 text-base font-bold"
+              title="إغلاق"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
 
         <div className="flex items-center gap-2">
           {/* رفع صورة */}

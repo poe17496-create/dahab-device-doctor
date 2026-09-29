@@ -11,6 +11,7 @@ import {
   verifyLogin,
   updateUserHeartbeat,
   checkSubscription,
+  getDeletedUserIds,
   UserAccount,
 } from '@/lib/auth';
 
@@ -25,10 +26,13 @@ export async function GET() {
       try {
         const { data: sbUsers, error } = await supabase.from('users').select('*');
         if (!error && sbUsers && sbUsers.length > 0) {
-          const localMap = new Map(localUsers.map((u) => [u.username, u]));
+          const localMap = new Map(localUsers.map((u) => [u.username.toLowerCase(), u]));
 
           for (const sbu of sbUsers) {
-            const existing = localMap.get(sbu.username);
+            // تجاهل المستخدمين المحذوفين من Supabase
+            if (sbu.device_id === '__DELETED__') continue;
+            const usernameKey = sbu.username.toLowerCase();
+            const existing = localMap.get(usernameKey);
             const userObj: UserAccount = {
               id: String(sbu.id || sbu.username),
               name: sbu.name || sbu.username,
@@ -41,14 +45,18 @@ export async function GET() {
               price: sbu.price !== undefined ? Number(sbu.price) : 50,
               createdAt: sbu.created_at || existing?.createdAt || new Date().toISOString(),
               diagnosesCount: existing?.diagnosesCount || 0,
-              activeSessionToken: sbu.device_id || existing?.activeSessionToken,
+              activeSessionToken: (sbu.device_id && sbu.device_id !== '__DELETED__') ? sbu.device_id : existing?.activeSessionToken,
             };
-            localMap.set(sbu.username, userObj);
+            localMap.set(usernameKey, userObj);
           }
           localUsers = Array.from(localMap.values());
-          // تصفية أي يوزر تم حذفه مسبقاً
-          const activeUsernames = new Set(getAllUsers().map(u => u.username.toLowerCase()));
-          localUsers = localUsers.filter(u => activeUsernames.has(u.username.toLowerCase()));
+          // تصفية المستخدمين المحذوفين فقط (المقبرة)
+          const deletedSet = getDeletedUserIds();
+          localUsers = localUsers.filter(
+            u => !deletedSet.has(u.username.toLowerCase()) && !deletedSet.has(u.id.toLowerCase())
+          );
+          // مزامنة القائمة الكاملة محلياً لضمان عدم اختفائها بين سيرفرات Vercel
+          saveAllUsers(localUsers);
         }
       } catch (sbErr) {
         console.warn('Supabase fetch in users GET route:', sbErr);
@@ -374,6 +382,7 @@ export async function DELETE(req: NextRequest) {
 
     const all = getAllUsers();
     const user = all.find((u) => u.id === id || u.username.toLowerCase() === id.toLowerCase());
+    // 1. حذف محلياً وتسجيل في المقبرة
     deleteUser(id);
     if (user?.username) {
       deleteUser(user.username);
@@ -382,8 +391,13 @@ export async function DELETE(req: NextRequest) {
     if (isSupabaseConfigured && supabase) {
       try {
         const usernameToDelete = user?.username || id;
+        // بدلاً من الحذف الفعلي نضع علامة __DELETED__ حتى لا يرجع عند cold start
+        await supabase.from('users').update({
+          is_active: false,
+          device_id: '__DELETED__',
+        }).eq('username', usernameToDelete);
+        // أيضاً نحاول الحذف الفعلي
         await supabase.from('users').delete().eq('username', usernameToDelete);
-        await supabase.from('users').delete().eq('id', id);
       } catch (e) {
         console.warn('Supabase delete error:', e);
       }
