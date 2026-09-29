@@ -5,7 +5,7 @@ import { DiagnosticMetrics, DeviceSpecialty, PowerSupplyReadings } from './types
 import { enhanceArabicPrompt } from './middleEastFeatures';
 import { getAllActiveKeys } from './apiKeysStorage';
 
-export type AIEngine = 'gemini' | 'openai' | 'openrouter' | 'local';
+export type AIEngine = 'deepseek' | 'gemini' | 'openai' | 'openrouter' | 'local';
 
 export interface AIEngineConfig {
   id: AIEngine;
@@ -39,18 +39,28 @@ export function parseApiKeys(envVar: string | undefined): string[] {
  * جلب قائمة المحركات وحالتها
  */
 export function getAvailableEngines(): AIEngineConfig[] {
-  const geminiKeys = parseApiKeys(process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEYS || process.env.GOOGLE_API_KEY);
-  const openrouterKeys = parseApiKeys(process.env.OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEYS);
-  const openaiKeys = parseApiKeys(process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEYS);
+  const activeKeys = getAllActiveKeys();
+  const deepseekKeys = activeKeys.deepseekKeys;
+  const geminiKeys = activeKeys.geminiKeys;
+  const openrouterKeys = activeKeys.openrouterKeys;
+  const openaiKeys = activeKeys.openaiKeys;
 
   return [
+    {
+      id: 'deepseek',
+      name: 'DeepSeek Official 🧠 (الخارق في المنطق والدوائر)',
+      model: 'deepseek-chat / deepseek-reasoner',
+      apiKey: deepseekKeys[0] || '',
+      enabled: deepseekKeys.length > 0,
+      priority: 1,
+    },
     {
       id: 'gemini',
       name: 'Google Gemini',
       model: 'gemini-2.0-flash / 1.5-flash',
       apiKey: geminiKeys[0] || '',
       enabled: geminiKeys.length > 0,
-      priority: 1,
+      priority: 2,
     },
     {
       id: 'openrouter',
@@ -290,6 +300,56 @@ async function tryCallOpenAI(
 }
 
 /**
+ * استدعاء محرك DeepSeek الرسمي 🧠 (الخارق في المنطق والدوائر)
+ */
+async function tryCallDeepSeek(
+  apiKey: string,
+  params: { prompt: string; imageBase64?: string; systemPrompt?: string }
+): Promise<AIResponse> {
+  const cleanKey = apiKey.trim();
+  const client = new OpenAI({
+    apiKey: cleanKey,
+    baseURL: 'https://api.deepseek.com',
+  });
+
+  const modelsToTry = ['deepseek-chat', 'deepseek-reasoner'];
+
+  const messages: any[] = [
+    { role: 'system', content: params.systemPrompt || DAHAB_SYSTEM_PROMPT },
+    { role: 'user', content: params.prompt },
+  ];
+
+  let lastError: any = null;
+
+  for (const model of modelsToTry) {
+    try {
+      const response = await client.chat.completions.create({
+        model,
+        messages,
+        max_tokens: 3500,
+        temperature: 0.2,
+      });
+
+      const text = response.choices[0]?.message?.content || '';
+      if (text.trim().length > 0) {
+        return {
+          text,
+          metrics: extractMetrics(text),
+          engine: 'deepseek',
+          modelUsed: model,
+        };
+      }
+    } catch (err: any) {
+      lastError = err;
+      console.warn(`DeepSeek (${model}) failed:`, err?.message || err);
+      continue;
+    }
+  }
+
+  throw lastError || new Error('فشلت استجابة محرك DeepSeek');
+}
+
+/**
  * محرك تشخيص هندسي محلي عالي الذكاء (Fallback عند انقطاع السحابة بالكامل)
  */
 function generateSmartLocalResponse(params: {
@@ -448,6 +508,7 @@ export async function callAIEngine(params: {
   systemPrompt?: string;
   skipEnhancement?: boolean;
   customKeys?: {
+    deepseek?: string | string[];
     gemini?: string | string[];
     openrouter?: string | string[];
     openai?: string | string[];
@@ -467,19 +528,20 @@ export async function callAIEngine(params: {
 
   // جمع كافة المفاتيح المتاحة من لوحة التحكم /admin والمتصفح ومتغيرات البيئة
   const activeKeys = getAllActiveKeys(params.customKeys);
+  const deepseekKeys = activeKeys.deepseekKeys;
   const geminiKeys = activeKeys.geminiKeys;
   const openrouterKeys = activeKeys.openrouterKeys;
   const openaiKeys = activeKeys.openaiKeys;
 
-  console.log(`=== Active AI Keys: Gemini (${geminiKeys.length}), OpenRouter (${openrouterKeys.length}), OpenAI (${openaiKeys.length}) ===`);
+  console.log(`=== Active AI Keys: DeepSeek (${deepseekKeys.length}), Gemini (${geminiKeys.length}), OpenRouter (${openrouterKeys.length}), OpenAI (${openaiKeys.length}) ===`);
 
   // تحديد ترتيب المزودين بناءً على التفضيل أو الأفضلية
-  // نضع Gemini و OpenRouter أولاً لأن لهما حصص مجانية وفيرة وموديلات متعددة
+  // DeepSeek الرسمي في المقدمة لقوته الفائقة، يليه Gemini و OpenRouter
   const providerOrder: AIEngine[] = [];
   if (params.preferredEngine && params.preferredEngine !== 'local') {
     providerOrder.push(params.preferredEngine);
   }
-  ['gemini', 'openrouter', 'openai'].forEach((p) => {
+  ['deepseek', 'gemini', 'openrouter', 'openai'].forEach((p) => {
     if (!providerOrder.includes(p as AIEngine)) {
       providerOrder.push(p as AIEngine);
     }
@@ -487,6 +549,22 @@ export async function callAIEngine(params: {
 
   // تجربة المزودين حسب الترتيب
   for (const provider of providerOrder) {
+    if (provider === 'deepseek' && deepseekKeys.length > 0) {
+      for (let i = 0; i < deepseekKeys.length; i++) {
+        const key = deepseekKeys[i];
+        try {
+          console.log(`Attempting DeepSeek (Key #${i + 1})...`);
+          const res = await tryCallDeepSeek(key, payload);
+          console.log(`✅ DeepSeek succeeded with model ${res.modelUsed}`);
+          return res;
+        } catch (err: any) {
+          const errMsg = `DeepSeek (Key #${i + 1}): ${err?.message || err}`;
+          console.error(errMsg);
+          errorsLog.push(errMsg);
+        }
+      }
+    }
+
     if (provider === 'gemini' && geminiKeys.length > 0) {
       for (let i = 0; i < geminiKeys.length; i++) {
         const key = geminiKeys[i];

@@ -28,6 +28,12 @@ interface KeyTestStatus {
 }
 
 export default function AIKeysManager() {
+  const DEFAULT_DS_KEYS = [
+    'sk-b644c9b4d8544707a80a0fcadc59a9d3',
+    'sk-b400b7586688438d8d5700f296cb8743',
+  ];
+
+  const [deepseekKeys, setDeepseekKeys] = useState(DEFAULT_DS_KEYS.join('\n'));
   const [geminiKeys, setGeminiKeys] = useState('');
   const [openrouterKeys, setOpenrouterKeys] = useState('');
   const [openaiKeys, setOpenaiKeys] = useState('');
@@ -37,6 +43,7 @@ export default function AIKeysManager() {
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   // حالة فحص كل مزود
+  const [deepseekStatus, setDeepseekStatus] = useState<KeyTestStatus>({ status: 'idle' });
   const [geminiStatus, setGeminiStatus] = useState<KeyTestStatus>({ status: 'idle' });
   const [openrouterStatus, setOpenrouterStatus] = useState<KeyTestStatus>({ status: 'idle' });
   const [openaiStatus, setOpenaiStatus] = useState<KeyTestStatus>({ status: 'idle' });
@@ -61,6 +68,12 @@ export default function AIKeysManager() {
           const data = await res.json();
           const serverKeys = data.keys || {};
 
+          const dsKeys = (serverKeys.deepseekKeys && serverKeys.deepseekKeys.length > 0)
+            ? serverKeys.deepseekKeys
+            : (localKeys?.deepseek && localKeys.deepseek.length > 0)
+            ? localKeys.deepseek
+            : DEFAULT_DS_KEYS;
+
           const gKeys = (serverKeys.geminiKeys && serverKeys.geminiKeys.length > 0)
             ? serverKeys.geminiKeys
             : localKeys?.gemini || [];
@@ -79,10 +92,12 @@ export default function AIKeysManager() {
             aiKeys = 's' + aiKeys;
           }
 
+          setDeepseekKeys(Array.isArray(dsKeys) ? dsKeys.join('\n') : dsKeys || DEFAULT_DS_KEYS.join('\n'));
           setGeminiKeys(Array.isArray(gKeys) ? gKeys.join('\n') : gKeys || '');
           setOpenrouterKeys(Array.isArray(oKeys) ? oKeys.join('\n') : oKeys || defaultOrKey);
           setOpenaiKeys(Array.isArray(aiKeys) ? aiKeys.join('\n') : aiKeys || '');
         } else if (localKeys) {
+          const dsKeys = (localKeys.deepseek && localKeys.deepseek.length > 0) ? localKeys.deepseek : DEFAULT_DS_KEYS;
           const oKeys = (localKeys.openrouter && localKeys.openrouter.length > 0) ? localKeys.openrouter : [defaultOrKey];
           let aiKeys = localKeys.openai || [];
           if (Array.isArray(aiKeys)) {
@@ -91,10 +106,12 @@ export default function AIKeysManager() {
             aiKeys = 's' + aiKeys;
           }
 
+          setDeepseekKeys(Array.isArray(dsKeys) ? dsKeys.join('\n') : dsKeys || DEFAULT_DS_KEYS.join('\n'));
           setGeminiKeys(Array.isArray(localKeys.gemini) ? localKeys.gemini.join('\n') : localKeys.gemini || '');
           setOpenrouterKeys(Array.isArray(oKeys) ? oKeys.join('\n') : defaultOrKey);
           setOpenaiKeys(Array.isArray(aiKeys) ? aiKeys.join('\n') : aiKeys || '');
         } else {
+          setDeepseekKeys(DEFAULT_DS_KEYS.join('\n'));
           setOpenrouterKeys(defaultOrKey);
         }
       } catch (err) {
@@ -118,12 +135,14 @@ export default function AIKeysManager() {
         .map((k) => k.trim())
         .filter((k) => k.length > 5);
 
+    const dsList = parseLines(deepseekKeys);
     const gList = parseLines(geminiKeys);
     const oList = parseLines(openrouterKeys);
     const aiList = parseLines(openaiKeys);
 
     // 1. التخزين في localStorage للاستخدام الفوري بدون أي تأخير في العميل
     const keysObj = {
+      deepseek: dsList,
       gemini: gList,
       openrouter: oList,
       openai: aiList,
@@ -141,6 +160,7 @@ export default function AIKeysManager() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          deepseekKeys: dsList,
           geminiKeys: gList,
           openrouterKeys: oList,
           openaiKeys: aiList,
@@ -163,11 +183,14 @@ export default function AIKeysManager() {
   };
 
   // اختبار كافة المفاتيح المدخلة حياً
-  const handleTestKey = async (provider: 'gemini' | 'openrouter' | 'openai') => {
+  const handleTestKey = async (provider: 'deepseek' | 'gemini' | 'openrouter' | 'openai') => {
     let keyList: string[] = [];
     let setStatus: React.Dispatch<React.SetStateAction<KeyTestStatus>>;
 
-    if (provider === 'gemini') {
+    if (provider === 'deepseek') {
+      keyList = deepseekKeys.split(/[\n,;]+/).map((k) => k.trim()).filter((k) => k.length > 5);
+      setStatus = setDeepseekStatus;
+    } else if (provider === 'gemini') {
       keyList = geminiKeys.split(/[\n,;]+/).map((k) => k.trim()).filter((k) => k.length > 5);
       setStatus = setGeminiStatus;
     } else if (provider === 'openrouter') {
@@ -245,6 +268,7 @@ export default function AIKeysManager() {
 
   // فحص جميع المفاتيح معاً
   const handleTestAll = () => {
+    handleTestKey('deepseek');
     handleTestKey('gemini');
     handleTestKey('openrouter');
     handleTestKey('openai');
@@ -324,7 +348,107 @@ export default function AIKeysManager() {
         </div>
       </div>
 
-      {/* قسم 1: Google Gemini Keys (الموصى به - مجاني وسريع جداً) */}
+      {/* قسم 1: DeepSeek AI Official (الخارق في المنطق والدوائر) */}
+      <div className="p-5 rounded-2xl bg-gradient-to-br from-blue-500/10 via-white dark:via-workshop-card to-cyan-500/5 border border-blue-500/30 shadow-md space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 dark:border-gray-800 pb-2">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-black text-xs">
+              DS
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h4 className="text-sm font-black text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
+                  <span>DeepSeek AI Official 🧠 (الخارق في المنطق وفحص الدوائر)</span>
+                </h4>
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                  الأعلى ذكاءً هندسياً
+                </span>
+                {deepseekKeys.split('\n').map((k) => k.trim()).filter(Boolean).length > 0 && (
+                  <span className="text-[10px] px-2.5 py-0.5 rounded-full font-bold bg-blue-500/15 text-blue-600 dark:text-blue-400 font-mono">
+                    🔑 تم رصد {deepseekKeys.split('\n').map((k) => k.trim()).filter(Boolean).length} مفتاح (تدوير تلقائي)
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                مفاتيح منصة DeepSeek الرسمية (تبدأ بـ <code className="font-mono text-dahab-600 dark:text-dahab-400 font-bold">sk-...</code>). يقود نماذج <strong className="text-blue-600 dark:text-blue-400">deepseek-chat (V3)</strong> و <strong className="text-blue-600 dark:text-blue-400">deepseek-reasoner (R1)</strong> مع تدوير تلقائي بين المفاتيح.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <a
+              href="https://platform.deepseek.com/api_keys"
+              target="_blank"
+              rel="noreferrer"
+              className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 font-bold"
+            >
+              <span>منصة DeepSeek API</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+
+            <button
+              onClick={() => handleTestKey('deepseek')}
+              disabled={deepseekStatus.status === 'testing'}
+              className="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-[11px] font-bold text-gray-800 dark:text-gray-200 transition flex items-center gap-1 cursor-pointer"
+            >
+              {deepseekStatus.status === 'testing' ? (
+                <>
+                  <RotateCw className="w-3 h-3 animate-spin text-dahab-500" />
+                  <span>جاري فحص DeepSeek...</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-3 h-3 text-dahab-500" />
+                  <span>اختبار DeepSeek 🧠</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-[11px] font-bold text-gray-700 dark:text-gray-300 block">
+            مفاتيح DeepSeek الرسمية (مفتاح في كل سطر للتدوير التلقائي):
+          </label>
+          <textarea
+            value={deepseekKeys}
+            onChange={(e) => setDeepseekKeys(e.target.value)}
+            placeholder={`الصق مفاتيح DeepSeek هنا (مفتاح في كل سطر):\nsk-b644c9b4d8544707a80a0fcadc59a9d3\nsk-b400b7586688438d8d5700f296cb8743`}
+            rows={3}
+            className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-mono text-gray-800 dark:text-gray-200 outline-none focus:border-dahab-500 transition resize-y leading-relaxed"
+          />
+        </div>
+
+        {/* نتيجة فحص DeepSeek */}
+        {deepseekStatus.status !== 'idle' && (
+          <div
+            className={`p-3 rounded-xl text-xs flex items-start gap-2 ${
+              deepseekStatus.status === 'testing'
+                ? 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'
+                : deepseekStatus.status === 'success'
+                ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20'
+                : 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20'
+            }`}
+          >
+            {deepseekStatus.status === 'testing' && <RotateCw className="w-4 h-4 animate-spin text-dahab-500 shrink-0" />}
+            {deepseekStatus.status === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />}
+            {deepseekStatus.status === 'error' && <XCircle className="w-4 h-4 text-rose-500 shrink-0" />}
+            <div className="space-y-0.5">
+              <p className="font-bold">{deepseekStatus.message}</p>
+              {deepseekStatus.latencyMs !== undefined && (
+                <p className="text-[10px] opacity-80">
+                  زمن الاستجابة: {deepseekStatus.latencyMs}ms {deepseekStatus.modelUsed ? `| الموديل المعتمد: ${deepseekStatus.modelUsed}` : ''}
+                </p>
+              )}
+              {deepseekStatus.error && (
+                <p className="text-[10px] font-mono opacity-90 mt-1">{deepseekStatus.error}</p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* قسم 2: Google Gemini Keys (الموصى به - مجاني وسريع جداً) */}
       <div className="p-5 rounded-2xl bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border shadow-md space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 dark:border-gray-800 pb-2">
           <div className="flex items-center gap-2">

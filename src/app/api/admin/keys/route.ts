@@ -16,6 +16,7 @@ export async function GET() {
     return NextResponse.json({
       keys,
       counts: {
+        deepseekCount: active.deepseekKeys.length,
         geminiCount: active.geminiKeys.length,
         openrouterCount: active.openrouterKeys.length,
         openaiCount: active.openaiKeys.length,
@@ -41,8 +42,9 @@ export async function POST(req: NextRequest) {
     }
 
     // حفظ المفاتيح
-    const { geminiKeys, openrouterKeys, openaiKeys, groqKeys } = body;
+    const { deepseekKeys, geminiKeys, openrouterKeys, openaiKeys, groqKeys } = body;
     const saved = saveStoredApiKeys({
+      deepseekKeys,
       geminiKeys,
       openrouterKeys,
       openaiKeys,
@@ -55,6 +57,7 @@ export async function POST(req: NextRequest) {
       message: 'تم حفظ وتفعيل المفاتيح في منظومة دهب بنجاح',
       keys: saved,
       activeCounts: {
+        deepseek: active.deepseekKeys.length,
         gemini: active.geminiKeys.length,
         openrouter: active.openrouterKeys.length,
         openai: active.openaiKeys.length,

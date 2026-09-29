@@ -10,6 +10,7 @@ interface AIEngineSelectorProps {
 }
 
 const engineIcons: Record<AIEngine, React.ReactNode> = {
+  deepseek: <Brain className="w-4 h-4 text-blue-500" />,
   openai: <Zap className="w-4 h-4" />,
   openrouter: <Brain className="w-4 h-4" />,
   gemini: <Cpu className="w-4 h-4" />,

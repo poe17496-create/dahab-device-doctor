@@ -4,6 +4,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
 
 export interface StoredApiKeys {
+  deepseekKeys: string[];
   geminiKeys: string[];
   openrouterKeys: string[];
   openaiKeys: string[];
@@ -24,6 +25,11 @@ function ensureDirectories() {
     console.error('Error ensuring data dir for keys:', e);
   }
 }
+
+export const DEFAULT_DEEPSEEK_KEYS = [
+  'sk-b644c9b4d8544707a80a0fcadc59a9d3',
+  'sk-b400b7586688438d8d5700f296cb8743',
+];
 
 const DEFAULT_OPENROUTER_KEY = Buffer.from(
   'c2stb3ItdjEtNmYyNjg2YzIzOGNhZTA4MWQxYjY3Y2NmMjNhZjY1MDU5NzEzZDAxNmUyNGFjMTE3NDlkMWZhNWQ4ZGNhYjNkNw==',
@@ -52,7 +58,9 @@ export function getStoredApiKeys(): StoredApiKeys {
       const content = fs.readFileSync(KEYS_FILE, 'utf-8');
       const data = JSON.parse(content);
       const orKeys = parseKeysList(data.openrouterKeys);
+      const dsKeys = parseKeysList(data.deepseekKeys);
       return {
+        deepseekKeys: dsKeys.length > 0 ? dsKeys : DEFAULT_DEEPSEEK_KEYS,
         geminiKeys: parseKeysList(data.geminiKeys),
         openrouterKeys: orKeys.length > 0 ? orKeys : [DEFAULT_OPENROUTER_KEY],
         openaiKeys: parseKeysList(data.openaiKeys),
@@ -64,9 +72,11 @@ export function getStoredApiKeys(): StoredApiKeys {
     console.error('Error reading stored API keys:', err);
   }
 
-  // افتراضياً قراءة ما هو موجود في متغيرات البيئة مع تزويد المفتاح الافتراضي لـ OpenRouter
+  // افتراضياً قراءة ما هو موجود في متغيرات البيئة مع تزويد المفاتيح الافتراضية
   const envOrKeys = parseKeysList(process.env.OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEYS);
+  const envDsKeys = parseKeysList(process.env.DEEPSEEK_API_KEY || process.env.DEEPSEEK_API_KEYS);
   return {
+    deepseekKeys: envDsKeys.length > 0 ? envDsKeys : DEFAULT_DEEPSEEK_KEYS,
     geminiKeys: parseKeysList(process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEYS || process.env.GOOGLE_API_KEY),
     openrouterKeys: envOrKeys.length > 0 ? envOrKeys : [DEFAULT_OPENROUTER_KEY],
     openaiKeys: parseKeysList(process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEYS),
@@ -79,6 +89,7 @@ export function getStoredApiKeys(): StoredApiKeys {
  * حفظ المفاتيح الجديدة في ملف JSON بالمعمل
  */
 export function saveStoredApiKeys(keys: {
+  deepseekKeys?: string | string[];
   geminiKeys?: string | string[];
   openrouterKeys?: string | string[];
   openaiKeys?: string | string[];
@@ -88,6 +99,7 @@ export function saveStoredApiKeys(keys: {
   const current = getStoredApiKeys();
 
   const updated: StoredApiKeys = {
+    deepseekKeys: keys.deepseekKeys !== undefined ? parseKeysList(keys.deepseekKeys) : current.deepseekKeys,
     geminiKeys: keys.geminiKeys !== undefined ? parseKeysList(keys.geminiKeys) : current.geminiKeys,
     openrouterKeys: keys.openrouterKeys !== undefined ? parseKeysList(keys.openrouterKeys) : current.openrouterKeys,
     openaiKeys: keys.openaiKeys !== undefined ? parseKeysList(keys.openaiKeys) : current.openaiKeys,
@@ -108,17 +120,29 @@ export function saveStoredApiKeys(keys: {
  * جلب جميع المفاتيح النشطة مع دمج المفاتيح الممررة من العميل أو الملف أو البيئة
  */
 export function getAllActiveKeys(customKeys?: {
+  deepseek?: string | string[];
   gemini?: string | string[];
   openrouter?: string | string[];
   openai?: string | string[];
   groq?: string | string[];
 }): {
+  deepseekKeys: string[];
   geminiKeys: string[];
   openrouterKeys: string[];
   openaiKeys: string[];
   groqKeys: string[];
 } {
   const stored = getStoredApiKeys();
+
+  const deepseek = [
+    ...parseKeysList(customKeys?.deepseek),
+    ...stored.deepseekKeys,
+    ...parseKeysList(process.env.DEEPSEEK_API_KEY),
+    ...parseKeysList(process.env.DEEPSEEK_API_KEYS),
+  ];
+  if (deepseek.length === 0) {
+    deepseek.push(...DEFAULT_DEEPSEEK_KEYS);
+  }
 
   const gemini = [
     ...parseKeysList(customKeys?.gemini),
@@ -154,6 +178,7 @@ export function getAllActiveKeys(customKeys?: {
 
   // إزالة التكرارات
   return {
+    deepseekKeys: Array.from(new Set(deepseek)),
     geminiKeys: Array.from(new Set(gemini)),
     openrouterKeys: Array.from(new Set(openrouter)),
     openaiKeys: Array.from(new Set(openai)),
@@ -165,7 +190,7 @@ export function getAllActiveKeys(customKeys?: {
  * فحص واختبار مفتاح ذكاء اصطناعي بشكل حي ومباشر
  */
 export async function testSingleApiKey(
-  provider: 'gemini' | 'openrouter' | 'openai' | 'groq',
+  provider: 'deepseek' | 'gemini' | 'openrouter' | 'openai' | 'groq',
   key: string
 ): Promise<{
   success: boolean;
@@ -190,6 +215,36 @@ export async function testSingleApiKey(
   }
 
   try {
+    if (provider === 'deepseek') {
+      const client = new OpenAI({
+        apiKey: cleanKey,
+        baseURL: 'https://api.deepseek.com',
+      });
+      const models = ['deepseek-chat', 'deepseek-reasoner'];
+      let lastErr = null;
+
+      for (const m of models) {
+        try {
+          const res = await client.chat.completions.create({
+            model: m,
+            messages: [{ role: 'user', content: 'Say OK' }],
+            max_tokens: 10,
+          });
+          const latencyMs = Date.now() - startTime;
+          return {
+            success: true,
+            message: `متصل ويعمل بنجاح عبر DeepSeek الرسمي 🧠 (الموديل: ${m})`,
+            latencyMs,
+            modelUsed: m,
+          };
+        } catch (e: any) {
+          lastErr = e;
+          continue;
+        }
+      }
+      throw lastErr || new Error('فشل فحص DeepSeek');
+    }
+
     if (provider === 'gemini') {
       const genAI = new GoogleGenerativeAI(cleanKey);
       const models = [
