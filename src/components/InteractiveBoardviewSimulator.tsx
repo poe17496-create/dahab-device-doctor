@@ -26,6 +26,20 @@ import {
   Info,
   Check,
 } from 'lucide-react';
+import {
+  BOARD_CATEGORIES,
+  buildIphone14ProMaxBoard,
+  buildIphone13ProBoard,
+  buildIphone12ProBoard,
+  buildIphone11ProMaxBoard,
+  buildSamsungS24UltraBoard,
+  buildSamsungA54Board,
+  buildPocoX3ProBoard,
+  buildMacBookAirM2Board,
+  buildMacBookIntelA1708Board,
+  buildDellXpsBoard,
+  buildLenovoThinkPadBoard,
+} from '@/lib/boardviewPresets';
 
 // ==========================================
 // 1. تعريف واجهات ونماذج بيانات البوردفيو
@@ -1159,6 +1173,65 @@ export default function InteractiveBoardviewSimulator() {
     a.click();
   };
 
+  // اختيار الموديل من القائمة الشاملة لجميع الهواتف واللابتوبات
+  const handleSelectPreset = (id: string) => {
+    let nextBoard: BoardData | null = null;
+    switch (id) {
+      case 'iphone_15_pro_max':
+        nextBoard = IPHONE_15_PRO_MAX_BOARD;
+        break;
+      case 'iphone_14_pro_max':
+        nextBoard = buildIphone14ProMaxBoard();
+        break;
+      case 'iphone_13_pro':
+        nextBoard = buildIphone13ProBoard();
+        break;
+      case 'iphone_12_pro':
+        nextBoard = buildIphone12ProBoard();
+        break;
+      case 'iphone_11_pro_max':
+        nextBoard = buildIphone11ProMaxBoard();
+        break;
+      case 'samsung_s24_ultra':
+        nextBoard = buildSamsungS24UltraBoard();
+        break;
+      case 'samsung_a54_5g':
+        nextBoard = buildSamsungA54Board();
+        break;
+      case 'poco_x3_pro':
+        nextBoard = buildPocoX3ProBoard();
+        break;
+      case 'macbook_m_series':
+        nextBoard = MACBOOK_M_SERIES_BOARD;
+        break;
+      case 'macbook_air_m2':
+        nextBoard = buildMacBookAirM2Board();
+        break;
+      case 'macbook_intel_a1708':
+        nextBoard = buildMacBookIntelA1708Board();
+        break;
+      case 'dell_xps_latitude':
+        nextBoard = buildDellXpsBoard();
+        break;
+      case 'lenovo_thinkpad_legion':
+        nextBoard = buildLenovoThinkPadBoard();
+        break;
+      default:
+        nextBoard = IPHONE_15_PRO_MAX_BOARD;
+    }
+
+    if (nextBoard) {
+      setBoardData(nextBoard);
+      setSelectedSide('TOP');
+      const firstNetKey = Object.keys(nextBoard.nets)[1] || Object.keys(nextBoard.nets)[0] || 'net_gnd';
+      setSelectedNetId(firstNetKey);
+      if (nextBoard.parts.length > 0) {
+        setSelectedPartId(nextBoard.parts[0].id);
+      }
+      handleResetView();
+    }
+  };
+
   return (
     <div
       ref={containerRef}
@@ -1189,18 +1262,22 @@ export default function InteractiveBoardviewSimulator() {
 
         {/* أدوات التحكم والأزرار */}
         <div className="flex items-center gap-2 flex-wrap">
-          {/* اختيار البوردة الجاهزة */}
+          {/* اختيار البوردة الجاهزة من بين جميع الموديلات */}
           <select
             value={boardData.id}
-            onChange={(e) => {
-              if (e.target.value === 'iphone_15_pro_max') setBoardData(IPHONE_15_PRO_MAX_BOARD);
-              else if (e.target.value === 'macbook_m_series') setBoardData(MACBOOK_M_SERIES_BOARD);
-              handleResetView();
-            }}
-            className="p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-800 dark:text-gray-200 outline-none focus:border-dahab-500 cursor-pointer"
+            onChange={(e) => handleSelectPreset(e.target.value)}
+            className="p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-800 dark:text-gray-200 outline-none focus:border-dahab-500 cursor-pointer max-w-[280px]"
+            title="اختر الموديل المطلوب (يدعم جميع أنواع الموبايل واللابتوب)"
           >
-            <option value="iphone_15_pro_max">📱 iPhone 15 Pro Max (Logic Board)</option>
-            <option value="macbook_m_series">💻 MacBook Pro M3 / M1 (A2338)</option>
+            {BOARD_CATEGORIES.map((cat) => (
+              <optgroup key={cat.name} label={cat.name} className="font-black text-dahab-600 dark:text-dahab-400 bg-gray-100 dark:bg-gray-900">
+                {cat.boards.map((b) => (
+                  <option key={b.id} value={b.id} className="text-gray-800 dark:text-gray-200 font-normal bg-white dark:bg-gray-800">
+                    {b.title}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
           </select>
 
           {/* رفع ملف بوردفيو */}
