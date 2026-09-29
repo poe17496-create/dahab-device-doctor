@@ -19,8 +19,10 @@ import {
   AlertTriangle,
   Layers,
   Bot,
+  Printer,
 } from 'lucide-react';
 import { RepairSession } from '@/lib/types';
+import { generateProfessionalDiagnosticPDF } from '@/lib/pdfReportGenerator';
 
 // حالات وأجهزة فحص نموذجية استرشادية جاهزة حتى لا يكون التبويب فارغاً أبداً
 const BENCHMARK_REFERENCE_SESSIONS: RepairSession[] = [
@@ -400,6 +402,14 @@ export default function DeviceMemoryTab({
                       title="تصدير ملف JSON"
                     >
                       <Download className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => generateProfessionalDiagnosticPDF(session)}
+                      className="p-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-dahab-700 dark:text-dahab-400 border border-amber-500/30 transition flex items-center gap-1 text-[11px] font-bold"
+                      title="تصدير وطباعة تقرير فحص رسمي PDF"
+                    >
+                      <Printer className="w-4 h-4 text-dahab-500" />
+                      <span className="hidden sm:inline">تقرير PDF</span>
                     </button>
                     {!isReference && (
                       <button

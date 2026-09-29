@@ -386,6 +386,48 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const handleExportSubscribersCSV = () => {
+    if (!users || users.length === 0) {
+      alert('لا يوجد مشتركون لتصديرهم');
+      return;
+    }
+
+    const headers = [
+      'الاسم',
+      'اسم المستخدم',
+      'الرتبة',
+      'التخصص',
+      'سعر الاشتراك (ج.م)',
+      'الحالة',
+      'حالة الاتصال',
+      'تاريخ نهاية الاشتراك',
+      'الأيام المتبقية',
+    ];
+
+    const rows = users.map((u) => [
+      `"${u.name || ''}"`,
+      `"${u.username || ''}"`,
+      `"${u.role === 'admin' ? 'مشرف عام' : 'فني'}"`,
+      `"${u.specialty || 'صيانة عامة'}"`,
+      `"${u.price || 50}"`,
+      `"${u.active ? 'نشط' : 'محظور / معلق'}"`,
+      `"${u.isOnline ? 'متصل' : 'غير متصل'}"`,
+      `"${u.expiresAt ? new Date(u.expiresAt).toLocaleDateString('ar-EG') : 'مفتوح'}"`,
+      `"${u.subscriptionStatus?.daysRemaining ?? 'غير محدود'}"`,
+    ]);
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `dahab_subscribers_finance_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setSuccessMsg('تم تصدير تقرير المشتركين والمالية بنجاح 📊');
+  };
+
   const handleToggleStatus = async (id: string) => {
     try {
       await fetch('/api/users', {
@@ -1198,16 +1240,27 @@ export default function AdminDashboardPage() {
                   </div>
                 </div>
 
-                <button
-                  onClick={() => {
-                    setAddError('');
-                    setShowAddModal(true);
-                  }}
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-dahab-500 to-amber-600 hover:from-dahab-600 hover:to-amber-700 text-slate-950 font-black text-xs transition shadow-md shadow-dahab-500/25"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  <span>إصدار حساب فني جديد 🔑</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleExportSubscribersCSV}
+                    className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold text-xs transition border border-gray-200 dark:border-gray-700 cursor-pointer shadow-sm"
+                    title="تحميل كشف المشتركين والمالية بصيغة Excel / CSV"
+                  >
+                    <Download className="w-4 h-4 text-emerald-500" />
+                    <span>تصدير تقرير المالية (CSV) 📊</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setAddError('');
+                      setShowAddModal(true);
+                    }}
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-dahab-500 to-amber-600 hover:from-dahab-600 hover:to-amber-700 text-slate-950 font-black text-xs transition shadow-md shadow-dahab-500/25 cursor-pointer"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    <span>إصدار حساب فني جديد 🔑</span>
+                  </button>
+                </div>
               </div>
 
               {/* جدول المستخدمين والاشتراكات */}
@@ -1299,21 +1352,22 @@ export default function AdminDashboardPage() {
                           <td className="p-3">
                             <button
                               onClick={() => handleToggleStatus(u.id)}
-                              className={`flex items-center gap-1 text-[11px] font-bold ${
+                              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold transition border cursor-pointer ${
                                 u.active
-                                  ? 'text-emerald-600 dark:text-emerald-400'
-                                  : 'text-gray-400'
+                                  ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 hover:bg-rose-500/15 hover:text-rose-600 hover:border-rose-500/40'
+                                  : 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/40 hover:bg-emerald-500/15 hover:text-emerald-600 hover:border-emerald-500/40'
                               }`}
+                              title={u.active ? 'انقر لتعليق أو حظر الحساب فوراً' : 'انقر لإلغاء الحظر وتنشيط الحساب'}
                             >
                               {u.active ? (
                                 <>
-                                  <CheckCircle className="w-3.5 h-3.5" />
-                                  <span>مفعل</span>
+                                  <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+                                  <span>نشط (انقر للحظر)</span>
                                 </>
                               ) : (
                                 <>
-                                  <XCircle className="w-3.5 h-3.5" />
-                                  <span>معطل</span>
+                                  <XCircle className="w-3.5 h-3.5 text-rose-500" />
+                                  <span>معلق / محظور</span>
                                 </>
                               )}
                             </button>

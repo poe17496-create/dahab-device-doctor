@@ -60,6 +60,13 @@ export default function DahabFixAiConsole() {
   const [isNavSidebarOpen, setIsNavSidebarOpen] = useState(false);
 
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const isSubscriptionExpired = Boolean(
+    currentUser &&
+      !currentUser.isGuest &&
+      currentUser.role !== 'admin' &&
+      (currentUser.active === false ||
+        (currentUser.expiresAt && new Date(currentUser.expiresAt).getTime() < Date.now()))
+  );
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [guestTrialsRemaining, setGuestTrialsRemaining] = useState(5);
   const [isDesktopMode, setIsDesktopMode] = useState<boolean>(() => {
@@ -310,6 +317,11 @@ export default function DahabFixAiConsole() {
   const handleDiagnose = async () => {
     if (!prompt.trim() && !imageBase64) return;
 
+    if (isSubscriptionExpired) {
+      alert('⚠️ حسابك معلق أو انتهت فترة الاشتراك. يرجى التواصل مع إدارة دهب دكتور للتجديد.');
+      return;
+    }
+
     // فحص وخصم رصيد الزائر الموحد
     if (currentUser?.isGuest) {
       const trial = consumeGuestTrial('diagnose');
@@ -494,6 +506,26 @@ export default function DahabFixAiConsole() {
         <div className="flex-1 flex flex-col overflow-y-auto pb-20 lg:pb-0">
           <div className="p-4 md:p-6 flex-1">
             <div className="max-w-7xl mx-auto space-y-6">
+              {isSubscriptionExpired && (
+                <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs flex items-center justify-between gap-3 shadow-md animate-fadeIn">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-2xl">⚠️</span>
+                    <div>
+                      <span className="font-bold text-sm block">انتهت فترة اشتراك الحساب أو تم تعليقه مؤقتاً!</span>
+                      <span className="text-[11px] opacity-90">تم تعطيل ميزات الذكاء الاصطناعي ومحاكي البوردفيو مؤقتاً، يُرجى التواصل مع إدارة دهب دكتور للتجديد.</span>
+                    </div>
+                  </div>
+                  <a
+                    href="https://wa.me/201026027877"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shrink-0 transition shadow-sm"
+                  >
+                    تجديد الاشتراك 💬
+                  </a>
+                </div>
+              )}
+
               {/* شاشة الفحص والتشخيص الهندسي الأساسية */}
               {activeTab === 'diagnosis' && (
                 <>

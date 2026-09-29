@@ -189,7 +189,16 @@ export default function ResultStreamViewer({ rawOutput, loading, onPrint }: Resu
       {/* محتوى الشاشة التدريجي (Streaming View) */}
       <div className="p-5 md:p-6 font-sans text-gray-800 dark:text-gray-200 text-sm leading-relaxed min-h-[300px] max-h-[680px] overflow-y-auto space-y-4">
         {cleanContent ? (
-          renderFormattedSections()
+          <>
+            {renderFormattedSections()}
+            <div className="mt-4 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-xs flex items-start gap-2.5 leading-relaxed shadow-sm">
+              <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold block mb-0.5">⚠️ تنبيه هندسي وإخلاء مسؤولية:</span>
+                <span>هذه الاقتراحات معتمدة على تحليل المخططات بالذكاء الاصطناعي. يُرجى مراجعة قياسات الممانعة بنفسك على المازربورد قبل حقن الفولت لتفادي تلف المعالج والدوائر الحساسة.</span>
+              </div>
+            </div>
+          </>
         ) : (
           <div className="flex flex-col items-center justify-center h-52 text-center text-gray-400 dark:text-gray-500 space-y-3">
             <div className="w-14 h-14 rounded-2xl bg-dahab-500/10 flex items-center justify-center text-dahab-500 border border-dahab-500/20">

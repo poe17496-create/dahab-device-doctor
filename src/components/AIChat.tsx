@@ -92,6 +92,7 @@ export default function AIChat() {
   const [micModalError, setMicModalError] = useState<string | null>(null);
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<any>(null);
@@ -246,71 +247,89 @@ export default function AIChat() {
     }
   }, []);
 
-  // Text-to-Speech للردود الصوتية مع دعم كامل لمتصفح Chrome و Edge ومنع توقف الصوت
+  // 🎙️ محرك النطق الصوتي المزدوج: صوت سحابي فائق الوضوح (MP3) مع Fallback محلي
   const speakText = (text: string, msgId?: string) => {
-    if (typeof window === 'undefined' || !window.speechSynthesis) {
-      setToastMsg('المتصفح لا يدعم القراءة الصوتية');
-      return;
-    }
+    if (typeof window === 'undefined') return;
 
     // إذا كان المساعد يقرأ نفس الرسالة حالياً، نوقفه فوراً (Toggle)
     if (speakingMessageId && (!msgId || speakingMessageId === msgId)) {
-      window.speechSynthesis.cancel();
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.pause();
+        audioPlayerRef.current.currentTime = 0;
+      }
+      window.speechSynthesis?.cancel();
       setSpeakingMessageId(null);
       return;
     }
 
-    // إيقاف أي قراءة صوتية جارية واستئناف المحرك إن كان متوقفاً
-    window.speechSynthesis.cancel();
-    try {
-      window.speechSynthesis.resume();
-    } catch {}
+    // إيقاف أي قراءة صوتية جارية
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.pause();
+      audioPlayerRef.current.currentTime = 0;
+    }
+    window.speechSynthesis?.cancel();
 
     const cleanText = text
       .replace(/[*#_`~\[\]\(\)>]/g, ' ')
       .replace(/https?:\/\/\S+/g, ' ')
+      .replace(/<<<[\s\S]*?>>>/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
 
     if (!cleanText) return;
 
+    const targetId = msgId || Date.now().toString();
+    setSpeakingMessageId(targetId);
+
+    // 1. تشغيل الصوت العربي الطبيعي عالي الوضوح من /api/tts
+    try {
+      const audioUrl = `/api/tts?text=${encodeURIComponent(cleanText.slice(0, 320))}`;
+      const audio = new Audio(audioUrl);
+      audioPlayerRef.current = audio;
+
+      audio.onended = () => {
+        setSpeakingMessageId(null);
+      };
+
+      audio.onerror = () => {
+        // Fallback: استخدام SpeechSynthesis المحلي عند تعذر التحميل
+        playLocalSpeech(cleanText, targetId);
+      };
+
+      audio.play().catch(() => {
+        playLocalSpeech(cleanText, targetId);
+      });
+    } catch {
+      playLocalSpeech(cleanText, targetId);
+    }
+  };
+
+  const playLocalSpeech = (cleanText: string, targetId: string) => {
+    if (!window.speechSynthesis) {
+      setSpeakingMessageId(null);
+      return;
+    }
+    try {
+      window.speechSynthesis.resume();
+    } catch {}
+
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    currentUtteranceRef.current = utterance; // حفظ المرجع لمنع Garbage Collection في Google Chrome
+    currentUtteranceRef.current = utterance;
     (window as any).__dahab_active_utterance = utterance;
 
     utterance.lang = 'ar-SA';
     utterance.rate = 1.0;
-    utterance.pitch = 1.0;
 
-    // محاولة اختيار صوت عربي متاح في نظام العميل
     try {
       const voices = window.speechSynthesis.getVoices();
       const arabicVoice = voices.find(
         (v) => v.lang.startsWith('ar') || v.name.toLowerCase().includes('arabic')
       );
-      if (arabicVoice) {
-        utterance.voice = arabicVoice;
-        utterance.lang = arabicVoice.lang;
-      }
+      if (arabicVoice) utterance.voice = arabicVoice;
     } catch {}
 
-    const targetId = msgId || Date.now().toString();
-
-    utterance.onstart = () => {
-      setSpeakingMessageId(targetId);
-    };
-
-    utterance.onend = () => {
-      setSpeakingMessageId(null);
-      currentUtteranceRef.current = null;
-    };
-
-    utterance.onerror = (e) => {
-      console.warn('Speech error:', e);
-      setSpeakingMessageId(null);
-      currentUtteranceRef.current = null;
-    };
-
+    utterance.onend = () => setSpeakingMessageId(null);
+    utterance.onerror = () => setSpeakingMessageId(null);
     window.speechSynthesis.speak(utterance);
   };
 
@@ -649,7 +668,13 @@ export default function AIChat() {
               </p>
 
               {message.role === 'assistant' && (
-                <div className="mt-2.5 pt-2 border-t border-gray-200/50 dark:border-gray-700/50 flex items-center justify-between text-[10px] text-gray-400">
+                <>
+                  <div className="mt-2.5 p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[10px] text-amber-700 dark:text-amber-300 flex items-start gap-1.5 leading-snug">
+                    <span className="shrink-0 text-xs">⚠️</span>
+                    <span><strong>تنبيه هندسي:</strong> هذه الاقتراحات معتمدة على تحليل المخططات بالذكاء الاصطناعي. يُرجى مراجعة قياسات الممانعة بنفسك على المازربورد قبل حقن الفولت لتفادي تلف المعالج.</span>
+                  </div>
+
+                  <div className="mt-2 pt-2 border-t border-gray-200/50 dark:border-gray-700/50 flex items-center justify-between text-[10px] text-gray-400">
                   <span>
                     {message.timestamp
                       ? new Date(message.timestamp).toLocaleTimeString('ar-EG', {
@@ -681,7 +706,8 @@ export default function AIChat() {
                     )}
                   </button>
                 </div>
-              )}
+              </>
+            )}
             </div>
           </div>
         ))}
