@@ -21,11 +21,25 @@ export interface ExpertPattern {
   category: string;
 }
 
+export interface HardwareMatrixItem {
+  id: string;
+  brand: string;
+  model: string;
+  boardCode: string;
+  category: 'mobile' | 'laptop' | 'desktop' | 'gpu';
+  mainChips: Record<string, string>;
+  powerRails: { rail: string; voltage: string; diodeMode: string; safeInjection?: string }[];
+  commonFaults: { symptom: string; cause: string; solution: string }[];
+}
+
 export interface MatchedSchematicContext {
   deviceTitle?: string;
   deviceModel?: string;
-  relevantNets?: { name: string; voltage: string; diodeMode: string; safeInjection?: string; description: string }[];
+  boardCode?: string;
+  mainChips?: Record<string, string>;
+  relevantNets?: { name: string; voltage: string; diodeMode: string; safeInjection?: string; description?: string }[];
   relevantParts?: { name: string; role: string; commonFault: string }[];
+  commonFaults?: { symptom: string; cause: string; solution: string }[];
 }
 
 export interface ComprehensiveKnowledgeResult {
@@ -34,7 +48,25 @@ export interface ComprehensiveKnowledgeResult {
 }
 
 let patternsCache: ExpertPattern[] | null = null;
+let hardwareMatrixCache: HardwareMatrixItem[] | null = null;
 let allBoardsCache: BoardData[] | null = null;
+
+// تحميل مصفوفة المخططات الضخمة من ملف hardwareSchematicsMatrix.json
+function loadHardwareMatrix(): HardwareMatrixItem[] {
+  if (hardwareMatrixCache) return hardwareMatrixCache;
+  try {
+    const filePath = path.join(process.cwd(), 'src', 'lib', 'hardwareSchematicsMatrix.json');
+    if (fs.existsSync(filePath)) {
+      const data = fs.readFileSync(filePath, 'utf-8');
+      hardwareMatrixCache = JSON.parse(data);
+      return hardwareMatrixCache || [];
+    }
+  } catch (error) {
+    console.error('Error loading hardwareSchematicsMatrix.json:', error);
+  }
+  hardwareMatrixCache = [];
+  return hardwareMatrixCache;
+}
 
 // تجميع البوردات المحفوظة في الذاكرة لتسريع البحث
 function getAllBoardPresets(): BoardData[] {
@@ -110,18 +142,61 @@ export function findRelevantPatterns(symptom: string, category?: string): Expert
     .map(p => p.pattern);
 }
 
-// بحث متقدم في المخططات والبورد فيو للأجهزة المطابقة
+// بحث متقدم وشامل في مصفوفة المخططات (Hardware Schematics Matrix)
 export function findRelevantSchematics(query: string, deviceModel?: string): MatchedSchematicContext | undefined {
-  const boards = getAllBoardPresets();
-  if (!boards.length) return undefined;
-
+  const matrix = loadHardwareMatrix();
   const fullQuery = `${deviceModel || ''} ${query || ''}`.toLowerCase();
   const queryTerms = fullQuery.split(/[\s,._\-\/]+/).filter(t => t.length > 1);
 
+  if (matrix.length > 0) {
+    let bestMatch: HardwareMatrixItem | null = null;
+    let bestScore = 0;
+
+    matrix.forEach(item => {
+      let score = 0;
+      const modelLower = item.model.toLowerCase();
+      const boardLower = (item.boardCode || '').toLowerCase();
+      const brandLower = item.brand.toLowerCase();
+
+      if (deviceModel && (modelLower.includes(deviceModel.toLowerCase()) || deviceModel.toLowerCase().includes(modelLower))) {
+        score += 20;
+      }
+
+      queryTerms.forEach(term => {
+        if (modelLower.includes(term)) score += 5;
+        if (boardLower.includes(term)) score += 6;
+        if (brandLower === term) score += 3;
+      });
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestMatch = item;
+      }
+    });
+
+    if (bestMatch && bestScore >= 3) {
+      const match: HardwareMatrixItem = bestMatch;
+      return {
+        deviceTitle: match.model,
+        deviceModel: match.model,
+        boardCode: match.boardCode,
+        mainChips: match.mainChips,
+        relevantNets: match.powerRails.map(r => ({
+          name: r.rail,
+          voltage: r.voltage,
+          diodeMode: r.diodeMode,
+          safeInjection: r.safeInjection,
+        })),
+        commonFaults: match.commonFaults,
+      };
+    }
+  }
+
+  // البحث في البوردات المدمجة التفاعلية كخيار تكميلي
+  const boards = getAllBoardPresets();
   let bestBoard: BoardData | null = null;
   let bestScore = 0;
 
-  // البحث عن البوردة الأقرب في البوردات المدمجة
   boards.forEach((board) => {
     if (!board) return;
     let score = 0;
@@ -146,10 +221,9 @@ export function findRelevantSchematics(query: string, deviceModel?: string): Mat
   if (!bestBoard || bestScore < 2) return undefined;
 
   const board: BoardData = bestBoard;
-  const relevantNets: { name: string; voltage: string; diodeMode: string; safeInjection?: string; description: string }[] = [];
+  const relevantNets: { name: string; voltage: string; diodeMode: string; safeInjection?: string; description?: string }[] = [];
   const relevantParts: { name: string; role: string; commonFault: string }[] = [];
 
-  // استخراج المسارات الكهربائية المرتبطة بالعطل
   if (board.nets) {
     Object.values(board.nets).forEach(net => {
       if (net.isGround) return;
@@ -167,7 +241,6 @@ export function findRelevantSchematics(query: string, deviceModel?: string): Mat
     });
   }
 
-  // استخراج الآيسيات والقطع المرتبطة
   if (board.parts) {
     board.parts.forEach(part => {
       const partStr = `${part.name} ${part.role} ${part.commonFault}`.toLowerCase();
@@ -207,18 +280,27 @@ export function buildExpertPromptContext(query: string, specialty?: string, devi
 
   let context = '';
 
-  if (schematicContext && (schematicContext.relevantNets?.length || schematicContext.relevantParts?.length)) {
-    context += `\n### بيانات المخطط والبورد فيو للجهاز (${schematicContext.deviceTitle || schematicContext.deviceModel}):\n`;
-    if (schematicContext.relevantNets?.length) {
-      context += `- خطوط التغذية والممانعات القياسية:\n`;
-      schematicContext.relevantNets.forEach(net => {
-        context += `  * ${net.name} (${net.voltage}): ممانعة ${net.diodeMode} | حقن آمن: ${net.safeInjection || 'N/A'} [${net.description}]\n`;
+  if (schematicContext) {
+    context += `\n### بيانات المخطط ومصفوفة الهاردوير للجهاز (${schematicContext.deviceTitle || schematicContext.deviceModel}):\n`;
+    if (schematicContext.boardCode) {
+      context += `- كود المازربورد (Board Part Number): ${schematicContext.boardCode}\n`;
+    }
+    if (schematicContext.mainChips && Object.keys(schematicContext.mainChips).length > 0) {
+      context += `- الآيسيات والرقاقات الرئيسية المسجلة:\n`;
+      Object.entries(schematicContext.mainChips).forEach(([key, val]) => {
+        context += `  * ${key}: ${val}\n`;
       });
     }
-    if (schematicContext.relevantParts?.length) {
-      context += `- المكونات والآيسيهات ذات الصلة:\n`;
-      schematicContext.relevantParts.forEach(part => {
-        context += `  * ${part.name} [${part.role}]: العطل الشائع: ${part.commonFault}\n`;
+    if (schematicContext.relevantNets?.length) {
+      context += `- مسارات التغذية الرئيسية والممانعات القياسية (Diode Mode):\n`;
+      schematicContext.relevantNets.forEach(net => {
+        context += `  * ${net.name} (${net.voltage}): ممانعة ${net.diodeMode} | حقن آمن: ${net.safeInjection || 'N/A'}\n`;
+      });
+    }
+    if (schematicContext.commonFaults?.length) {
+      context += `- أشهر الأعطال المسجلة هندسياً لهذا الموديل:\n`;
+      schematicContext.commonFaults.forEach(f => {
+        context += `  * العَرَض: ${f.symptom} -> السبب: ${f.cause} -> الحل: ${f.solution}\n`;
       });
     }
     context += '\n';
@@ -232,7 +314,7 @@ export function buildExpertPromptContext(query: string, specialty?: string, devi
   }
 
   if (context) {
-    context = `\n--- [معطيات هندسية مرجعية مثبتة] ---\n${context}القاعدة الإلزامية: استخدم المعطيات المرجعية والرموز وأسماء الآيسيات والمسارات المذكورة أعلاه كدليل أساسي في تحليلك وتشخيصك الهندسي.\n--- [نهاية المعطيات المرجعية] ---\n\n`;
+    context = `\n--- [معطيات المخططات وقاعدة الخبرات الهندسية المضغوطة] ---\n${context}القاعدة الإلزامية: استخدم المعطيات المرجعية والرموز وأسماء الآيسيات وكود المازربورد المذكور أعلاه كدليل أساسي في إجابتك وتشخيصك.\n--- [نهاية المعطيات المرجعية] ---\n\n`;
   }
 
   return context;
