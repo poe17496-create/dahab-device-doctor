@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { MessageSquare, Mic, Volume2, VolumeX, Image as ImageIcon, X, Cpu, Trash2, Paperclip, Send } from 'lucide-react';
+import { consumeGuestTrial } from '@/lib/guestUsage';
 
 interface ChatMessage {
   id: string;
@@ -92,6 +93,19 @@ export default function AIChat() {
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
+
+    // فحص رصيد التجارب الموحد للزائر
+    const trial = consumeGuestTrial('ai-chat');
+    if (!trial.success) {
+      const limitMsg: ChatMessage = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: '⚠️ انتهت تجاربك المجانية اليومية (5 من 5).\n\nللحصول على وصول غير محدود لمساعد الذكاء الاصطناعي ومحاكي البورد فيو والتشخيص، سجّل الدخول بحساب فني معتمد أو تواصل مع م. إسلام دهب على واتساب: 01064147224',
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, limitMsg]);
+      return;
+    }
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),

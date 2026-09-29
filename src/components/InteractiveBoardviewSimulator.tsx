@@ -41,6 +41,7 @@ import {
   buildDellXpsBoard,
   buildLenovoThinkPadBoard,
 } from '@/lib/boardviewPresets';
+import { consumeGuestTrial } from '@/lib/guestUsage';
 
 // ==========================================
 // 1. تعريف واجهات ونماذج بيانات البوردفيو
@@ -1328,6 +1329,13 @@ export default function InteractiveBoardviewSimulator() {
 
   // اختيار الموديل من القائمة الشاملة لجميع الهواتف واللابتوبات
   const handleSelectPreset = (id: string) => {
+    // التحقق من رصيد التجارب الموحد للزائر عند تبديل البوردة
+    const trial = consumeGuestTrial('boardview');
+    if (!trial.success) {
+      alert('⚠️ انتهت تجاربك المجانية اليومية (5 من 5).\n\nللحصول على وصول غير محدود لمحاكي البورد فيو والتشخيص الذكي والمساعد، سجّل الدخول بحساب فني معتمد أو تواصل مع م. إسلام دهب على واتساب: 01064147224');
+      return;
+    }
+
     let nextBoard: BoardData | null = null;
     const foundCloud = cloudBoards.find((b) => b.id === id);
     if (foundCloud) {

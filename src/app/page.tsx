@@ -28,6 +28,7 @@ import {
   ReferenceSource,
 } from '@/lib/types';
 import { createIntegratedContext } from '@/lib/schematicIntegration';
+import { consumeGuestTrial, getGuestRemainingTrials } from '@/lib/guestUsage';
 import { Menu, Crown, AlertCircle, Cpu } from 'lucide-react';
 
 export type MasterTab =
@@ -138,6 +139,14 @@ export default function DahabFixAiConsole() {
   useEffect(() => {
     checkAuth();
     fetchSessions();
+
+    const handleTrialConsumed = (e: any) => {
+      if (e.detail?.remaining !== undefined) {
+        setGuestTrialsRemaining(e.detail.remaining);
+      }
+    };
+    window.addEventListener('dahab_guest_trial_consumed', handleTrialConsumed);
+    return () => window.removeEventListener('dahab_guest_trial_consumed', handleTrialConsumed);
   }, []);
 
   // نبض دوري لتأكيد نشاط الزائر الحالي في لوحة التحكم
@@ -248,31 +257,13 @@ export default function DahabFixAiConsole() {
   const handleDiagnose = async () => {
     if (!prompt.trim() && !imageBase64) return;
 
-    // فحص عداد الزائر قبل التشخيص
+    // فحص وخصم رصيد الزائر الموحد
     if (currentUser?.isGuest) {
-      const today = new Date().toISOString().split('T')[0];
-      const key = `dahab_guest_usage_${today}`;
-      const used = parseInt(localStorage.getItem(key) || '0', 10);
-      if (used >= 5) {
-        setOutput('⚠️ انتهت تجاربك المجانية اليومية (5 من 5).\n\nللحصول على وصول غير محدود، سجّل الدخول بحساب فني معتمد أو تواصل مع المطور م. إسلام دهب على واتساب: 01064147224');
+      const trial = consumeGuestTrial('diagnose');
+      if (!trial.success) {
+        setOutput('⚠️ انتهت تجاربك المجانية اليومية (5 من 5).\n\nللحصول على وصول غير محدود للتشخيص ومحاكي البورد فيو والمساعد، سجّل الدخول بحساب فني معتمد أو تواصل مع المطور م. إسلام دهب على واتساب: 01064147224');
         return;
       }
-      // خصم تجربة
-      const newUsed = used + 1;
-      localStorage.setItem(key, String(newUsed));
-      const remaining = 5 - newUsed;
-      setGuestTrialsRemaining(remaining);
-      // تحديث اسم الزائر ليعكس العدد الجديد
-      const updatedGuest = { ...currentUser, name: `زائر (${remaining} تجربة متبقية اليوم)` };
-      localStorage.setItem('dahab_current_user', JSON.stringify(updatedGuest));
-      setCurrentUser(updatedGuest);
-
-      // إخطار السيرفر بخصم تجربة
-      fetch('/api/guests', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ guestId: currentUser.id, action: 'diagnose', remaining }),
-      }).catch(() => {});
     }
 
     setLoading(true);
