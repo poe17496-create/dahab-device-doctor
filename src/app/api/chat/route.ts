@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callAIEngine } from '@/lib/aiEngines';
+import { findRelevantPatterns } from '@/lib/expertKnowledge';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,6 +45,16 @@ export async function POST(req: NextRequest) {
       contextPrompt += '--- نهاية السجل السابق ---\n\n';
     }
 
+    // البحث في الأنماط الخبيرة للمساعد
+    const expertPatterns = findRelevantPatterns(message || '', 'mobile-repair');
+    let expertContext = '';
+    if (expertPatterns.length > 0) {
+      expertContext = '\n\n### بيانات مرجعية من قاعدة الخبرات:\n';
+      expertPatterns.forEach((p, index) => {
+        expertContext += `نمط ${index + 1}:\n- الأعراض: ${p.symptom}\n- الحل: ${p.solution}\n- الفئة: ${p.category}\n\n`;
+      });
+    }
+
     // System prompt للمساعد الذكي
     const systemPrompt = `أنت كبير مهندسي وفنيي الإلكترونيات ومستشار الصيانة الذكي في منظومة "دهب دكتور" (Dahab Device Doctor).
 مهمتك مساعدة فنيي الصيانة ومهندسي الإلكترونيات في تشخيص أعطال الموبايل، واللابتوب، والماك بوك، وكروت الباور بدقة واحترافية وبأسلوب محادثة عملي وتفاعلي.
@@ -54,11 +65,12 @@ export async function POST(req: NextRequest) {
 3. عند السؤال عن عطل، قدم خطوات الفحص المنطقية بالترتيب (1، 2، 3) مع تحديد الفولتات والممانعات النموذجية.
 4. إذا أرفق الفني صورة مخطط هندسي (Schematic)، بوردفيو (Boardview)، أو بوردة إلكترونية: اقرأ جميع الرموز والمكونات (U, R, C, L, Q) وأسماء مسارات التغذية والجهود المكتوبة في الصورة بدقة واستند إليها مباشرة في إجابتك.
 5. اذكر دائماً نصائح الأمان (مثل: عدم رفع فولت الحقن لتفادي احتراق المعالجات).
-6. تذكر سياق الحوار السابق وأجب بذكاء وترابط، وإذا كان استفساراً عاماً أو تحية، رحب بالفني بحرارة وسله عن الجهاز أو البوردة التي يعمل عليها.`;
+6. تذكر سياق الحوار السابق وأجب بذكاء وترابط، وإذا كان استفساراً عاماً أو تحية، رحب بالفني بحرارة وسله عن الجهاز أو البوردة التي يعمل عليها.
+7. لديك وصول لقاعدة بيانات خبراء الصيانة المتخصصين. عند وجود بيانات مرجعية من قاعدة الخبرات في الرسالة، استخدمها كمرجع أول وادمج أكواد المكونات (مثل PQ301, PU201) في إجابتك.`;
 
     // استدعاء محرك الذكاء الاصطناعي مع التدوير التلقائي لكافة المفاتيح والمفاتيح الممررة من العميل
     const aiResponse = await callAIEngine({
-      prompt: contextPrompt + message,
+      prompt: contextPrompt + message + expertContext,
       specialty: 'mobile-repair',
       deviceModel: 'General',
       readings: {},

@@ -421,7 +421,7 @@ export default function DahabFixAiConsole() {
         />
 
         {/* مساحة العمل الرئيسية */}
-        <div className="flex-1 flex flex-col overflow-y-auto">
+        <div className="flex-1 flex flex-col overflow-y-auto pb-20 lg:pb-0">
           <div className="p-4 md:p-6 flex-1">
             <div className="max-w-7xl mx-auto space-y-6">
               {/* شاشة الفحص والتشخيص الهندسي الأساسية */}
@@ -501,6 +501,39 @@ export default function DahabFixAiConsole() {
               )}
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* شريط التنقل السفلي للموبايل فقط */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#111827]/95 backdrop-blur-md border-t border-gray-200 dark:border-[#1F2937] safe-area-bottom">
+        <div className="flex items-center justify-around px-2 py-1">
+          {[
+            { id: 'diagnosis' as MasterTab, label: 'تشخيص', icon: '🔬' },
+            { id: 'ai-chat' as MasterTab, label: 'مساعد AI', icon: '🤖' },
+            { id: 'boardview' as MasterTab, label: 'بوردات', icon: '💻' },
+            { id: 'memory' as MasterTab, label: 'ذاكرة', icon: '🧠' },
+            { id: 'checklist' as MasterTab, label: 'فحص', icon: '✅' },
+          ].map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl transition-all min-w-0 ${
+                activeTab === item.id
+                  ? 'text-amber-500 bg-amber-500/10'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+              }`}
+            >
+              <span className="text-xl leading-none">{item.icon}</span>
+              <span className="text-[10px] font-medium truncate">{item.label}</span>
+            </button>
+          ))}
+          <button
+            onClick={() => setIsNavSidebarOpen(true)}
+            className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl transition-all text-gray-500 dark:text-gray-400 hover:text-gray-700"
+          >
+            <span className="text-xl leading-none">☰</span>
+            <span className="text-[10px] font-medium">المزيد</span>
+          </button>
         </div>
       </div>
 

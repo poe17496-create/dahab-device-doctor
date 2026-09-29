@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://dahab-device-doctor.vercel.app'),
+  metadataBase: new URL('https://dahabsoftware.site'),
   title: 'Dahab Software | Dahab Device Doctor - خبير تشخيص وصيانة الإلكترونيات',
   description: 'المنظومة الهندسية الأولى في الشرق الأوسط لتشخيص وفصل أعطال الموبايل واللابتوب وكروت الباور والإلكترونيات الدقيقة.',
   manifest: '/manifest.json',
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'دهب دكتور - خبير تشخيص الإلكترونيات',
     description: 'المنظومة الهندسية الأولى في الشرق الأوسط لتشخيص وفصل أعطال الموبايل واللابتوب وكروت الباور والإلكترونيات الدقيقة',
-    url: 'https://dahab-device-doctor.vercel.app',
+    url: 'https://dahabsoftware.site',
     siteName: 'دهب دكتور',
     images: [
       {
@@ -63,6 +63,31 @@ export default function RootLayout({
         <meta name="theme-color" content="#f59e0b" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/logo.jpg" />
+        <link rel="canonical" href="https://dahabsoftware.site" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebApplication",
+              "name": "ذهب سوفتوير - طبيب الأجهزة",
+              "url": "https://dahabsoftware.site",
+              "description": "المنظومة الهندسية الأولى في الوطن العربي لتشخيص وفحص أعطال الموبايلات واللابتوب والإلكترونيات الدقيقة",
+              "applicationCategory": "UtilitiesApplication",
+              "operatingSystem": "Web, Android, iOS",
+              "offers": {
+                "@type": "Offer",
+                "price": "0",
+                "priceCurrency": "EGP"
+              },
+              "author": {
+                "@type": "Organization",
+                "name": "ذهب سوفتوير",
+                "url": "https://dahabsoftware.site"
+              }
+            })
+          }}
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `
