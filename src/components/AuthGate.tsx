@@ -45,9 +45,13 @@ export default function AuthGate({ onAuthenticated, onGuestAccess }: AuthGatePro
     setLoading(true);
     setError('');
 
-    const deviceInfo = typeof window !== 'undefined'
-      ? `${navigator.platform || 'PC'} - ${navigator.userAgent.includes('Chrome') ? 'Chrome' : 'Browser'}`
-      : 'Web Client';
+    let persistentDeviceId = typeof window !== 'undefined' ? localStorage.getItem('dahab_device_id') : null;
+    if (!persistentDeviceId) {
+      persistentDeviceId = `dev_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      if (typeof window !== 'undefined') localStorage.setItem('dahab_device_id', persistentDeviceId);
+    }
+
+    const deviceInfo = persistentDeviceId;
 
     const buildAdminUser = (): UserAccount => ({
       id: 'user_admin',
@@ -67,7 +71,13 @@ export default function AuthGate({ onAuthenticated, onGuestAccess }: AuthGatePro
       const res = await fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'login', username: username.trim(), password: password.trim(), deviceInfo }),
+        body: JSON.stringify({
+          action: 'login',
+          username: username.trim(),
+          password: password.trim(),
+          deviceInfo,
+          currentDeviceId: persistentDeviceId,
+        }),
       });
 
       const data = await res.json();

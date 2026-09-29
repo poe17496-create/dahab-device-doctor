@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import {
   getAllUsers,
   saveAllUsers,
@@ -10,13 +11,48 @@ import {
   verifyLogin,
   updateUserHeartbeat,
   checkSubscription,
+  UserAccount,
 } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const users = getAllUsers().map(({ password, ...rest }) => {
+    let localUsers: UserAccount[] = getAllUsers();
+
+    // إذا كانت Supabase مفعلة، نجلب المستخدمين منها وندمجهم
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: sbUsers, error } = await supabase.from('users').select('*');
+        if (!error && sbUsers && sbUsers.length > 0) {
+          const localMap = new Map(localUsers.map((u) => [u.username, u]));
+
+          for (const sbu of sbUsers) {
+            const existing = localMap.get(sbu.username);
+            const userObj: UserAccount = {
+              id: String(sbu.id || sbu.username),
+              name: sbu.name || sbu.username,
+              username: sbu.username,
+              email: sbu.email || `${sbu.username}@doctor.com`,
+              role: sbu.role || (sbu.username === 'dahab' ? 'admin' : 'technician'),
+              specialty: sbu.specialty || 'فني صيانة إلكترونيات',
+              active: sbu.is_active !== false,
+              expiresAt: sbu.expires_at || undefined,
+              price: sbu.price !== undefined ? Number(sbu.price) : 50,
+              createdAt: sbu.created_at || existing?.createdAt || new Date().toISOString(),
+              diagnosesCount: existing?.diagnosesCount || 0,
+              activeSessionToken: sbu.device_id || existing?.activeSessionToken,
+            };
+            localMap.set(sbu.username, userObj);
+          }
+          localUsers = Array.from(localMap.values());
+        }
+      } catch (sbErr) {
+        console.warn('Supabase fetch in users GET route:', sbErr);
+      }
+    }
+
+    const users = localUsers.map(({ password, ...rest }) => {
       const sub = checkSubscription(rest as any);
       return {
         ...rest,
@@ -26,6 +62,7 @@ export async function GET() {
         },
       };
     });
+
     return NextResponse.json({ users });
   } catch (err) {
     return NextResponse.json({ error: 'فشل في جلب المستخدمين' }, { status: 500 });
@@ -39,10 +76,65 @@ export async function POST(req: NextRequest) {
     // 1. تسجيل الدخول
     if (body.action === 'login') {
       const { username, password, deviceInfo } = body;
-      if (!username) {
-        return NextResponse.json({ error: 'اسم المستخدم مطلوب' }, { status: 400 });
+      if (!username || !password) {
+        return NextResponse.json({ error: 'اسم المستخدم وكلمة المرور مطلوبان' }, { status: 400 });
       }
-      const loginRes = verifyLogin(username, password, deviceInfo);
+
+      const cleanUsername = String(username).trim();
+      const cleanPassword = String(password).trim();
+      const currentDeviceId = deviceInfo || 'Web-Device';
+
+      // فحص Supabase أولاً إن كانت مفعلة مع ميزة قفل الجهاز الوحيد
+      if (isSupabaseConfigured && supabase) {
+        try {
+          const { data: user, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('username', cleanUsername)
+            .single();
+
+          if (!error && user) {
+            if (user.password !== cleanPassword) {
+              return NextResponse.json({ error: 'كلمة المرور غير صحيحة' }, { status: 401 });
+            }
+            if (user.is_active === false) {
+              return NextResponse.json({ error: 'الحساب معطل من قبل المشرف' }, { status: 403 });
+            }
+            if (user.expires_at) {
+              const expDate = new Date(user.expires_at);
+              if (!isNaN(expDate.getTime()) && expDate < new Date()) {
+                return NextResponse.json({ error: 'انتهت صلاحية اشتراك هذا الحساب' }, { status: 403 });
+              }
+            }
+
+            // قفل الجهاز الوحيد والتحديث الفوري لطرد أي جهاز قديم
+            if (user.device_id !== currentDeviceId) {
+              await supabase
+                .from('users')
+                .update({ device_id: currentDeviceId, updated_at: new Date().toISOString() })
+                .eq('id', user.id);
+            }
+
+            return NextResponse.json({
+              user: {
+                id: String(user.id || user.username),
+                username: user.username,
+                name: user.name || user.username,
+                role: user.role || (user.username === 'dahab' ? 'admin' : 'technician'),
+                active: true,
+                expiresAt: user.expires_at || undefined,
+              },
+              sessionToken: currentDeviceId,
+              message: 'تم تسجيل الدخول بنجاح',
+            });
+          }
+        } catch (sbErr) {
+          console.warn('Supabase login check note:', sbErr);
+        }
+      }
+
+      // الفحص المحلي
+      const loginRes = verifyLogin(cleanUsername, cleanPassword, currentDeviceId);
       if (!loginRes.user) {
         return NextResponse.json({ error: loginRes.error || 'فشل تسجيل الدخول' }, { status: 401 });
       }
@@ -60,9 +152,34 @@ export async function POST(req: NextRequest) {
       if (!username || !sessionToken) {
         return NextResponse.json({ error: 'بيانات الجلسة غير مكتملة' }, { status: 400 });
       }
+
+      // فحص Supabase إذا كانت مفعلة للتأكد من مطابقة device_id
+      if (isSupabaseConfigured && supabase) {
+        try {
+          const { data: user, error } = await supabase
+            .from('users')
+            .select('device_id, is_active')
+            .eq('username', username.trim())
+            .single();
+
+          if (!error && user) {
+            if (user.is_active === false) {
+              return NextResponse.json({ error: 'تم تعطيل الحساب من قِبل المشرف', kicked: true }, { status: 403 });
+            }
+            if (user.device_id && user.device_id !== sessionToken) {
+              return NextResponse.json({
+                error: 'تم تسجيل الدخول بحسابك من جهاز آخر، تم إنهاء هذه الجلسة لحماية اشتراكك.',
+                kicked: true,
+              }, { status: 403 });
+            }
+          }
+        } catch (sbErr) {
+          console.warn('Supabase heartbeat note:', sbErr);
+        }
+      }
+
       const hb = updateUserHeartbeat(username, sessionToken, deviceInfo);
       if (!hb.valid) {
-        // لا ترجع 403 إذا كان الخطأ بسبب عدم وجود المستخدم (حدث بعد إعادة نشر Vercel)
         if (hb.error?.includes('غير متاح')) {
           return NextResponse.json({ success: true, rebuilt: true });
         }
@@ -78,18 +195,62 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'الاسم واسم المستخدم مطلوبان' }, { status: 400 });
     }
 
+    const cleanUsername = String(username).trim();
+    const cleanPassword = password || '123456';
     const isUnlimited = subscriptionDays === 'unlimited' || subscriptionDays === undefined;
 
+    let computedExpiresAt: string | undefined = undefined;
+    if (!isUnlimited) {
+      if (expiresAt) {
+        computedExpiresAt = expiresAt;
+      } else {
+        const d = new Date();
+        d.setDate(d.getDate() + Number(subscriptionDays || 30));
+        computedExpiresAt = d.toISOString();
+      }
+    }
+
+    // حفظ في Supabase إن كانت متصلة
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const payload: any = {
+          username: cleanUsername,
+          password: cleanPassword,
+          expires_at: computedExpiresAt || null,
+          is_active: true,
+          device_id: null,
+        };
+        if (name) payload.name = name;
+        if (specialty) payload.specialty = specialty;
+        if (price !== undefined) payload.price = Number(price);
+
+        const { error } = await supabase.from('users').insert([payload]);
+        if (error) {
+          // محاولة ثانية بالحقول الأساسية فقط
+          await supabase.from('users').insert([{
+            username: cleanUsername,
+            password: cleanPassword,
+            expires_at: computedExpiresAt || null,
+            is_active: true,
+            device_id: null,
+          }]);
+        }
+      } catch (sbErr) {
+        console.warn('Supabase insert user note:', sbErr);
+      }
+    }
+
+    // حفظ محلي
     const newUser = addUser({
       name,
-      username,
-      email: email || `${username}@doctor.com`,
+      username: cleanUsername,
+      email: email || `${cleanUsername}@doctor.com`,
       role: role || 'technician',
       specialty: specialty || 'فني صيانة إلكترونيات',
-      password: password || '123456',
+      password: cleanPassword,
       active: true,
       subscriptionDays: isUnlimited ? undefined : Number(subscriptionDays),
-      expiresAt: isUnlimited ? undefined : (expiresAt || undefined),
+      expiresAt: computedExpiresAt,
       price: price !== undefined ? Number(price) : 50,
     });
 
@@ -112,6 +273,11 @@ export async function PUT(req: NextRequest) {
     // تبديل حالة التفعيل / التعطيل
     if (action === 'toggleStatus') {
       const updated = toggleUserStatus(id);
+      if (isSupabaseConfigured && supabase && updated) {
+        try {
+          await supabase.from('users').update({ is_active: updated.active }).eq('username', updated.username);
+        } catch (e) {}
+      }
       if (!updated) return NextResponse.json({ error: 'المستخدم غير موجود' }, { status: 404 });
       return NextResponse.json({ user: updated });
     }
@@ -120,6 +286,11 @@ export async function PUT(req: NextRequest) {
     if (action === 'extendSubscription') {
       const daysToAdd = days !== undefined ? Number(days) : 30;
       const updated = extendSubscription(id, daysToAdd);
+      if (isSupabaseConfigured && supabase && updated) {
+        try {
+          await supabase.from('users').update({ expires_at: updated.expiresAt }).eq('username', updated.username);
+        } catch (e) {}
+      }
       if (!updated) return NextResponse.json({ error: 'تعذر تمديد الاشتراك' }, { status: 404 });
       return NextResponse.json({
         user: updated,
@@ -130,11 +301,17 @@ export async function PUT(req: NextRequest) {
     // إنهاء الجلسة وطرد المستخدم فوراً
     if (action === 'terminateSession') {
       const success = terminateUserSession(id);
+      const user = getAllUsers().find((u) => u.id === id);
+      if (isSupabaseConfigured && supabase && user) {
+        try {
+          await supabase.from('users').update({ device_id: null }).eq('username', user.username);
+        } catch (e) {}
+      }
       if (!success) return NextResponse.json({ error: 'تعذر إنهاء الجلسة' }, { status: 404 });
       return NextResponse.json({ message: 'تم إنهاء وطرد جلسة المستخدم بنجاح' });
     }
 
-    // تعديل بيانات المستخدم (الاسم، التخصص، كلمة المرور، السعر، وفتح المدة)
+    // تعديل بيانات المستخدم
     if (action === 'updateUser') {
       const users = getAllUsers();
       const user = users.find((u: any) => u.id === id);
@@ -144,11 +321,14 @@ export async function PUT(req: NextRequest) {
       if (body.specialty !== undefined) user.specialty = body.specialty;
       if (body.password && body.password.trim()) user.password = body.password.trim();
       if (body.price !== undefined) user.price = Number(body.price) || 0;
-      
-      // فتح المدة أو تحديد أيام الاشتراك
+
       if (body.subscriptionDays !== undefined) {
-        if (body.subscriptionDays === 'unlimited' || body.subscriptionDays === null || body.subscriptionDays === 'open' || Number(body.subscriptionDays) === 0) {
-          // فتح المدة وجعل الحساب دائماً بلا انتهاء
+        if (
+          body.subscriptionDays === 'unlimited' ||
+          body.subscriptionDays === null ||
+          body.subscriptionDays === 'open' ||
+          Number(body.subscriptionDays) === 0
+        ) {
           user.expiresAt = undefined;
           user.subscriptionDays = undefined;
         } else {
@@ -159,8 +339,21 @@ export async function PUT(req: NextRequest) {
           }
         }
       }
-      
+
       saveAllUsers(users);
+
+      if (isSupabaseConfigured && supabase) {
+        try {
+          const updatePayload: any = {
+            expires_at: user.expiresAt || null,
+          };
+          if (body.name) updatePayload.name = body.name;
+          if (body.password && body.password.trim()) updatePayload.password = body.password.trim();
+          if (body.price !== undefined) updatePayload.price = Number(body.price);
+          await supabase.from('users').update(updatePayload).eq('username', user.username);
+        } catch (e) {}
+      }
+
       return NextResponse.json({ user, message: 'تم تحديث بيانات المستخدم بنجاح' });
     }
 
@@ -176,7 +369,15 @@ export async function DELETE(req: NextRequest) {
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'معرف المستخدم مطلوب' }, { status: 400 });
 
+    const user = getAllUsers().find((u) => u.id === id);
     const success = deleteUser(id);
+
+    if (isSupabaseConfigured && supabase && user) {
+      try {
+        await supabase.from('users').delete().eq('username', user.username);
+      } catch (e) {}
+    }
+
     if (!success) return NextResponse.json({ error: 'تعذر حذف المستخدم' }, { status: 404 });
     return NextResponse.json({ message: 'تم حذف المستخدم بنجاح' });
   } catch (err) {
