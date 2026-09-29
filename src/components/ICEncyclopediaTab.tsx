@@ -156,6 +156,29 @@ export default function ICEncyclopediaTab() {
                   {ic.commonSymptoms}
                 </div>
 
+                {/* بوردات التشليح المتوافقة لاستخراج القطعة */}
+                {ic.donorBoards && ic.donorBoards.length > 0 && (
+                  <div className="space-y-1.5 pt-1 bg-amber-500/5 dark:bg-amber-950/20 p-2.5 rounded-lg border border-amber-500/20">
+                    <div className="text-[11px] font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1">
+                      <Layers className="w-3.5 h-3.5 text-amber-500" />
+                      <span>بوردات التشليح (Donor Boards) التي تحتوي على هذا الآيسي في ورشتك:</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto">
+                      {ic.donorBoards.map((donor, dIdx) => (
+                        <span
+                          key={dIdx}
+                          className="px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-300 text-[10px] font-bold flex items-center gap-1"
+                          title={`كود البوردة: ${donor.boardCode} | ${donor.roleOnBoard}`}
+                        >
+                          <span>{donor.category === 'mobile' ? '📱' : donor.category === 'laptop' ? '💻' : '🖥️'}</span>
+                          <span>{donor.model}</span>
+                          <span className="opacity-60 text-[9px]">[{donor.boardCode}]</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* قراءات الممانعة النموذجية */}
                 <div className="text-[11px] text-sky-800 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/20 p-2.5 rounded-lg border border-sky-200 dark:border-sky-900/40">
                   <strong className="text-sky-700 dark:text-sky-400">قراءات الممانعة السليمة (Diode Mode):</strong>{' '}
