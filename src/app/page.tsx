@@ -79,6 +79,26 @@ export default function DahabFixAiConsole() {
     });
   };
 
+  // مزامنة الـ Viewport تلقائياً لتصغير الصفحة وتكبيرها بدقة الكمبيوتر على شاشة الهاتف
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    let meta = document.querySelector('meta[name="viewport"]') as HTMLMetaElement;
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.name = 'viewport';
+      document.head.appendChild(meta);
+    }
+
+    if (isDesktopMode) {
+      // ضبط العرض لـ 1200 بكسل وتصغير العرض ليتناسب تماماً مع شاشة الموبايل وتفعيل الزوم الحر
+      meta.setAttribute('content', 'width=1200, initial-scale=0.32, minimum-scale=0.25, maximum-scale=5.0, user-scalable=yes');
+    } else {
+      // وضع الموبايل الطبيعي المتوافق تماماً مع مقاسات الشاشات الذكية
+      meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes');
+    }
+  }, [isDesktopMode]);
+
   // التحقق من جلسة المستخدم المحفوظة (أو وضع الزائر)
   const checkAuth = () => {
     if (typeof window === 'undefined') return;
@@ -379,7 +399,7 @@ export default function DahabFixAiConsole() {
   }
 
   return (
-    <div className={`min-h-screen flex flex-col font-sans bg-gray-50 dark:bg-workshop-bg text-gray-900 dark:text-gray-100 transition-colors duration-300 ${isDesktopMode ? 'min-w-[1200px] overflow-x-auto' : 'w-full'}`}>
+    <div className={`min-h-screen flex flex-col font-sans bg-gray-50 dark:bg-workshop-bg text-gray-900 dark:text-gray-100 transition-colors duration-300 ${isDesktopMode ? 'w-[1200px] max-w-[1200px] mx-auto overflow-x-visible' : 'w-full overflow-x-hidden'}`}>
       {/* شريط الزائر المؤقت - مدمج ومختصر */}
       {currentUser?.isGuest && (
         <div className="bg-gradient-to-r from-sky-600 to-indigo-600 text-white text-center py-1.5 px-3 text-xs font-bold flex items-center justify-between gap-2 z-[60] relative">
@@ -429,6 +449,7 @@ export default function DahabFixAiConsole() {
           isOpen={isNavSidebarOpen}
           onClose={() => setIsNavSidebarOpen(false)}
           currentUser={currentUser}
+          isDesktopMode={isDesktopMode}
         />
 
         {/* مساحة العمل الرئيسية */}
