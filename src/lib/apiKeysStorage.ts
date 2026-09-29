@@ -45,10 +45,16 @@ export function parseKeysList(input: string | string[] | undefined): string[] {
     .filter((k) => k.length > 5);
 }
 
+let memoryCachedKeys: StoredApiKeys | null = null;
+
 /**
- * قراءة المفاتيح المخزنة في ملف الـ JSON
+ * قراءة المفاتيح المخزنة في ملف الـ JSON أو الذاكرة
  */
 export function getStoredApiKeys(): StoredApiKeys {
+  if (memoryCachedKeys) {
+    return memoryCachedKeys;
+  }
+
   ensureDirectories();
   try {
     if (fs.existsSync(KEYS_FILE)) {
@@ -56,7 +62,7 @@ export function getStoredApiKeys(): StoredApiKeys {
       const data = JSON.parse(content);
       const orKeys = parseKeysList(data.openrouterKeys);
       const dsKeys = parseKeysList(data.deepseekKeys);
-      return {
+      const loaded: StoredApiKeys = {
         deepseekKeys: dsKeys.length > 0 ? dsKeys : DEFAULT_DEEPSEEK_KEYS,
         geminiKeys: parseKeysList(data.geminiKeys),
         openrouterKeys: orKeys.length > 0 ? orKeys : [DEFAULT_OPENROUTER_KEY],
@@ -64,6 +70,8 @@ export function getStoredApiKeys(): StoredApiKeys {
         groqKeys: parseKeysList(data.groqKeys),
         updatedAt: data.updatedAt || new Date().toISOString(),
       };
+      memoryCachedKeys = loaded;
+      return loaded;
     }
   } catch (err) {
     console.error('Error reading stored API keys:', err);
@@ -110,6 +118,7 @@ export function saveStoredApiKeys(keys: {
     console.error('Error writing stored API keys:', err);
   }
 
+  memoryCachedKeys = updated;
   return updated;
 }
 

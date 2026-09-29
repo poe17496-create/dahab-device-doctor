@@ -157,11 +157,27 @@ export default function AIKeysManager() {
   useEffect(() => {
     async function loadKeys() {
       try {
+        // 1. استرجاع المفاتيح المحفوظة محلياً في المتصفح أولاً (لها الأولوية القصوى)
         let localKeys: any = null;
         try {
           const raw = localStorage.getItem('dahab_system_api_keys');
           if (raw) localKeys = JSON.parse(raw);
         } catch {}
+
+        const userLocalGemini: string[] = Array.isArray(localKeys?.gemini)
+          ? localKeys.gemini.filter((k: string) => typeof k === 'string' && k.trim().length > 5)
+          : typeof localKeys?.gemini === 'string' && localKeys.gemini.trim().length > 5
+          ? [localKeys.gemini.trim()]
+          : [];
+
+        const userLocalOpenrouter: string[] = Array.isArray(localKeys?.openrouter)
+          ? localKeys.openrouter.filter((k: string) => typeof k === 'string' && k.trim().length > 5)
+          : typeof localKeys?.openrouter === 'string' && localKeys.openrouter.trim().length > 5
+          ? [localKeys.openrouter.trim()]
+          : [];
+
+        let gArr: string[] = userLocalGemini;
+        let oArr: string[] = userLocalOpenrouter;
 
         const defaultOrKey =
           typeof window !== 'undefined'
@@ -170,28 +186,25 @@ export default function AIKeysManager() {
               )
             : '';
 
-        const res = await fetch('/api/admin/keys');
-        let gArr: string[] = [];
-        let oArr: string[] = [];
+        // 2. إذا لم تكن هناك مفاتيح محفوظة في المتصفح، نجلب من السيرفر
+        try {
+          const res = await fetch('/api/admin/keys');
+          if (res.ok) {
+            const data = await res.json();
+            const serverKeys = data.keys || {};
+            // نأخذ مفاتيح السيرفر فقط إذا لم يكن المستخدم قد أدخل مفاتيحه الخاصة محلياً
+            if (gArr.length === 0 && Array.isArray(serverKeys.geminiKeys) && serverKeys.geminiKeys.length > 0) {
+              gArr = serverKeys.geminiKeys;
+            }
+            if (oArr.length === 0 && Array.isArray(serverKeys.openrouterKeys) && serverKeys.openrouterKeys.length > 0) {
+              oArr = serverKeys.openrouterKeys;
+            }
+          }
+        } catch (e) {
+          console.warn('Could not fetch server keys:', e);
+        }
 
-        if (res.ok) {
-          const data = await res.json();
-          const serverKeys = data.keys || {};
-          gArr = serverKeys.geminiKeys?.length > 0 ? serverKeys.geminiKeys : localKeys?.gemini || [];
-          oArr =
-            serverKeys.openrouterKeys?.length > 0
-              ? serverKeys.openrouterKeys
-              : localKeys?.openrouter?.length > 0
-              ? localKeys.openrouter
-              : [defaultOrKey];
-        } else if (localKeys) {
-          gArr = Array.isArray(localKeys.gemini) ? localKeys.gemini : localKeys.gemini ? [localKeys.gemini] : [];
-          oArr = Array.isArray(localKeys.openrouter)
-            ? localKeys.openrouter
-            : localKeys.openrouter
-            ? [localKeys.openrouter]
-            : [defaultOrKey];
-        } else {
+        if (oArr.length === 0 && defaultOrKey) {
           oArr = [defaultOrKey];
         }
 
