@@ -13,6 +13,10 @@ import {
   buildMacBookIntelA1708Board,
   buildDellXpsBoard,
   buildLenovoThinkPadBoard,
+  buildDellInspiron3521Board,
+  buildHpProBook450Board,
+  buildDesktopH81Board,
+  buildRtx3060GpuBoard,
 } from './boardviewPresets';
 
 export interface ExpertPattern {
@@ -84,6 +88,10 @@ function getAllBoardPresets(): BoardData[] {
       buildMacBookIntelA1708Board(),
       buildDellXpsBoard(),
       buildLenovoThinkPadBoard(),
+      buildDellInspiron3521Board(),
+      buildHpProBook450Board(),
+      buildDesktopH81Board(),
+      buildRtx3060GpuBoard(),
     ];
   } catch (err) {
     console.error('Error instantiating board presets:', err);

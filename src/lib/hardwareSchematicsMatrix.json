@@ -55891,5 +55891,230 @@
         "solution": "شغل برنامج فحص الرامات MATS/MODS لتحديد شريحة VRAM المعطوبة (مثال: Channel A1/B0) واستبدل شريحة الـ VRAM"
       }
     ]
+  },
+  {
+    "id": "spec_sony_playstation_5_ps5_disc_digital",
+    "brand": "Sony",
+    "model": "Sony PlayStation 5 (PS5) Disc/Digital",
+    "boardCode": "EDM-010 / EDM-020 / EDM-030 (Oberon SoC)",
+    "category": "desktop",
+    "mainChips": {
+      "apuSoc": "AMD Oberon Zen 2 + RDNA 2 (Custom APU)",
+      "southbridge": "Sony CXD90061GG / CXD90062GG",
+      "hdmiEncoder": "Panasonic MN864739",
+      "powerManagement": "TI TPS53355 / Infineon IR35217 VRM",
+      "ssdController": "Sony CXD90060GG Custom 12-channel SSD"
+    },
+    "powerRails": [
+      {
+        "rail": "+12V_MAIN_PSU",
+        "voltage": "12.0V",
+        "diodeMode": "0.490V - 0.580V",
+        "safeInjection": "12.0V @ 2.5A"
+      },
+      {
+        "rail": "+5V_STANDBY",
+        "voltage": "5.0V",
+        "diodeMode": "0.420V",
+        "safeInjection": "5.0V @ 1.5A"
+      },
+      {
+        "rail": "+3.3V_SOUTHBRIDGE",
+        "voltage": "3.3V",
+        "diodeMode": "0.360V",
+        "safeInjection": "3.3V @ 1.5A"
+      },
+      {
+        "rail": "+1.8V_SOC",
+        "voltage": "1.8V",
+        "diodeMode": "0.390V",
+        "safeInjection": "1.8V @ 1.0A"
+      },
+      {
+        "rail": "+VDD_APU_CORE",
+        "voltage": "0.75V - 1.0V",
+        "diodeMode": "0.003V (Ultra Low Resistance)",
+        "safeInjection": "0.8V @ 1.0A max"
+      }
+    ],
+    "commonFaults": [
+      {
+        "symptom": "الجهاز يعطي إضاءة زرقاء لثانية واحدة ثم ينطفئ فوراً (Blue Light of Death 1-Sec Shutoff)",
+        "cause": "شورت صريح في أحد موصفات فازات تغذية الـ APU DrMOS أو تلف فيوزات دخل الـ 12V F5401/F5402",
+        "solution": "افحص فيوزات الـ 12V بجوار مدخل الباور وقس ممانعة فازات المعالج لتحديد الـ DrMOS التالف واستبداله"
+      },
+      {
+        "symptom": "صوت مروحة طبيعي وإضاءة بيضاء بدون أي صورة على الشاشة (White Light of Death No Display)",
+        "cause": "تلف شريحة الـ HDMI Encoder MN864739 أو تلف دايودات الحماية ESD وفلاتر الـ EMI",
+        "solution": "افحص فلاتر الـ Chokes الأربعة خلف منفذ HDMI واستبدل شريحة الـ HDMI Encoder"
+      }
+    ]
+  },
+  {
+    "id": "spec_nintendo_nintendo_switch_hac_001_oled_heg_001_",
+    "brand": "Nintendo",
+    "model": "Nintendo Nintendo Switch (HAC-001 / OLED HEG-001)",
+    "boardCode": "HAC-CPU-01 / HAC-CPU-20 (NVIDIA Tegra X1 T210)",
+    "category": "mobile",
+    "mainChips": {
+      "processor": "NVIDIA Tegra X1 (ODN-T210 / T210B01)",
+      "chargingPmic": "TI BQ24193 (Battery Charger)",
+      "usbPdController": "ROHM M92T36 (Power Delivery IC)",
+      "audioCodec": "Realtek ALC5639",
+      "powerManagement": "Maxim MAX77620 / MAX77621"
+    },
+    "powerRails": [
+      {
+        "rail": "VBUS (Type-C In)",
+        "voltage": "5.0V - 15.0V",
+        "diodeMode": "0.520V",
+        "safeInjection": "5.0V @ 1.5A"
+      },
+      {
+        "rail": "VBAT_SYS",
+        "voltage": "3.7V - 4.2V",
+        "diodeMode": "0.410V",
+        "safeInjection": "4.0V @ 2.0A"
+      },
+      {
+        "rail": "+3.3V_SYS",
+        "voltage": "3.3V",
+        "diodeMode": "0.360V",
+        "safeInjection": "3.3V @ 1.5A"
+      },
+      {
+        "rail": "+1.8V_ALWAYS",
+        "voltage": "1.8V",
+        "diodeMode": "0.420V",
+        "safeInjection": "1.8V @ 1.0A"
+      },
+      {
+        "rail": "+VCORE_TEGRA",
+        "voltage": "0.8V - 1.1V",
+        "diodeMode": "0.045V",
+        "safeInjection": "0.8V @ 1.0A"
+      }
+    ],
+    "commonFaults": [
+      {
+        "symptom": "السويتش لا يشحن ولا يعمل مع سحب 0.00A أو 0.40A بطيء جداً",
+        "cause": "احتراق شريحة الـ USB-C Power Delivery M92T36 نتيجة شواحن غير أصلية",
+        "solution": "افحص المكثفات المحيطة بشريحة M92T36 بحثاً عن شورت، واستبدل الشريحة ليعود الجهاز للشحن الطبيعي 15V 1.5A"
+      },
+      {
+        "symptom": "الجهاز يشحن بالبطارية ولكن يتجمد على لوجو Nintendo أو يفرغ البطارية بسرعة",
+        "cause": "تلف آيسي الشحن BQ24193 أو تلف شريحة الباور MAX77620",
+        "solution": "استبدل شريحة BQ24193 وتأكد من سلامة دايود الحماية P13USB المسؤول عن إخراج الصورة للدك"
+      }
+    ]
+  },
+  {
+    "id": "spec_bosch_bosch_edc16_edc17_engine_control_unit",
+    "brand": "Bosch",
+    "model": "Bosch Bosch EDC16 / EDC17 Engine Control Unit",
+    "boardCode": "Bosch Tricore TC1796 / TC1797 / TC1793 ECU PCB",
+    "category": "desktop",
+    "mainChips": {
+      "microcontroller": "Infineon TriCore SAK-TC1797 / TC1793 32-bit",
+      "powerManagementIc": "Bosch 306xx / 400xx / A2C33648 System IC",
+      "injectorDriver": "Bosch 304xx / 305xx High Voltage Injector Driver",
+      "canTransceiver": "TJA1040 / TJA1050 High-Speed CAN",
+      "eepromMemory": "ST 95320 / 95640 SPI EEPROM (Immo Data)"
+    },
+    "powerRails": [
+      {
+        "rail": "KL30 (+12V Permanent Battery)",
+        "voltage": "12.0V - 14.4V",
+        "diodeMode": "0.510V",
+        "safeInjection": "12.0V @ 2.0A"
+      },
+      {
+        "rail": "KL15 (+12V Ignition Switch)",
+        "voltage": "12.0V - 14.4V",
+        "diodeMode": "0.520V",
+        "safeInjection": "12.0V @ 1.5A"
+      },
+      {
+        "rail": "+5V_SENSOR_VCC",
+        "voltage": "5.0V ± 0.05V",
+        "diodeMode": "0.430V",
+        "safeInjection": "5.0V @ 1.0A"
+      },
+      {
+        "rail": "+3.3V_MICRO_VCC",
+        "voltage": "3.3V",
+        "diodeMode": "0.380V",
+        "safeInjection": "3.3V @ 1.0A"
+      },
+      {
+        "rail": "+80V_INJECTOR_BOOST",
+        "voltage": "60V - 80V DC",
+        "diodeMode": "0.580V (High Voltage)",
+        "safeInjection": "N/A (High Voltage Boost Rail)"
+      }
+    ],
+    "commonFaults": [
+      {
+        "symptom": "محرك السيارة لا يدور ولا يوجد اتصال بجهاز كشف الأعطال (No CAN Communication)",
+        "cause": "احتراق دايود الحماية من عكس الأقطاب (TVS Protection Diode) أو تلف آيسي الباور Bosch 306xx",
+        "solution": "افحص فيوز الحماية الداخلي، قس خرج الـ 5V والـ 3.3V من شريحة Bosch 306xx واستبدل آيسي الـ CAN Transceiver TJA1040"
+      },
+      {
+        "symptom": "تقطيع وفصل في الرشاشات (Injector Misfire Cyl 1/4 or Cyl 2/3)",
+        "cause": "احتراق موصفات الجهد العالي (High-side Injector MOSFETs) المسؤولة عن حقن 80V للمباخر والرشاشات",
+        "solution": "افحص ملف الـ Boost Inductor ومكثف الشحن 80V واستبدل موصفات الرشاشات التالفة"
+      }
+    ]
+  },
+  {
+    "id": "spec_samsung & lg tv_smart_tv_power_board_smps_led_driver_",
+    "brand": "Samsung & LG TV",
+    "model": "Samsung & LG TV Smart TV Power Board (SMPS + LED Driver)",
+    "boardCode": "Samsung BN44-00807A / LG EAX64905xxx Series",
+    "category": "desktop",
+    "mainChips": {
+      "pfcController": "FAN7930 / NCP1608 PFC Pre-regulator",
+      "mainPwmController": "FSFR1700 / STR-W6053S Half-bridge LLC",
+      "ledBacklightDriver": "MAP3202 / SLC1012C / MP3398A LED Driver",
+      "standbyController": "TNY277PN / VIPer22A Standby PWM"
+    },
+    "powerRails": [
+      {
+        "rail": "+390V_PFC (Active PFC Rail)",
+        "voltage": "380V - 400V DC",
+        "diodeMode": "N/A (High Voltage DC)",
+        "safeInjection": "N/A"
+      },
+      {
+        "rail": "+13V_MAIN_DC",
+        "voltage": "12.8V - 13.2V",
+        "diodeMode": "0.480V",
+        "safeInjection": "13.0V @ 2.5A"
+      },
+      {
+        "rail": "+5V_STANDBY_TV",
+        "voltage": "5.0V",
+        "diodeMode": "0.410V",
+        "safeInjection": "5.0V @ 1.5A"
+      },
+      {
+        "rail": "+LED_VLED+ (Backlight Rail)",
+        "voltage": "65V - 180V DC",
+        "diodeMode": "0.650V",
+        "safeInjection": "N/A"
+      }
+    ],
+    "commonFaults": [
+      {
+        "symptom": "الشاشة قاطعة باور تماماً ولمبة البيان مطفأة (Dead TV No Standby Light)",
+        "cause": "احتراق فيوز الدخل ومقاومة الحماية NTC نتيجة قفلة في قنطرة الدايودات (Bridge Rectifier) أو موصف الـ PFC",
+        "solution": "قس قنطرة الدايودات وموسفتات الـ PFC واستبدل آيسي الـ Standby TNY277 مع المكثف الكيميائي 450V"
+      },
+      {
+        "symptom": "يوجد صوت شغال بدون صورة (شاشة سوداء مع وجود ريستارت خافت للإضاءة)",
+        "cause": "احتراق مساطر الليدات (Open Circuit LED Strips) مما يفعل حماية الـ OVP في آيسي الإضاءة MAP3202",
+        "solution": "افحص خرج الـ VLED+، واستبدل طقم مساطر الليدات مع خفض تيار الإضاءة (Current Limiting Resistor Mod)"
+      }
+    ]
   }
 ]

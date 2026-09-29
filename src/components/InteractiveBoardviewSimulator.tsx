@@ -40,6 +40,10 @@ import {
   buildMacBookIntelA1708Board,
   buildDellXpsBoard,
   buildLenovoThinkPadBoard,
+  buildDellInspiron3521Board,
+  buildHpProBook450Board,
+  buildDesktopH81Board,
+  buildRtx3060GpuBoard,
 } from '@/lib/boardviewPresets';
 import { consumeGuestTrial } from '@/lib/guestUsage';
 
@@ -1380,6 +1384,18 @@ export default function InteractiveBoardviewSimulator() {
           break;
         case 'lenovo_thinkpad_legion':
           nextBoard = buildLenovoThinkPadBoard();
+          break;
+        case 'dell_inspiron_3521':
+          nextBoard = buildDellInspiron3521Board();
+          break;
+        case 'hp_probook_450':
+          nextBoard = buildHpProBook450Board();
+          break;
+        case 'desktop_h81_h61':
+          nextBoard = buildDesktopH81Board();
+          break;
+        case 'gpu_rtx_3060':
+          nextBoard = buildRtx3060GpuBoard();
           break;
         default:
           nextBoard = IPHONE_15_PRO_MAX_BOARD;

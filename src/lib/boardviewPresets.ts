@@ -914,6 +914,262 @@ export function buildLenovoThinkPadBoard(): BoardData {
   };
 }
 
+// 12. بوردة ديل 3521 الأسطورية (Compal LA-9104P)
+export function buildDellInspiron3521Board(): BoardData {
+  const nets: Record<string, BoardNet> = {
+    net_gnd: { id: 'net_gnd', name: 'GND', voltage: '0V', diodeMode: '0.000V', color: '#64748b', description: 'أرضي البوردة المشترك', isGround: true },
+    net_19v_vin: { id: 'net_19v_vin', name: '+19V_VIN (B+)', voltage: '19.5V', diodeMode: '0.485V', color: '#ef4444', description: 'مسار التغذية الرئيسي بعد موصفات الدخل PQ101/PQ102', isPower: true, safeInjectionVoltage: '19.0V @ 2.0A' },
+    net_3valw: { id: 'net_3valw', name: '+3VALW', voltage: '3.3V', diodeMode: '0.380V', color: '#f59e0b', description: 'تغذية الـ Super I/O وزر الباور وشريحة البايوس', isPower: true, safeInjectionVoltage: '3.3V @ 1.5A' },
+    net_5valw: { id: 'net_5valw', name: '+5VALW', voltage: '5.0V', diodeMode: '0.420V', color: '#10b981', description: 'تغذية الـ 5V لمنافذ USB ودوائر الصوت', isPower: true, safeInjectionVoltage: '5.0V @ 1.5A' },
+    net_vcore: { id: 'net_vcore', name: '+VCC_CORE', voltage: '0.9V - 1.15V', diodeMode: '0.015V', color: '#8b5cf6', description: 'تغذية معالج إنتل الأساسية (VCORE)', isPower: true, safeInjectionVoltage: '0.8V @ 1.0A' },
+  };
+
+  const parts: BoardPart[] = [
+    {
+      id: 'PU100_CHARGER',
+      name: 'BQ24725A (PU100)',
+      packageType: 'QFN',
+      side: 'TOP',
+      x: 45,
+      y: 40,
+      width: 14,
+      height: 14,
+      rotation: 0,
+      role: 'آيسي الشحن ومتحكم فتح موصفات الدخل ACDRV',
+      commonFault: 'فصل مسار الـ 19V عن البوردة تماماً، سخونة مع سحب أمبير عالي، أو عدم شحن البطارية',
+      pins: createBgaPins('PU100_CHARGER', 4, 5, 2.2, (r, c) => ({
+        netId: (r === 0 && c === 0) ? 'net_19v_vin' : 'net_gnd',
+        diode: (r === 0 && c === 0) ? '0.485V' : '0.000V',
+      })),
+    },
+    {
+      id: 'PU400_3V5V',
+      name: 'RT8205L (PU400)',
+      packageType: 'QFN',
+      side: 'TOP',
+      x: 105,
+      y: 65,
+      width: 16,
+      height: 16,
+      rotation: 0,
+      role: 'آيسي الباور الرئيسي لتوليد 3.3V و 5.0V Always-ON',
+      commonFault: 'سخونة شديدة في الآيسي عند تركيب الشاحن نتيجة شورت بمكثف سيراميك أو قفلة في خط الـ 3VALW',
+      pins: createBgaPins('PU400_3V5V', 5, 5, 2.4, (r, c) => ({
+        netId: (r === 1 && c === 1) ? 'net_3valw' : (r === 3 && c === 3) ? 'net_5valw' : 'net_gnd',
+        diode: (r === 1 && c === 1) ? '0.380V' : (r === 3 && c === 3) ? '0.420V' : '0.000V',
+      })),
+    },
+    {
+      id: 'KB9012_SIO',
+      name: 'KB9012QF A3 (KBC)',
+      packageType: 'QFN',
+      side: 'TOP',
+      x: 155,
+      y: 110,
+      width: 22,
+      height: 22,
+      rotation: 0,
+      role: 'متحكم الـ Super I/O المبرمج، ومسؤول تشغيل إشارة الباور',
+      commonFault: 'تلف الشريحة نتيجة شورت 3.3V، أو تلف كود السوفتوير الداخلي المحروق ويتطلب إعادة برمجة بالـ RT809F',
+      pins: createBgaPins('KB9012_SIO', 6, 6, 2.5, (r, c) => ({
+        netId: (r === 0) ? 'net_3valw' : 'net_gnd',
+        diode: (r === 0) ? '0.380V' : '0.000V',
+      })),
+    },
+  ];
+
+  return {
+    id: 'dell_inspiron_3521',
+    title: 'Dell Inspiron 15 3521 (Compal LA-9104P BQ24725)',
+    deviceModel: 'Dell Inspiron 15 3521 / 5521 (LA-9104P)',
+    width: 210,
+    height: 180,
+    layersCount: 6,
+    nets,
+    parts,
+    outlinePoints: [{ x: 10, y: 15 }, { x: 200, y: 15 }, { x: 200, y: 165 }, { x: 10, y: 165 }],
+  };
+}
+
+// 13. بوردة إتش بي بروبوك 450 (HP ProBook 450 G3/G4)
+export function buildHpProBook450Board(): BoardData {
+  const nets: Record<string, BoardNet> = {
+    net_gnd: { id: 'net_gnd', name: 'GND', voltage: '0V', diodeMode: '0.000V', color: '#64748b', description: 'أرضي البوردة', isGround: true },
+    net_hp_19v: { id: 'net_hp_19v', name: '+19.5V_ADAPT', voltage: '19.5V', diodeMode: '0.490V', color: '#ef4444', description: 'خط الدخل بعد موصفات الحماية', isPower: true, safeInjectionVoltage: '19.0V @ 2.0A' },
+    net_hp_3valw: { id: 'net_hp_3valw', name: '+3V_ALW', voltage: '3.3V', diodeMode: '0.365V', color: '#f59e0b', description: 'خط التغذية المستمر', isPower: true, safeInjectionVoltage: '3.3V @ 1.5A' },
+    net_hp_5valw: { id: 'net_hp_5valw', name: '+5V_ALW', voltage: '5.0V', diodeMode: '0.410V', color: '#10b981', description: 'خط الـ 5 فولت الأساسي', isPower: true, safeInjectionVoltage: '5.0V @ 1.5A' },
+  };
+
+  const parts: BoardPart[] = [
+    {
+      id: 'U450_CHARGER',
+      name: 'BQ24725 / BQ24738',
+      packageType: 'QFN',
+      side: 'TOP',
+      x: 50,
+      y: 45,
+      width: 14,
+      height: 14,
+      rotation: 0,
+      role: 'آيسي الشحن وإدارة بطارية HP الذكية',
+      commonFault: 'تلف مسار الإشارة HP Smart Pin (مسار السلك الأوسط للشاحن 19.5V) يسبب رفض الشحن',
+      pins: createBgaPins('U450_CHARGER', 4, 4, 2.5, (r, c) => ({
+        netId: (r === 0) ? 'net_hp_19v' : 'net_gnd',
+        diode: (r === 0) ? '0.490V' : '0.000V',
+      })),
+    },
+    {
+      id: 'U450_SIO',
+      name: 'ITE IT8587E / IT8987E',
+      packageType: 'QFN',
+      side: 'TOP',
+      x: 140,
+      y: 95,
+      width: 20,
+      height: 20,
+      rotation: 0,
+      role: 'متحكم الـ Super I/O المبرمج في لابتوبات HP',
+      commonFault: 'تلف الآيسي يسبب موت الجهاز تماماً مع سحب 0.00A واختفاء إشارة RSMRST#',
+      pins: createBgaPins('U450_SIO', 6, 6, 2.4, (r, c) => ({
+        netId: (r === 0) ? 'net_hp_3valw' : 'net_gnd',
+        diode: (r === 0) ? '0.365V' : '0.000V',
+      })),
+    },
+  ];
+
+  return {
+    id: 'hp_probook_450',
+    title: 'HP ProBook 450 G3 / G4 (DA0X63MB6H1)',
+    deviceModel: 'HP ProBook 450 G3/G4 (Quanta X63)',
+    width: 215,
+    height: 185,
+    layersCount: 6,
+    nets,
+    parts,
+    outlinePoints: [{ x: 12, y: 15 }, { x: 205, y: 15 }, { x: 205, y: 170 }, { x: 12, y: 170 }],
+  };
+}
+
+// 14. مازربورد كمبيوتر H81 / H61 الشهيرة (Desktop Motherboard)
+export function buildDesktopH81Board(): BoardData {
+  const nets: Record<string, BoardNet> = {
+    net_gnd: { id: 'net_gnd', name: 'GND', voltage: '0V', diodeMode: '0.000V', color: '#64748b', description: 'أرضي الشاسيه والمازربورد', isGround: true },
+    net_12v_atx: { id: 'net_12v_atx', name: '+12V_ATX (CPU EPS 8-Pin)', voltage: '12.0V', diodeMode: '0.510V', color: '#ef4444', description: 'خط الدخل الرئيسي لفازات المعالج', isPower: true, safeInjectionVoltage: '12.0V @ 2.0A' },
+    net_5v_sb: { id: 'net_5v_sb', name: '+5V_STANDBY (5VSB)', voltage: '5.0V', diodeMode: '0.440V', color: '#10b981', description: 'جهد الاستعداد القادم من الباور سبلاي', isPower: true, safeInjectionVoltage: '5.0V @ 1.5A' },
+    net_3v_sb: { id: 'net_3v_sb', name: '+3V_STANDBY (3VSB)', voltage: '3.3V', diodeMode: '0.370V', color: '#f59e0b', description: 'تغذية شريحة الـ Super I/O قبل الضغط على زر الباور', isPower: true, safeInjectionVoltage: '3.3V @ 1.5A' },
+    net_desk_vcore: { id: 'net_desk_vcore', name: '+VCORE (LGA1150 Socket)', voltage: '0.8V - 1.25V', diodeMode: '0.004V', color: '#8b5cf6', description: 'تغذية أنوية معالج إنتل', isPower: true, safeInjectionVoltage: '0.8V @ 1.0A' },
+  };
+
+  const parts: BoardPart[] = [
+    {
+      id: 'PWM_ISL95836',
+      name: 'ISL95836 / RT8876A (VRM PWM)',
+      packageType: 'QFN',
+      side: 'TOP',
+      x: 75,
+      y: 60,
+      width: 16,
+      height: 16,
+      rotation: 0,
+      role: 'متحكم فازات المعالج لتوليد الـ VCore والـ VTT',
+      commonFault: 'تلف الآيسي أو أحد موسفتات الـ High-side يسبب قفلة تفصل الباور سبلاي فوراً (Spin & Stop Loop)',
+      pins: createBgaPins('PWM_ISL95836', 5, 5, 2.4, (r, c) => ({
+        netId: (r === 0) ? 'net_12v_atx' : 'net_gnd',
+        diode: (r === 0) ? '0.510V' : '0.000V',
+      })),
+    },
+    {
+      id: 'SIO_IT8728F',
+      name: 'ITE IT8728F / Nuvoton NCT5532D',
+      packageType: 'QFN',
+      side: 'TOP',
+      x: 165,
+      y: 120,
+      width: 22,
+      height: 22,
+      rotation: 0,
+      role: 'آيسي الـ Super I/O للمازربورد المسؤول عن مراقبة الحرارة وسرعة المراوح وإشارة PS_ON#',
+      commonFault: 'المازربورد لا تستجيب لزر الباور الأمامي أو سخونة في الشريحة عند تركيب كابل 24-Pin',
+      pins: createBgaPins('SIO_IT8728F', 6, 6, 2.5, (r, c) => ({
+        netId: (r === 0) ? 'net_3v_sb' : 'net_gnd',
+        diode: (r === 0) ? '0.370V' : '0.000V',
+      })),
+    },
+  ];
+
+  return {
+    id: 'desktop_h81_h61',
+    title: 'PC Motherboard Intel H81 / H61 (LGA1150 Socket)',
+    deviceModel: 'Gigabyte / ASUS H81M-S2PV (Socket LGA1150)',
+    width: 230,
+    height: 200,
+    layersCount: 4,
+    nets,
+    parts,
+    outlinePoints: [{ x: 15, y: 15 }, { x: 215, y: 15 }, { x: 215, y: 185 }, { x: 15, y: 185 }],
+  };
+}
+
+// 15. كارت الشاشة NVIDIA GeForce RTX 3060 12GB
+export function buildRtx3060GpuBoard(): BoardData {
+  const nets: Record<string, BoardNet> = {
+    net_gnd: { id: 'net_gnd', name: 'GND', voltage: '0V', diodeMode: '0.000V', color: '#64748b', description: 'أرضي كارت الشاشة', isGround: true },
+    net_12v_pcie: { id: 'net_12v_pcie', name: '+12V_PCIe & EXT', voltage: '12.0V', diodeMode: '0.520V', color: '#ef4444', description: 'خط الدخل الرئيسي من كابل 8-Pin ومنفذ PCIe', isPower: true, safeInjectionVoltage: '12.0V @ 2.0A' },
+    net_1v8_pll: { id: 'net_1v8_pll', name: '+1.8V_PLL', voltage: '1.8V', diodeMode: '0.420V', color: '#f59e0b', description: 'تغذية دوائر التوقيت الداخلية للنواة', isPower: true, safeInjectionVoltage: '1.8V @ 1.0A' },
+    net_vram: { id: 'net_vram', name: '+1.35V_VRAM (GDDR6)', voltage: '1.35V', diodeMode: '0.080V', color: '#10b981', description: 'تغذية رقاقات رامات كارت الشاشة', isPower: true, safeInjectionVoltage: '1.2V @ 1.0A' },
+    net_nvvdd: { id: 'net_nvvdd', name: '+NVVDD (GPU Core)', voltage: '0.75V - 1.05V', diodeMode: '0.003V', color: '#8b5cf6', description: 'تغذية نواة كارت الشاشة GA106 (ممانعة منخفضة جداً)', isPower: true, safeInjectionVoltage: '0.8V @ 1.0A' },
+  };
+
+  const parts: BoardPart[] = [
+    {
+      id: 'GA106_DIE',
+      name: 'NVIDIA GA106-300-A1 GPU',
+      packageType: 'BGA',
+      side: 'TOP',
+      x: 110,
+      y: 90,
+      width: 32,
+      height: 32,
+      rotation: 0,
+      role: 'نواة المعالج الرسومي الأساسية RTX 3060',
+      commonFault: 'شورت صريح على خط الـ NVVDD أو تلف داخلي يسبب كود 43 في نظام التشغيل',
+      pins: createBgaPins('GA106_DIE', 8, 8, 2.6, (r, c) => ({
+        netId: (r < 3) ? 'net_nvvdd' : 'net_gnd',
+        diode: (r < 3) ? '0.003V' : '0.000V',
+      })),
+    },
+    {
+      id: 'VRM_UP9512R',
+      name: 'uP9512R (Core VRM PWM)',
+      packageType: 'QFN',
+      side: 'TOP',
+      x: 45,
+      y: 70,
+      width: 14,
+      height: 14,
+      rotation: 0,
+      role: 'متحكم فازات تغذية النواة NVVDD',
+      commonFault: 'احتراق فازة DrMOS يسبب مرور 12V مباشرة إلى الأرضي وحرق فيوز الدخل',
+      pins: createBgaPins('VRM_UP9512R', 4, 4, 2.4, (r, c) => ({
+        netId: (r === 0) ? 'net_12v_pcie' : 'net_gnd',
+        diode: (r === 0) ? '0.520V' : '0.000V',
+      })),
+    },
+  ];
+
+  return {
+    id: 'gpu_rtx_3060',
+    title: 'NVIDIA GeForce RTX 3060 12GB (GA106-300)',
+    deviceModel: 'GeForce RTX 3060 12GB GDDR6 (PG190)',
+    width: 240,
+    height: 160,
+    layersCount: 8,
+    nets,
+    parts,
+    outlinePoints: [{ x: 10, y: 15 }, { x: 230, y: 15 }, { x: 230, y: 145 }, { x: 10, y: 145 }],
+  };
+}
+
 // قائمة التصنيفات الشاملة لجميع الموديلات الجاهزة
 export const BOARD_CATEGORIES = [
   {
@@ -948,10 +1204,20 @@ export const BOARD_CATEGORIES = [
     ],
   },
   {
-    name: '💻 لابتوبات ديل ولينوفو (Dell & Lenovo Laptops)',
+    name: '💻 لابتوبات ديل وإتش بي ولينوفو (Dell, HP & Lenovo)',
     boards: [
+      { id: 'dell_inspiron_3521', title: 'Dell Inspiron 3521 (Compal LA-9104P BQ24725)' },
+      { id: 'hp_probook_450', title: 'HP ProBook 450 G3/G4 (Quanta X63 DA0X63)' },
       { id: 'dell_xps_latitude', title: 'Dell XPS 15 / Latitude 5420 (ISL95855 / 19V B+)' },
       { id: 'lenovo_thinkpad_legion', title: 'Lenovo ThinkPad T14 / Legion (BQ24780S / IT8586E)' },
     ],
   },
+  {
+    name: '🖥️ مازربوردات PC وكروت شاشة (Motherboards & GPUs)',
+    boards: [
+      { id: 'desktop_h81_h61', title: 'Motherboard Intel H81 / H61 (LGA1150 Socket)' },
+      { id: 'gpu_rtx_3060', title: 'GeForce RTX 3060 12GB (GA106 / GDDR6 / uP9512R)' },
+    ],
+  },
 ];
+
