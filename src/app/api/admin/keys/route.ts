@@ -32,13 +32,20 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
 
     // فحص اختبار مفتاح حي
-    if (body.action === 'test') {
+    if (body.action === 'test' || body.action === 'testSingleKey') {
       const { provider, key } = body;
       if (!provider || !key) {
-        return NextResponse.json({ error: 'المزود والمفتاح مطلوبان' }, { status: 400 });
+        return NextResponse.json({ success: false, error: 'المزود والمفتاح مطلوبان' }, { status: 400 });
       }
       const testResult = await testSingleApiKey(provider, key);
-      return NextResponse.json({ result: testResult });
+      return NextResponse.json({
+        success: testResult.success,
+        message: testResult.message,
+        latencyMs: testResult.latencyMs,
+        modelUsed: testResult.modelUsed,
+        error: testResult.error,
+        result: testResult,
+      });
     }
 
     // حفظ المفاتيح

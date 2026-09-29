@@ -245,24 +245,22 @@ export async function testSingleApiKey(
     if (provider === 'gemini') {
       const genAI = new GoogleGenerativeAI(cleanKey);
       const models = [
-        'gemini-3.5-flash-lite',
-        'gemini-3.7-flash',
-        'gemini-3.8-flash',
-        'gemini-3.6-flash',
-        'gemini-3.1-flash-lite',
-        'gemini-flash-latest',
+        'gemini-2.0-flash',
+        'gemini-1.5-flash',
+        'gemini-1.5-pro',
+        'gemini-2.0-flash-lite-preview-02-05',
       ];
       let lastErr = null;
 
       for (const m of models) {
         try {
           const model = genAI.getGenerativeModel({ model: m });
-          const res = await model.generateContent('Say OK in 1 word');
+          const res = await model.generateContent('Say OK');
           const txt = res.response.text();
           const latencyMs = Date.now() - startTime;
           return {
             success: true,
-            message: `متصل ويعمل بنجاح (الموديل: ${m})`,
+            message: `متصل ويعمل بنجاح عبر Google Gemini ⚡ (الموديل: ${m})`,
             latencyMs,
             modelUsed: m,
           };
@@ -285,10 +283,11 @@ export async function testSingleApiKey(
       });
 
       const models = [
+        'google/gemini-2.0-flash-001',
         'meta-llama/llama-3.3-70b-instruct',
         'deepseek/deepseek-chat',
-        'google/gemini-2.0-flash-001',
-        'openai/gpt-4o-mini',
+        'meta-llama/llama-3.1-8b-instruct:free',
+        'google/gemini-flash-1.5-8b',
       ];
       let lastErr = null;
 

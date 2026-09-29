@@ -294,10 +294,17 @@ export default function AIKeysManager() {
                 </span>
               )}
               {geminiStatus.status === 'error' && (
-                <span className="text-[11px] font-bold text-rose-500 flex items-center gap-1">
-                  <XCircle className="w-4 h-4" />
-                  <span>فشل التحقق</span>
-                </span>
+                <div className="text-right">
+                  <span className="text-[11px] font-bold text-rose-500 flex items-center gap-1 justify-end">
+                    <XCircle className="w-4 h-4" />
+                    <span>فشل التحقق</span>
+                  </span>
+                  {geminiStatus.error && (
+                    <p className="text-[10px] text-rose-400 max-w-[220px] truncate" title={geminiStatus.error}>
+                      {geminiStatus.error}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -368,10 +375,17 @@ export default function AIKeysManager() {
                 </span>
               )}
               {openrouterStatus.status === 'error' && (
-                <span className="text-[11px] font-bold text-rose-500 flex items-center gap-1">
-                  <XCircle className="w-4 h-4" />
-                  <span>فشل التحقق</span>
-                </span>
+                <div className="text-right">
+                  <span className="text-[11px] font-bold text-rose-500 flex items-center gap-1 justify-end">
+                    <XCircle className="w-4 h-4" />
+                    <span>فشل التحقق</span>
+                  </span>
+                  {openrouterStatus.error && (
+                    <p className="text-[10px] text-rose-400 max-w-[220px] truncate" title={openrouterStatus.error}>
+                      {openrouterStatus.error}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           </div>
