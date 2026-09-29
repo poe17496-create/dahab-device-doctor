@@ -390,7 +390,27 @@ export default function DahabFixAiConsole() {
         }
       }
 
-      setTimeout(fetchSessions, 600);
+      setTimeout(() => {
+        fetchSessions();
+        // حفظ نسخة من الجلسة الحالية في localStorage مباشرةً
+        try {
+          const currentSession = {
+            id: activeSessionId,
+            title: prompt.slice(0, 50) || 'جلسة تشخيص',
+            deviceModel: deviceModel || 'جهاز غير محدد',
+            deviceType: specialty || 'mobile-repair',
+            messages: [
+              { id: `msg_u_${Date.now()}`, sender: 'user', text: prompt, timestamp: new Date().toLocaleTimeString('ar-EG') },
+              { id: `msg_a_${Date.now()}`, sender: 'assistant', text: accumulatedText.replace(/<<<DAHAB_DIAGNOSTIC_METRICS>>>[\s\S]*?<<<END_DAHAB_METRICS>>>/g, '').trim(), timestamp: new Date().toLocaleTimeString('ar-EG') },
+            ],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          const existing = JSON.parse(localStorage.getItem('dahab_sessions_backup') || '[]');
+          const filtered = existing.filter((s: any) => s.id !== activeSessionId);
+          localStorage.setItem('dahab_sessions_backup', JSON.stringify([currentSession, ...filtered].slice(0, 50)));
+        } catch {}
+      }, 600);
     } catch (err) {
       console.error(err);
       setOutput('حدث خطأ أثناء الاتصال بمحرك التشخيص الهندسي.');

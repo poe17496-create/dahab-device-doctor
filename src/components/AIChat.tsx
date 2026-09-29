@@ -300,7 +300,8 @@ export default function AIChat() {
       }
 
       const data = await res.json();
-      const aiReply = data.response || 'تم استلام استفسارك، ولكن لم تتوفر إجابة مفصلة من المحرك.';
+      // السيرفر يرجع { message: "..." } — لا { response: "..." }
+      const aiReply = data.message || data.response || data.text || 'عذراً، لم يتوفر رد من المحرك. تأكد من مفاتيح AI في الإعدادات.';
 
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -343,15 +344,19 @@ export default function AIChat() {
       return;
     }
 
-    // 2. فحص صلاحية الميكروفون أولاً
-    if (navigator.permissions) {
+    // 2. طلب إذن الميكروفون مباشرةً — هذا يطلع الـ dialog التلقائي في المتصفح
+    if (navigator.mediaDevices?.getUserMedia) {
       try {
-        const status = await navigator.permissions.query({ name: 'microphone' as PermissionName });
-        if (status.state === 'denied') {
-          setMicErrorBanner('🔒 تم حظر الميكروفون في إعدادات المتصفح. انقر على أيقونة القفل 🔒 بجانب الرابط في الشريط العلوي واختر "السماح للميكروفون"، ثم أعد تحميل الصفحة.');
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // تم منح الإذن — نوقف الـ stream الاختباري ونكمل
+        stream.getTracks().forEach((track) => track.stop());
+      } catch (permErr: any) {
+        if (permErr?.name === 'NotAllowedError' || permErr?.name === 'PermissionDeniedError' || permErr?.name === 'SecurityError') {
+          setMicErrorBanner('🔒 تم رفض إذن الميكروفون.\n\n• على المتصفح: انقر على أيقونة القفل 🔒 بجانب الرابط في الشريط العلوي ← "الإعدادات" ← اختر "السماح" للميكروفون.\n• على الموبايل: اذهب لإعدادات الجهاز ← التطبيقات ← المتصفح ← الأذونات ← فعّل الميكروفون.\nثم أعد تحميل الصفحة وجرب مجدداً.');
           return;
         }
-      } catch {}
+        // أخطاء أخرى (AbortError, etc.) نتجاهلها ونكمل
+      }
     }
 
     const SpeechRecognition =
@@ -360,19 +365,6 @@ export default function AIChat() {
     // 3. إذا كان Web Speech API مدعوماً (Chrome, Edge, Safari الحديث)
     if (SpeechRecognition) {
       try {
-        // طلب إذن الميكروفون برمجياً
-        if (navigator.mediaDevices?.getUserMedia) {
-          try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            stream.getTracks().forEach((track) => track.stop());
-          } catch (permErr: any) {
-            if (permErr?.name === 'NotAllowedError' || permErr?.name === 'PermissionDeniedError') {
-              setMicErrorBanner('🔒 تم رفض إذن الميكروفون. افتح إعدادات المتصفح أو انقر على أيقونة القفل 🔒 بجانب الرابط واختر "السماح". ثم أعد المحاولة.');
-              return;
-            }
-          }
-        }
-
         if (recognitionRef.current) {
           try { recognitionRef.current.abort(); } catch {}
         }
