@@ -59,10 +59,25 @@ export default function DahabFixAiConsole() {
   const [metrics, setMetrics] = useState<DiagnosticMetrics | undefined>(undefined);
   const [isNavSidebarOpen, setIsNavSidebarOpen] = useState(false);
 
-  // حالة تسجيل الدخول الإلزامي
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [guestTrialsRemaining, setGuestTrialsRemaining] = useState(5);
+  const [isDesktopMode, setIsDesktopMode] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('dahab_desktop_view') === 'true';
+    }
+    return false;
+  });
+
+  const toggleDesktopMode = () => {
+    setIsDesktopMode(prev => {
+      const next = !prev;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('dahab_desktop_view', String(next));
+      }
+      return next;
+    });
+  };
 
   // التحقق من جلسة المستخدم المحفوظة (أو وضع الزائر)
   const checkAuth = () => {
@@ -364,22 +379,22 @@ export default function DahabFixAiConsole() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col font-sans bg-gray-50 dark:bg-workshop-bg text-gray-900 dark:text-gray-100 transition-colors duration-300">
-      {/* شريط الزائر المؤقت */}
+    <div className={`min-h-screen flex flex-col font-sans bg-gray-50 dark:bg-workshop-bg text-gray-900 dark:text-gray-100 transition-colors duration-300 ${isDesktopMode ? 'min-w-[1200px] overflow-x-auto' : 'w-full'}`}>
+      {/* شريط الزائر المؤقت - مدمج ومختصر */}
       {currentUser?.isGuest && (
-        <div className="bg-gradient-to-r from-sky-600 to-indigo-600 text-white text-center py-2 px-4 text-xs font-bold flex items-center justify-center gap-3 flex-wrap z-[60] relative">
-          <span>🧪 وضع الزائر — متبقي لك <strong>{guestTrialsRemaining}</strong> تجربة مجانية اليوم</span>
+        <div className="bg-gradient-to-r from-sky-600 to-indigo-600 text-white text-center py-1.5 px-3 text-xs font-bold flex items-center justify-between gap-2 z-[60] relative">
+          <span className="truncate">🧪 وضع الزائر: متبقي لك <strong>{guestTrialsRemaining}</strong> تجارب اليوم</span>
           <button
             onClick={() => { localStorage.removeItem('dahab_current_user'); setCurrentUser(null); }}
-            className="px-3 py-1 rounded-lg bg-white/20 hover:bg-white/30 transition text-[11px] font-black"
+            className="px-2.5 py-0.5 rounded-lg bg-white/20 hover:bg-white/30 transition text-[10px] font-black shrink-0"
           >
-            تسجيل الدخول بحساب فني
+            دخول فني ⚡
           </button>
         </div>
       )}
-      {/* Header علوي مبسط */}
-      <div className="bg-white/90 dark:bg-[#111827]/90 backdrop-blur-lg border-b border-gray-200 dark:border-[#1F2937] sticky top-0 z-50 transition-colors">
-        <div className="p-3 md:p-4 max-w-full mx-auto flex items-center justify-between">
+      {/* Header علوي نحيف ومضغوط بدون أي تداخل */}
+      <div className="bg-white/95 dark:bg-[#111827]/95 backdrop-blur-lg border-b border-gray-200 dark:border-[#1F2937] sticky top-0 z-40 transition-colors">
+        <div className="px-3 py-2 md:px-6 md:py-2.5 max-w-full mx-auto flex items-center justify-between gap-2">
           <ConsoleHeader
             sessionId={activeSessionId}
             onNewSession={handleNewSession}
@@ -387,15 +402,20 @@ export default function DahabFixAiConsole() {
             sessionsCount={sessions.length}
             currentUser={currentUser}
             onLogout={() => setCurrentUser(null)}
+            isDesktopMode={isDesktopMode}
+            onToggleDesktopMode={toggleDesktopMode}
           />
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 shrink-0">
             <Notifications />
-            <button
-              onClick={() => setIsNavSidebarOpen(!isNavSidebarOpen)}
-              className="lg:hidden p-2 rounded-xl bg-gray-100 dark:bg-[#1F2937] hover:bg-gray-200 dark:hover:bg-[#374151] transition-colors"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
+            {!isDesktopMode && (
+              <button
+                onClick={() => setIsNavSidebarOpen(!isNavSidebarOpen)}
+                className="lg:hidden p-1.5 rounded-xl bg-gray-100 dark:bg-[#1F2937] hover:bg-gray-200 dark:hover:bg-[#374151] transition-colors"
+                title="القائمة الكاملة"
+              >
+                <Menu className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -486,7 +506,7 @@ export default function DahabFixAiConsole() {
                 </div>
               )}
               {activeTab === 'ai-chat' && (
-                <div className="h-[650px]">
+                <div className="h-[calc(100vh-160px)] md:h-[650px]">
                   <AIChat />
                 </div>
               )}
@@ -495,8 +515,9 @@ export default function DahabFixAiConsole() {
         </div>
       </div>
 
-      {/* شريط التنقل السفلي للموبايل فقط */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#111827]/95 backdrop-blur-md border-t border-gray-200 dark:border-[#1F2937] safe-area-bottom">
+      {/* شريط التنقل السفلي للموبايل فقط (يختفي عند تفعيل وضع الديسكتوب) */}
+      {!isDesktopMode && (
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#111827]/95 backdrop-blur-md border-t border-gray-200 dark:border-[#1F2937] safe-area-bottom">
         <div className="flex items-center justify-around px-2 py-1">
           {[
             { id: 'diagnosis' as MasterTab, label: 'تشخيص', icon: '🔬' },
@@ -527,6 +548,7 @@ export default function DahabFixAiConsole() {
           </button>
         </div>
       </div>
+      )}
 
       {/* زر تثبيت PWA */}
       <PWAInstallButton />
