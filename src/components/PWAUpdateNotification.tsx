@@ -1,84 +1,97 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { RefreshCw, X } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { RefreshCw, Sparkles, X } from 'lucide-react';
+
+const CURRENT_LOCAL_BUILD = 'dahab_build_2026_09_29_v3';
 
 export default function PWAUpdateNotification() {
-  const [showUpdate, setShowUpdate] = useState(false);
+  const [hasUpdate, setHasUpdate] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
 
-  useEffect(() => {
-    // الاستماع لرسائل Service Worker
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data.type === 'NEW_VERSION_AVAILABLE') {
-        setShowUpdate(true);
+  // فحص أحدث إصدار منشور في السيرفر ومقارنته بالنسخة المخزنة
+  const checkForUpdates = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/version?t=${Date.now()}`, { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        const storedBuild = localStorage.getItem('dahab_app_build_id');
+        if (storedBuild && data.buildId && storedBuild !== data.buildId) {
+          setHasUpdate(true);
+        } else if (!storedBuild && data.buildId) {
+          localStorage.setItem('dahab_app_build_id', data.buildId);
+        }
       }
-    };
-
-    navigator.serviceWorker.addEventListener('message', handleMessage);
-
-    return () => {
-      navigator.serviceWorker.removeEventListener('message', handleMessage);
-    };
+    } catch (e) {
+      // Offline
+    }
   }, []);
 
-  const handleUpdate = async () => {
-    setIsUpdating(true);
-    
-    // إرسال رسالة للـ Service Worker لتخطي الانتظار
-    if ('serviceWorker' in navigator) {
-      const registration = await navigator.serviceWorker.getRegistration();
-      if (registration) {
-        registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
-      }
-    }
+  useEffect(() => {
+    checkForUpdates();
+    const interval = setInterval(checkForUpdates, 30000); // فحص كل 30 ثانية
+    window.addEventListener('focus', checkForUpdates);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', checkForUpdates);
+    };
+  }, [checkForUpdates]);
 
-    // إعادة تحميل الصفحة بعد فترة قصيرة
-    setTimeout(() => {
+  // تنفيذ التحديث الفوري ومسح أي كاش قديم على الموبايل والكمبيوتر
+  const handleForceUpdate = async () => {
+    setIsUpdating(true);
+    try {
+      // 1. مسح كل الكاش في المتصفح
+      if ('caches' in window) {
+        const cacheKeys = await caches.keys();
+        await Promise.all(cacheKeys.map((key) => caches.delete(key)));
+      }
+
+      // 2. تحديث الـ Service Worker
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const reg of registrations) {
+          await reg.unregister();
+        }
+      }
+
+      // 3. تحديث معرف النسخة المحلية
+      localStorage.setItem('dahab_app_build_id', CURRENT_LOCAL_BUILD);
+
+      // 4. إعادة تحميل الصفحة إجبارياً من السيرفر
+      window.location.href = window.location.pathname + '?refresh=' + Date.now();
+    } catch (e) {
       window.location.reload();
-    }, 2000);
+    }
   };
 
-  if (!showUpdate) return null;
+  if (!hasUpdate || dismissed) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 animate-fadeIn">
-      <div className="bg-white dark:bg-[#111827] border border-gray-200 dark:border-[#1F2937] rounded-2xl shadow-2xl p-4 max-w-sm">
+    <div className="fixed top-0 inset-x-0 z-[100] bg-gradient-to-r from-amber-500 via-dahab-500 to-amber-600 text-slate-950 px-4 py-2.5 shadow-xl flex items-center justify-between gap-3 animate-fadeIn">
+      <div className="flex items-center gap-2 text-xs md:text-sm font-black flex-1 justify-center md:justify-start">
+        <Sparkles className="w-4 h-4 animate-bounce text-slate-950" />
+        <span>يتوفر تحديث جديد للمنظومة الآن! تم تحديث الميزات والمخططات السحابية.</span>
+      </div>
+
+      <div className="flex items-center gap-2">
         <button
-          onClick={() => setShowUpdate(false)}
-          className="absolute top-2 left-2 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-[#1F2937]"
+          onClick={handleForceUpdate}
+          disabled={isUpdating}
+          className="px-3.5 py-1 rounded-xl bg-slate-950 hover:bg-slate-900 text-amber-400 text-xs font-black transition flex items-center gap-1.5 shadow-md active:scale-95 disabled:opacity-50"
         >
-          <X className="w-4 h-4 text-gray-500" />
+          <RefreshCw className={`w-3.5 h-3.5 ${isUpdating ? 'animate-spin' : ''}`} />
+          <span>{isUpdating ? 'جاري التحديث...' : 'تحديث هاتفي فوراً ⚡'}</span>
         </button>
 
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-dahab-500/20 text-dahab-600 dark:text-dahab-400 flex items-center justify-center flex-shrink-0">
-            <RefreshCw className="w-5 h-5" />
-          </div>
-
-          <div className="flex-1">
-            <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-1">
-              تحديث جديد متاح
-            </h3>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
-              تم إصدار نسخة جديدة من التطبيق. قم بالتحديث للحصول على أحدث الميزات.
-            </p>
-            <button
-              onClick={handleUpdate}
-              disabled={isUpdating}
-              className="w-full bg-dahab-500 hover:bg-dahab-600 text-white text-sm font-bold py-2 px-4 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {isUpdating ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  جاري التحديث...
-                </>
-              ) : (
-                'تحديث الآن'
-              )}
-            </button>
-          </div>
-        </div>
+        <button
+          onClick={() => setDismissed(true)}
+          className="p-1 rounded-lg hover:bg-black/10 text-slate-950 transition"
+          title="إغلاق"
+        >
+          <X className="w-4 h-4" />
+        </button>
       </div>
     </div>
   );

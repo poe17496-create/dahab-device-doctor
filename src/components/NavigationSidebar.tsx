@@ -16,6 +16,7 @@ import {
   MessageSquare,
   Crown,
   Lock,
+  History,
 } from 'lucide-react';
 import type { MasterTab } from '@/app/page';
 
@@ -29,6 +30,7 @@ interface NavigationSidebarProps {
 
 const navItems = [
   { id: 'diagnosis' as MasterTab, label: 'التشخيص الذكي', icon: Stethoscope, color: 'from-dahab-500 to-amber-600' },
+  { id: 'memory' as MasterTab, label: 'ذاكرة الأجهزة والمحادثات', icon: History, color: 'from-amber-600 to-orange-600' },
   { id: 'ai-chat' as MasterTab, label: 'مساعد الذكاء الاصطناعي', icon: MessageSquare, color: 'from-violet-600 to-purple-600' },
   { id: 'boardview' as MasterTab, label: 'معمل البوردفيو والمسارات', icon: Cpu, color: 'from-emerald-600 to-teal-600' },
   { id: 'ic-encyclopedia' as MasterTab, label: 'موسوعة الآيسيهات والبدائل', icon: BookOpen, color: 'from-sky-600 to-blue-600' },

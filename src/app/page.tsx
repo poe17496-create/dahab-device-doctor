@@ -19,6 +19,7 @@ import Notifications from '@/components/Notifications';
 import AIChat from '@/components/AIChat';
 import DahabEcosystem from '@/components/DahabEcosystem';
 import AuthGate from '@/components/AuthGate';
+import DeviceMemoryTab from '@/components/DeviceMemoryTab';
 import {
   DeviceSpecialty,
   PowerSupplyReadings,
@@ -31,6 +32,7 @@ import { Menu, Crown, AlertCircle, Cpu } from 'lucide-react';
 
 export type MasterTab =
   | 'diagnosis'
+  | 'memory'
   | 'panic-log'
   | 'safe-injection'
   | 'boardview'
@@ -448,44 +450,21 @@ export default function DahabFixAiConsole() {
 
                   <ResultStreamViewer rawOutput={output} loading={loading} />
 
-                  {/* قائمة الفحص الهندسي وسجل الذاكرة داخل تبويب الفحص فقط */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 pt-4">
-                    {/* قائمة الفحص */}
-                    <div className="bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border rounded-3xl p-5 shadow-lg">
-                      <h3 className="text-sm font-black text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
-                        <span>قائمة الفحص الهندسي والخطوات القياسية</span>
-                      </h3>
-                      <InteractiveChecklist />
-                    </div>
-
-                    {/* ذاكرة الجلسات السابقة */}
-                    <div className="bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border rounded-3xl p-5 shadow-lg">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-sm font-black text-gray-900 dark:text-gray-100">
-                          ذاكرة الأجهزة السابقة ({sessions.length})
-                        </h3>
-                        <button
-                          onClick={handleNewSession}
-                          className="text-xs bg-gradient-to-r from-dahab-500 to-amber-600 text-slate-950 px-3 py-1.5 rounded-xl font-bold hover:from-dahab-600 transition"
-                        >
-                          + جهاز جديد
-                        </button>
-                      </div>
-                      <div className="space-y-2 max-h-56 overflow-y-auto">
-                        {sessions.slice(0, 8).map((session) => (
-                          <button
-                            key={session.id}
-                            onClick={() => handleSelectSession(session.id)}
-                            className="w-full text-right p-3 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 hover:border-dahab-500 transition"
-                          >
-                            <div className="text-xs font-bold text-gray-900 dark:text-gray-100">{session.title}</div>
-                            <div className="text-[10px] text-gray-500 dark:text-gray-400">{session.deviceModel || 'طراز غير محدد'}</div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
                 </>
+              )}
+
+              {/* تبويب ذاكرة الأجهزة والمحادثات السابقة المستقل */}
+              {activeTab === 'memory' && (
+                <DeviceMemoryTab
+                  sessions={sessions}
+                  onSelectSession={(id) => {
+                    handleSelectSession(id);
+                    setActiveTab('diagnosis');
+                  }}
+                  onDeleteSession={handleDeleteSession}
+                  onNewSession={handleNewSession}
+                  onSwitchToChat={() => setActiveTab('ai-chat')}
+                />
               )}
 
               {/* التبويبات الأخرى (تظهر نظيفة بالكامل بدون أي ازدحام بالأسفل) */}

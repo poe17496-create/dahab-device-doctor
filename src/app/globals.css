@@ -3,14 +3,14 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 17, 24, 39;
+  --foreground-rgb: 15, 23, 42;
   --background-rgb: 248, 250, 252;
   --card-rgb: 255, 255, 255;
   --border-rgb: 226, 232, 240;
 }
 
 .dark {
-  --foreground-rgb: 243, 244, 246;
+  --foreground-rgb: 248, 250, 252;
   --background-rgb: 11, 15, 23;
   --card-rgb: 17, 24, 39;
   --border-rgb: 31, 41, 55;
@@ -19,17 +19,30 @@
 body {
   color: rgb(var(--foreground-rgb));
   background: rgb(var(--background-rgb));
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Segoe UI', Cairo, Tahoma, Geneva, Verdana, sans-serif;
   direction: rtl;
   text-align: right;
   overflow-x: hidden;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background-color 0.25s ease, color 0.25s ease;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* بطاقات الورشة في الوضعين النهاري والليلي */
+.workshop-card-style {
+  background-color: rgb(var(--card-rgb));
+  border: 1px solid rgb(var(--border-rgb));
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+}
+
+.dark .workshop-card-style {
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.4);
 }
 
 /* تخصيص شريط التمرير (Custom Scrollbar) */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
 }
 
 ::-webkit-scrollbar-track {
@@ -42,7 +55,7 @@ body {
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: #374151;
+  background: #334155;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -56,7 +69,7 @@ body {
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -65,27 +78,37 @@ body {
 }
 
 .animate-fadeIn {
-  animation: fadeIn 0.25s ease-out forwards;
+  animation: fadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* تحسين Dark Mode للعناصر التفاعلية */
 .dark input,
 .dark textarea,
 .dark select {
-  background-color: rgb(17, 24, 39);
-  border-color: rgb(31, 41, 55);
-  color: rgb(243, 244, 246);
+  background-color: #0f172a;
+  border-color: #1e293b;
+  color: #f1f5f9;
 }
 
 .dark input:focus,
 .dark textarea:focus,
 .dark select:focus {
   border-color: #f59e0b;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
   outline: none;
 }
 
-.dark button {
-  transition: all 0.2s ease;
+/* تحسين Light Mode للعناصر التفاعلية */
+input, textarea, select {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: #d97706;
+  box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.15);
+  outline: none;
 }
 
 @media print {
