@@ -42,35 +42,30 @@ const DEFAULT_USERS: UserAccount[] = [
     lastSeenAt: new Date().toISOString(),
     expiresAt: undefined, // غير محدود
   },
-  {
-    id: 'user_tech1',
-    username: 'tech_ahmed',
-    name: 'م. أحمد مصطفى',
-    email: 'ahmed@doctor.com',
-    role: 'technician',
-    specialty: 'صيانة الآيفون وسواب المعالجات A12-A17',
-    password: '123456',
-    active: true,
-    diagnosesCount: 64,
-    createdAt: '2026-02-15T00:00:00.000Z',
-    expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(), // 60 يوم متبقية
-    subscriptionDays: 60,
-  },
-  {
-    id: 'user_tech2',
-    username: 'tech_mohamed',
-    name: 'م. محمد كمال',
-    email: 'mohamed@doctor.com',
-    role: 'technician',
-    specialty: 'صيانة اللابتوب والماك بوك وكروت الشاشة',
-    password: '123456',
-    active: true,
-    diagnosesCount: 42,
-    createdAt: '2026-03-01T00:00:00.000Z',
-    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 يوم متبقية
-    subscriptionDays: 30,
-  },
 ];
+
+const DELETED_FILE = path.join(DATA_DIR, 'deleted_users.json');
+let inMemoryDeletedSet = new Set<string>();
+
+function getDeletedUserIds(): Set<string> {
+  try {
+    if (fs.existsSync(DELETED_FILE)) {
+      const data = JSON.parse(fs.readFileSync(DELETED_FILE, 'utf-8'));
+      if (Array.isArray(data)) {
+        data.forEach((id: string) => inMemoryDeletedSet.add(id));
+      }
+    }
+  } catch (e) {}
+  return inMemoryDeletedSet;
+}
+
+function recordDeletedUserId(idOrUsername: string) {
+  inMemoryDeletedSet.add(idOrUsername.toLowerCase());
+  try {
+    ensureUsersFile();
+    fs.writeFileSync(DELETED_FILE, JSON.stringify(Array.from(inMemoryDeletedSet)), 'utf-8');
+  } catch (e) {}
+}
 
 function ensureUsersFile() {
   try {
@@ -87,10 +82,16 @@ function ensureUsersFile() {
 
 export function getAllUsers(): UserAccount[] {
   ensureUsersFile();
+  const deletedSet = getDeletedUserIds();
   try {
     if (!fs.existsSync(USERS_FILE)) return DEFAULT_USERS;
     const content = fs.readFileSync(USERS_FILE, 'utf-8');
-    return JSON.parse(content);
+    const parsed: UserAccount[] = JSON.parse(content);
+    return parsed.filter(
+      (u) =>
+        !deletedSet.has(u.id.toLowerCase()) &&
+        !deletedSet.has(u.username.toLowerCase())
+    );
   } catch (err) {
     console.error('Error reading users file:', err);
     return DEFAULT_USERS;
@@ -152,14 +153,16 @@ export function addUser(
 }
 
 export function deleteUser(id: string): boolean {
+  recordDeletedUserId(id);
   let users = getAllUsers();
   const initialLength = users.length;
-  users = users.filter((u) => u.id !== id);
+  users = users.filter((u) => u.id !== id && u.username.toLowerCase() !== id.toLowerCase());
   if (users.length !== initialLength) {
     saveAllUsers(users);
     return true;
   }
-  return false;
+  // حتى إذا كان غير موجود بالملف، يتم تسجيله بالمقبرة لعدم عودته
+  return true;
 }
 
 export function toggleUserStatus(id: string): UserAccount | null {

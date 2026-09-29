@@ -46,6 +46,9 @@ export async function GET() {
             localMap.set(sbu.username, userObj);
           }
           localUsers = Array.from(localMap.values());
+          // تصفية أي يوزر تم حذفه مسبقاً
+          const activeUsernames = new Set(getAllUsers().map(u => u.username.toLowerCase()));
+          localUsers = localUsers.filter(u => activeUsernames.has(u.username.toLowerCase()));
         }
       } catch (sbErr) {
         console.warn('Supabase fetch in users GET route:', sbErr);
@@ -369,17 +372,24 @@ export async function DELETE(req: NextRequest) {
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'معرف المستخدم مطلوب' }, { status: 400 });
 
-    const user = getAllUsers().find((u) => u.id === id);
-    const success = deleteUser(id);
-
-    if (isSupabaseConfigured && supabase && user) {
-      try {
-        await supabase.from('users').delete().eq('username', user.username);
-      } catch (e) {}
+    const all = getAllUsers();
+    const user = all.find((u) => u.id === id || u.username.toLowerCase() === id.toLowerCase());
+    deleteUser(id);
+    if (user?.username) {
+      deleteUser(user.username);
     }
 
-    if (!success) return NextResponse.json({ error: 'تعذر حذف المستخدم' }, { status: 404 });
-    return NextResponse.json({ message: 'تم حذف المستخدم بنجاح' });
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const usernameToDelete = user?.username || id;
+        await supabase.from('users').delete().eq('username', usernameToDelete);
+        await supabase.from('users').delete().eq('id', id);
+      } catch (e) {
+        console.warn('Supabase delete error:', e);
+      }
+    }
+
+    return NextResponse.json({ message: 'تم حذف المستخدم نهائياً' });
   } catch (err) {
     return NextResponse.json({ error: 'فشل في حذف المستخدم' }, { status: 500 });
   }

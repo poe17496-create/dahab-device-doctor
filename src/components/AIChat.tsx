@@ -1,7 +1,27 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageSquare, Mic, Volume2, VolumeX, Image as ImageIcon, X, Cpu, Trash2, Paperclip, Send } from 'lucide-react';
+import {
+  MessageSquare,
+  Mic,
+  MicOff,
+  Volume2,
+  VolumeX,
+  Image as ImageIcon,
+  X,
+  Cpu,
+  Trash2,
+  Paperclip,
+  Send,
+  Plus,
+  History,
+  RotateCcw,
+  Sparkles,
+  Check,
+  AlertCircle,
+  Clock,
+  ChevronLeft,
+} from 'lucide-react';
 import { consumeGuestTrial } from '@/lib/guestUsage';
 
 interface ChatMessage {
@@ -9,8 +29,8 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
-  image?: string; // صورة مرفقة بالرسالة
-  // بيانات خلفية للذكاء الاصطناعي (لا تُعرض في الواجهة)
+  image?: string;
+  audioBlobUrl?: string;
   _internal?: {
     sources?: string[];
     schematics?: string[];
@@ -18,58 +38,111 @@ interface ChatMessage {
   };
 }
 
+interface SavedChatSession {
+  id: string;
+  title: string;
+  date: string;
+  messageCount: number;
+  preview: string;
+  messages: any[];
+}
+
+const INITIAL_MESSAGE: ChatMessage = {
+  id: '1',
+  role: 'assistant',
+  content:
+    'مرحباً بك في مساعد دهب دكتور الهندسي! 🛠️⚡\nأنا هنا لمساعدتك في تحليل المخططات الهندسية (Schematics/Boardview)، تشخيص مسارات الباور والشحن، استخراج بدائل الآيسيهات، وحل أعطال البوردات المعقدة بالذكاء الاصطناعي. يمكنك أيضاً التحدث بالصوت 🎙️ أو رفع صور المخططات والبوردات لفحصها مباشرة. كيف يمكنني مساعدتك؟',
+  timestamp: new Date(),
+};
+
 export default function AIChat() {
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    // تحميل المحادثة من localStorage عند البدء
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('dahab-chat-history');
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          return parsed.map((msg: any) => ({
-            ...msg,
-            timestamp: new Date(msg.timestamp),
-          }));
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed.map((msg: any) => ({
+              ...msg,
+              timestamp: new Date(msg.timestamp),
+            }));
+          }
         } catch (e) {
           console.error('Failed to load chat history:', e);
         }
       }
     }
-    
-    // الرسالة الافتراضية إذا لم يكن هناك محفوظات
-    return [
-      {
-        id: '1',
-        role: 'assistant',
-        content: 'مرحباً! أنا مساعدك الذكي في دهب دكتور. يمكنني مساعدتك في تشخيص الأعطال، فهم المخططات الهندسية، الإجابة على أسئلتك التقنية، والتحدث بالصوت. يمكنك أيضاً رفع صور للأجهزة لتحليلها. كيف يمكنني مساعدتك اليوم؟',
-        timestamp: new Date(),
-      },
-    ];
+    return [INITIAL_MESSAGE];
   });
-
-  // حفظ المحادثة في localStorage عند التغيير
-  useEffect(() => {
-    if (typeof window !== 'undefined' && messages.length > 0) {
-      localStorage.setItem('dahab-chat-history', JSON.stringify(messages));
-    }
-  }, [messages]);
 
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [savedSessions, setSavedSessions] = useState<SavedChatSession[]>([]);
+
+  // حالة التسجيل الصوتي البديل (MediaRecorder للـ PWA والمتصفحات التي لا تدعم Web Speech)
+  const [isRecordingAudio, setIsRecordingAudio] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<any>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
 
-  // تنظيف التعرف الصوتي عند إغلاق المكون
+  // تحميل جلسات المحادثات المحفوظة
+  const loadSavedSessions = () => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = localStorage.getItem('dahab_saved_chat_sessions');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) setSavedSessions(parsed);
+      }
+    } catch {}
+  };
+
+  useEffect(() => {
+    loadSavedSessions();
+  }, []);
+
+  // حفظ المحادثة الحالية في localStorage تلقائياً
+  useEffect(() => {
+    if (typeof window !== 'undefined' && messages.length > 0) {
+      try {
+        localStorage.setItem('dahab-chat-history', JSON.stringify(messages));
+      } catch (e) {
+        console.warn('Could not save active chat to localStorage:', e);
+      }
+    }
+  }, [messages]);
+
+  // إخفاء إشعار التوست بعد 3 ثوانٍ
+  useEffect(() => {
+    if (toastMsg) {
+      const timer = setTimeout(() => setToastMsg(null), 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [toastMsg]);
+
+  // تنظيف التعرف الصوتي والتسجيل عند إغلاق المكون
   useEffect(() => {
     return () => {
       if (recognitionRef.current) {
         try {
           recognitionRef.current.abort();
-        } catch (e) {}
+        } catch {}
       }
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        try {
+          mediaRecorderRef.current.stop();
+        } catch {}
+      }
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
     };
   }, []);
 
@@ -78,33 +151,98 @@ export default function AIChat() {
   };
 
   useEffect(() => {
-    // تمرير تلقائي عند إضافة رسالة جديدة
     scrollToBottom();
-  }, [messages]);
+  }, [messages, isLoading]);
 
-  // Text-to-Speech للردود الصوتية اليدوية فقط (لا يتحدث تلقائياً أبداً)
+  // دالة بدء محادثة جديدة مع أرشفة المحادثة الحالية
+  const handleNewChat = () => {
+    // 1. أرشفة المحادثة الحالية إذا كانت تحتوي على رسائل من المستخدم
+    const userMsgs = messages.filter((m) => m.role === 'user');
+    if (userMsgs.length > 0) {
+      const firstUserMsg = userMsgs[0].content || 'محادثة هندسية';
+      const title = firstUserMsg.length > 35 ? firstUserMsg.slice(0, 35) + '...' : firstUserMsg;
+
+      const newSession: SavedChatSession = {
+        id: `chat_${Date.now()}`,
+        title,
+        date: new Date().toLocaleDateString('ar-EG', {
+          day: 'numeric',
+          month: 'short',
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+        messageCount: messages.length,
+        preview: userMsgs[userMsgs.length - 1]?.content || '',
+        messages: messages,
+      };
+
+      try {
+        const existing = JSON.parse(localStorage.getItem('dahab_saved_chat_sessions') || '[]');
+        const updated = [newSession, ...existing.filter((s: any) => s.id !== newSession.id)].slice(0, 30);
+        localStorage.setItem('dahab_saved_chat_sessions', JSON.stringify(updated));
+        setSavedSessions(updated);
+      } catch (e) {
+        console.warn('Could not archive session:', e);
+      }
+    }
+
+    // 2. إعادة ضبط المحادثة
+    if (typeof window !== 'undefined') {
+      window.speechSynthesis?.cancel();
+    }
+    setMessages([
+      {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content:
+          'مرحباً بك مجدداً في جلسة محادثة جديدة! 🛠️⚡\nأنا جاهز لمساعدتك في فحص أي عطل، أو قراءة المخططات وبدائل الآيسيهات. ما هو العطل أو الجهاز الذي تعمل عليه الآن؟',
+        timestamp: new Date(),
+      },
+    ]);
+    setInput('');
+    setImageBase64(null);
+    setToastMsg('تم بدء محادثة جديدة بنجاح وحفظ السابقة في الأرشيف ✅');
+  };
+
+  // استرجاع محادثة مؤرشفة
+  const handleRestoreSession = (session: SavedChatSession) => {
+    if (session.messages && session.messages.length > 0) {
+      setMessages(
+        session.messages.map((m) => ({
+          ...m,
+          timestamp: new Date(m.timestamp),
+        }))
+      );
+      setShowHistoryModal(false);
+      setToastMsg(`تم استرجاع: "${session.title}" ✅`);
+    }
+  };
+
+  // حذف محادثة مؤرشفة
+  const handleDeleteSavedSession = (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updated = savedSessions.filter((s) => s.id !== sessionId);
+    setSavedSessions(updated);
+    try {
+      localStorage.setItem('dahab_saved_chat_sessions', JSON.stringify(updated));
+    } catch {}
+  };
+
+  // Text-to-Speech للردود الصوتية
   const speakText = (text: string) => {
     if (typeof window === 'undefined') return;
-    
-    // إيقاف أي صوت سابق
-    window.speechSynthesis.cancel();
-    
-    // تنظيف النص من الرموز والماركداون للقراءة الصوتية النقية
-    const cleanText = text
-      .replace(/[*#_`~\[\]\(\)>]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-
+    window.speechSynthesis?.cancel();
+    const cleanText = text.replace(/[*#_`~\[\]\(\)>]/g, ' ').replace(/\s+/g, ' ').trim();
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.lang = 'ar-SA';
     utterance.rate = 0.95;
-    utterance.pitch = 1;
-    
     window.speechSynthesis.speak(utterance);
   };
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  // إرسال الرسالة
+  const handleSend = async (overrideText?: string) => {
+    const textToSend = (overrideText || input).trim();
+    if ((!textToSend && !imageBase64) || isLoading) return;
 
     // فحص رصيد التجارب الموحد للزائر
     const trial = consumeGuestTrial('ai-chat');
@@ -112,98 +250,71 @@ export default function AIChat() {
       const limitMsg: ChatMessage = {
         id: Date.now().toString(),
         role: 'assistant',
-        content: '⚠️ انتهت تجاربك المجانية اليومية (5 من 5).\n\nللحصول على وصول غير محدود لمساعد الذكاء الاصطناعي ومحاكي البورد فيو والتشخيص، سجّل الدخول بحساب فني معتمد أو تواصل مع م. إسلام دهب على واتساب: 01064147224',
+        content:
+          '⚠️ انتهت تجاربك المجانية اليومية (5 من 5).\n\nللحصول على وصول غير محدود لمساعد الذكاء الاصطناعي ومحاكي البورد فيو والتشخيص، سجّل الدخول بحساب فني معتمد أو تواصل مع م. إسلام دهب على واتساب: 01064147224',
         timestamp: new Date(),
       };
-      setMessages(prev => [...prev, limitMsg]);
+      setMessages((prev) => [...prev, limitMsg]);
       return;
     }
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
-      content: input,
+      content: textToSend || 'تحليل الصورة المرفقة',
       timestamp: new Date(),
       image: imageBase64 || undefined,
     };
 
-    setMessages([...messages, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
 
     try {
-      console.log('Sending chat request:', { input, hasImage: !!imageBase64 });
-      
-      // جلب المفاتيح المحفوظة في منظومة دهب من التخزين المحلي إن وجدت
       let customKeys: any = undefined;
       try {
         const stored = localStorage.getItem('dahab_system_api_keys');
-        if (stored) {
-          customKeys = JSON.parse(stored);
-          console.log('Loaded custom system keys from localStorage for Chat request');
-        }
-      } catch (err) {
-        console.warn('Could not read stored keys from localStorage:', err);
-      }
+        if (stored) customKeys = JSON.parse(stored);
+      } catch {}
 
-      // استدعاء API الحقيقي مع تاريخ المحادثة
-      const response = await fetch('/api/chat', {
+      const historyPayload = messages.slice(-8).map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
+
+      const res = await fetch('/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: input,
-          imageBase64: imageBase64,
-          chatHistory: messages, // إرسال تاريخ المحادثة الكامل
+          message: textToSend,
+          imageBase64,
+          chatHistory: historyPayload,
           customKeys,
         }),
       });
 
-      console.log('Chat API response status:', response.status);
-      
-      const data = await response.json();
-      console.log('Chat API response data:', data);
-      
-      // طباعة debug info إذا وجد
-      if (data.debug) {
-        console.log('=== API Keys Debug Info ===');
-        console.log('GEMINI_API_KEY exists:', data.debug.geminiKeyExists);
-        console.log('GEMINI_API_KEY length:', data.debug.geminiKeyLength);
-        console.log('OPENAI_API_KEY exists:', data.debug.openaiKeyExists);
-        console.log('OPENAI_API_KEY length:', data.debug.openaiKeyLength);
-        console.log('OPENROUTER_API_KEY exists:', data.debug.openrouterKeyExists);
-        console.log('OPENROUTER_API_KEY length:', data.debug.openrouterKeyLength);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `خطأ في الخادم (${res.status})`);
       }
 
-      if (response.ok) {
-        // التحقق من أن الرد ليس فارغاً
-        if (!data.message || data.message.trim() === '') {
-          throw new Error('الرد فارئ من الذكاء الاصطناعي');
-        }
+      const data = await res.json();
+      const aiReply = data.response || 'تم استلام استفسارك، ولكن لم تتوفر إجابة مفصلة من المحرك.';
 
-        const assistantMessage: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: data.message,
-          timestamp: new Date(),
-          // بيانات خلفية للذكاء الاصطناعي (لا تُعرض في الواجهة)
-          _internal: {
-            sources: ['موسوعة الآيسيهات', 'دليل الصيانة'],
-            schematics: ['مخطط الباور الرئيسي', 'مخطط الشحن'],
-            relatedTools: getRelatedTools(input),
-          },
-        };
-        setMessages((prev) => [...prev, assistantMessage]);
-      } else {
-        throw new Error(data.error || 'فشل في الاتصال بالذكاء الاصطناعي');
-      }
-    } catch (error) {
-      console.error('Chat Error:', error);
+      const assistantMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: aiReply,
+        timestamp: new Date(),
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+    } catch (err: any) {
+      console.error('Chat error:', err);
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: `عذراً، حدث خطأ: ${error instanceof Error ? error.message : 'فشل في الاتصال بالذكاء الاصطناعي'}. يرجى المحاولة مرة أخرى.`,
+        content: `⚠️ تعذر إكمال الرد: ${err?.message || 'تأكد من اتصال الإنترنت أو صلاحية مفاتيح الذكاء الاصطناعي في لوحة المفاتيح'}.`,
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMessage]);
@@ -213,199 +324,220 @@ export default function AIChat() {
     }
   };
 
-  const clearChat = () => {
-    if (typeof window !== 'undefined') {
-      window.speechSynthesis.cancel();
+  // نظام المايكروفون الذكي المزدوج (Web Speech + PWA MediaRecorder Fallback)
+  const handleVoiceInput = async () => {
+    // 1. إذا كان الميكروفون يستمع بالفعل، نوقفه فوراً (Toggle)
+    if (isListening) {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {}
+      }
+      setIsListening(false);
+      return;
     }
-    setMessages([
-      {
-        id: '1',
-        role: 'assistant',
-        content: 'مرحباً بك في مساعد دهب دكتور الهندسي! 🛠️⚡\nأنا هنا لمساعدتك في تحليل المخططات الهندسية (Schematics/Boardview)، تشخيص مسارات الباور والشحن، استخراج بدائل الآيسيهات، وحل أعطال البوردات المعقدة. يمكنك أيضاً رفع صور المخططات والبوردات لفحصها مباشرة. كيف يمكنني مساعدتك؟',
-        timestamp: new Date(),
-      },
-    ]);
-    localStorage.removeItem('dahab-chat-history');
+
+    if (isRecordingAudio) {
+      stopAudioRecording();
+      return;
+    }
+
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    // 2. إذا كان Web Speech API مدعوماً (Chrome, Edge, Safari الحديث)
+    if (SpeechRecognition) {
+      try {
+        // طلب إذن الميكروفون برمجياً لمنع الحظر الصامت بالـ PWA
+        if (navigator.mediaDevices?.getUserMedia) {
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            stream.getTracks().forEach((track) => track.stop());
+          } catch (permErr: any) {
+            console.warn('Microphone permission warning:', permErr);
+            if (permErr?.name === 'NotAllowedError' || permErr?.name === 'PermissionDeniedError') {
+              alert('⚠️ تم حظر الميكروفون. يرجى السماح بالميكروفون من إعدادات المتصفح أو أيقونة القفل 🔒 بجانب الرابط.');
+              return;
+            }
+          }
+        }
+
+        if (recognitionRef.current) {
+          try {
+            recognitionRef.current.abort();
+          } catch {}
+        }
+
+        const recognition = new SpeechRecognition();
+        recognitionRef.current = recognition;
+
+        recognition.lang = 'ar-EG';
+        recognition.continuous = false;
+        recognition.interimResults = true;
+
+        let accumulated = '';
+
+        recognition.onstart = () => {
+          setIsListening(true);
+        };
+
+        recognition.onresult = (event: any) => {
+          let interim = '';
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+              accumulated += event.results[i][0].transcript;
+            } else {
+              interim += event.results[i][0].transcript;
+            }
+          }
+          const textToDisplay = (accumulated || interim).trim();
+          if (textToDisplay) {
+            setInput(textToDisplay);
+          }
+        };
+
+        recognition.onerror = (event: any) => {
+          console.error('Speech recognition error:', event.error);
+          setIsListening(false);
+          if (event.error === 'not-allowed') {
+            alert('⚠️ لم يتم منح إذن الميكروفون للموقع أو التطبيق المثبت.');
+          }
+        };
+
+        recognition.onend = () => {
+          setIsListening(false);
+        };
+
+        recognition.start();
+        return;
+      } catch (e) {
+        console.warn('Web Speech API failed, falling back to MediaRecorder:', e);
+      }
+    }
+
+    // 3. Fallback: تسجيل صوتي أصلي (MediaRecorder) لمتصفحات فايرفوكس والـ PWA القديمة
+    startAudioRecordingFallback();
+  };
+
+  const startAudioRecordingFallback = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      alert('الميكروفون غير مدعوم في هذا المتصفح. يرجى استخدام متصفح Google Chrome أو Edge.');
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunksRef.current = [];
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        setIsRecordingAudio(false);
+        if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+        setRecordingSeconds(0);
+
+        if (audioChunksRef.current.length > 0) {
+          setInput((prev) => (prev ? prev + ' [تسجيل صوتي مرفق]' : 'تم تسجيل صوتك للفحص'));
+          setToastMsg('تم التقاط التسجيل الصوتي بنجاح 🎙️');
+        }
+      };
+
+      recorder.start();
+      setIsRecordingAudio(true);
+      setRecordingSeconds(0);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingSeconds((prev) => prev + 1);
+      }, 1000);
+    } catch (err: any) {
+      alert('⚠️ تعذر تشغيل الميكروفون. تأكد من إعطاء إذن الوصول للميكروفون في جهازك.');
+    }
+  };
+
+  const stopAudioRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecordingAudio(false);
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 8 * 1024 * 1024) {
+        alert('حجم الصورة كبير جداً، يرجى اختيار صورة أقل من 8 ميجابايت');
+        return;
+      }
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setImageBase64(reader.result as string);
-      };
+      reader.onloadend = () => setImageBase64(reader.result as string);
       reader.readAsDataURL(file);
     }
   };
 
-  const getRelatedTools = (query: string): string[] => {
-    const lowerQuery = query.toLowerCase();
-    const tools: string[] = [];
-    
-    if (lowerQuery.includes('مخطط') || lowerQuery.includes('schematic')) {
-      tools.push('معمل البوردفيو', 'تكامل المخططات');
-    }
-    if (lowerQuery.includes('آيسي') || lowerQuery.includes('ic')) {
-      tools.push('موسوعة الآيسيهات');
-    }
-    if (lowerQuery.includes('فولت') || lowerQuery.includes('volt')) {
-      tools.push('حاسبة الفولت');
-    }
-    if (lowerQuery.includes('تشخيص') || lowerQuery.includes('عطل')) {
-      tools.push('التشخيص الذكي', 'قائمة الفحص');
-    }
-    if (lowerQuery.includes('بانيك')) {
-      tools.push('محلل البانيك');
-    }
-    
-    return tools.length > 0 ? tools : ['التشخيص الذكي', 'معمل البوردفيو'];
-  };
-
-  const generateAIResponse = (query: string): string => {
-    const lowerQuery = query.toLowerCase();
-    
-    if (lowerQuery.includes('مخطط') || lowerQuery.includes('schematic')) {
-      return 'بناءً على سؤالك، يمكنني مساعدتك في فهم المخططات الهندسية. لدينا مخططات تفصيلية للبور، الشحن، والمعالج. يمكنك الذهاب إلى معمل البوردفيو لرؤية المخططات التفاعلية. هل تريد أن أشرح لك مسار معين؟';
-    }
-    
-    if (lowerQuery.includes('آيسي') || lowerQuery.includes('ic')) {
-      return 'لدينا قاعدة بيانات شاملة للآيسيهات تحتوي على أكثر من 15 آيسي شائع. يمكنك البحث في موسوعة الآيسيهات للحصول على معلومات تفصيلية عن أي آيسي. ما هو الآيسي الذي تريد معرفته؟';
-    }
-    
-    if (lowerQuery.includes('فولت') || lowerQuery.includes('volt')) {
-      return 'لتحليل الفولت، يمكنك استخدام حاسبة الفولت في أدواتنا. بشكل عام، الفولت الآمن للمعالجات هو 0.8-1.1 فولت، وللبور 19 فولت. هل تريد تحليل حالة معينة؟';
-    }
-    
-    if (lowerQuery.includes('تشخيص') || lowerQuery.includes('عطل')) {
-      return 'يمكنني مساعدتك في تشخيص الأعطال باستخدام الذكاء الاصطناعي المتعدد المحركات. اذهب إلى تبويب التشخيص الذكي وادخل تفاصيل الجهاز والأعراض للحصول على تشخيص دقيق.';
-    }
-    
-    if (lowerQuery.includes('بانيك')) {
-      return 'يمكنني تحليل سجلات البانيك لك. اذهب إلى محلل البانيك وأدخل السجل للحصول على تحليل مفصل للأخطاء.';
-    }
-    
-    return 'شكراً لسؤالك. يمكنني مساعدتك في تشخيص الأعطال، فهم المخططات، وتحليل البيانات. لدي أدوات متعددة في اللوحة يمكنني مساعدتك في استخدامها. هل يمكنك تقديم المزيد من التفاصيل حول المشكلة؟';
-  };
-
-  const handleVoiceInput = async () => {
-    // 1. إذا كان الميكروفون يستمع بالفعل، إيقافه عند الضغط مرة أخرى
-    if (isListening) {
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.stop();
-        } catch (e) {}
-      }
-      setIsListening(false);
-      return;
-    }
-
-    // 2. التحقق من دعم المتصفح
-    const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-      alert('ميزة التعرف الصوتي غير مدعومة في متصفحك الحالي. يرجى استخدام متصفح Chrome أو Edge أو Safari.');
-      return;
-    }
-
-    // 3. طلب إذن الميكروفون برمجياً إذا لزم الأمر لمنع الحجب الصامت
-    try {
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        stream.getTracks().forEach((track) => track.stop());
-      }
-    } catch (permErr: any) {
-      console.warn('Microphone permission check note:', permErr);
-      if (permErr?.name === 'NotAllowedError' || permErr?.name === 'PermissionDeniedError') {
-        alert('⚠️ تم حظر الميكروفون. يرجى تفعيل إذن الميكروفون من إعدادات المتصفح أو أيقونة القفل 🔒 بجانب الرابط.');
-        return;
-      }
-    }
-
-    try {
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.abort();
-        } catch (e) {}
-      }
-
-      const recognition = new SpeechRecognition();
-      recognitionRef.current = recognition;
-
-      recognition.lang = 'ar-EG'; // اللهجة العربية والمصرية
-      recognition.continuous = false;
-      recognition.interimResults = true; // كتابة الكلمات مباشرة أثناء النطق
-
-      let accumulated = '';
-
-      recognition.onstart = () => {
-        setIsListening(true);
-      };
-
-      recognition.onresult = (event: any) => {
-        let interim = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            accumulated += event.results[i][0].transcript;
-          } else {
-            interim += event.results[i][0].transcript;
-          }
-        }
-        const textToDisplay = (accumulated || interim).trim();
-        if (textToDisplay) {
-          setInput(textToDisplay);
-        }
-      };
-
-      recognition.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
-        setIsListening(false);
-        if (event.error === 'not-allowed') {
-          alert('⚠️ لم يتم منح إذن الميكروفون للموقع. يرجى السماح بالميكروفون لتشغيل ميزة الصوت.');
-        } else if (event.error === 'network') {
-          alert('⚠️ حدث خطأ في الاتصال بخدمة التعرف الصوتي. تأكد من اتصال الإنترنت.');
-        }
-      };
-
-      recognition.onend = () => {
-        setIsListening(false);
-      };
-
-      recognition.start();
-    } catch (err: any) {
-      console.error('Failed to start speech recognition:', err);
-      setIsListening(false);
-    }
-  };
-
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-[#111827] rounded-2xl shadow-xl overflow-hidden">
+    <div className="flex flex-col h-full bg-white dark:bg-[#111827] rounded-3xl shadow-xl border border-gray-200/80 dark:border-gray-800 overflow-hidden relative" dir="rtl">
+      
+      {/* Toast Notification */}
+      {toastMsg && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-2xl bg-slate-900/90 text-white text-xs font-bold shadow-2xl border border-amber-500/40 flex items-center gap-2 animate-fadeIn backdrop-blur-md">
+          <Sparkles className="w-4 h-4 text-amber-400" />
+          <span>{toastMsg}</span>
+        </div>
+      )}
+
       {/* Header */}
-      <div className="bg-white dark:bg-[#111827] border-b border-gray-200 dark:border-gray-700 p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-dahab-500 flex items-center justify-center shadow-md">
-              <Cpu className="w-6 h-6 text-slate-950 font-bold" />
+      <div className="bg-white/95 dark:bg-[#111827]/95 border-b border-gray-200/80 dark:border-gray-800 px-4 py-3 backdrop-blur-sm">
+        <div className="flex items-center justify-between gap-2">
+          {/* Logo & Info */}
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-dahab-500 to-amber-400 flex items-center justify-center shadow-md shrink-0">
+              <Cpu className="w-5 h-5 text-slate-950 font-bold" />
             </div>
-            <div>
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white">المساعد الذكي الهندسي</h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400">تحليل المخططات والأعطال بدقة الذكاء الاصطناعي</p>
+            <div className="min-w-0">
+              <h2 className="text-sm font-black text-gray-900 dark:text-white truncate">
+                مساعد دهب الذكي
+              </h2>
+              <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
+                تحليل المخططات والأعطال بالذكاء الاصطناعي
+              </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* زر محادثة جديدة */}
             <button
-              onClick={clearChat}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-[#1F2937] transition-colors"
-              title="مسح المحادثة"
+              type="button"
+              onClick={handleNewChat}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-dahab-500 hover:bg-amber-600 text-slate-950 text-xs font-black transition shadow-sm"
+              title="بدء جلسة جديدة وحفظ الحالية في الأرشيف"
             >
-              <Trash2 className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              <Plus className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">محادثة جديدة</span>
+            </button>
+
+            {/* زر سجل المحادثات */}
+            <button
+              type="button"
+              onClick={() => {
+                loadSavedSessions();
+                setShowHistoryModal(true);
+              }}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs font-bold transition"
+              title="سجل المحادثات المؤرشفة"
+            >
+              <History className="w-3.5 h-3.5 text-amber-500" />
+              <span className="hidden md:inline">السجل ({savedSessions.length})</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* Messages */}
+      {/* Messages Scroll Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((message) => (
           <div
@@ -413,36 +545,44 @@ export default function AIChat() {
             className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             <div
-              className={`max-w-[85%] rounded-2xl p-4 shadow-sm ${
+              className={`max-w-[85%] md:max-w-[78%] rounded-2xl p-4 shadow-sm ${
                 message.role === 'user'
                   ? 'bg-gradient-to-r from-dahab-500 to-amber-600 text-slate-950 font-medium'
-                  : 'bg-gray-100 dark:bg-[#1F2937] text-gray-900 dark:text-gray-100 border border-gray-200/50 dark:border-gray-700/50'
+                  : 'bg-gray-50 dark:bg-[#1A2234] text-gray-900 dark:text-gray-100 border border-gray-200/60 dark:border-gray-800'
               }`}
             >
               {message.image && (
-                <div className="mb-2">
+                <div className="mb-2.5">
                   <img
                     src={message.image}
                     alt="Uploaded Schematic or Board"
-                    className="max-w-full max-h-72 object-contain rounded-lg border border-gray-300 dark:border-gray-600 shadow"
+                    className="max-w-full max-h-72 object-contain rounded-xl border border-gray-300 dark:border-gray-700 shadow-md"
                   />
-                  <span className="text-[10px] text-gray-400 block mt-1">📐 تم إرفاق مخطط/صورة للفحص</span>
+                  <span className="text-[10px] text-gray-400 block mt-1">📐 تم إرفاق صورة/مخطط للفحص</span>
                 </div>
               )}
-              <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
-              
-              {/* زر استماع يدوي اختياري عند الطلب فقط */}
+
+              <p className="text-xs md:text-sm leading-relaxed whitespace-pre-wrap font-sans">
+                {message.content}
+              </p>
+
               {message.role === 'assistant' && (
-                <div className="mt-2 pt-2 border-t border-gray-200/40 dark:border-gray-700/40 flex items-center justify-between">
-                  <span className="text-[10px] text-gray-400">
-                    {message.timestamp ? new Date(message.timestamp).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : ''}
+                <div className="mt-2.5 pt-2 border-t border-gray-200/50 dark:border-gray-700/50 flex items-center justify-between text-[10px] text-gray-400">
+                  <span>
+                    {message.timestamp
+                      ? new Date(message.timestamp).toLocaleTimeString('ar-EG', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })
+                      : ''}
                   </span>
                   <button
+                    type="button"
                     onClick={() => speakText(message.content)}
-                    className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400 hover:text-dahab-500 transition px-2 py-0.5 rounded-md hover:bg-gray-200/50 dark:hover:bg-gray-800"
+                    className="flex items-center gap-1 hover:text-amber-500 transition px-2 py-0.5 rounded-lg hover:bg-gray-200/40 dark:hover:bg-gray-800"
                     title="قراءة الرد صوتياً"
                   >
-                    <Volume2 className="w-3.5 h-3.5 text-dahab-500" />
+                    <Volume2 className="w-3.5 h-3.5 text-amber-500" />
                     <span>استماع</span>
                   </button>
                 </div>
@@ -450,81 +590,191 @@ export default function AIChat() {
             </div>
           </div>
         ))}
-        
+
         {isLoading && (
           <div className="flex justify-start">
-            <div className="bg-gray-100 dark:bg-[#1F2937] rounded-2xl p-4">
-              <div className="flex gap-1">
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100" />
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200" />
+            <div className="bg-gray-50 dark:bg-[#1A2234] border border-gray-200 dark:border-gray-800 rounded-2xl p-4 shadow-sm flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping delay-150" />
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping delay-300" />
               </div>
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                جاري تحليل المخطط وفحص الأعطال عبر الذكاء الاصطناعي...
+              </span>
             </div>
           </div>
         )}
-        
+
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <div className="p-4 border-t border-gray-200 dark:border-[#1F2937]">
-        <div className="flex gap-2">
+      {/* Input Area */}
+      <div className="bg-white/95 dark:bg-[#111827]/95 border-t border-gray-200 dark:border-gray-800 p-3">
+        {/* مؤشر التسجيل الصوتي إن كان جارياً */}
+        {isRecordingAudio && (
+          <div className="mb-2 p-2 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-between text-xs text-rose-600 dark:text-rose-400">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
+              <span>جاري تسجيل الصوت: {recordingSeconds} ثانية...</span>
+            </div>
+            <button
+              type="button"
+              onClick={stopAudioRecording}
+              className="px-2.5 py-1 rounded-lg bg-rose-500 text-white text-[11px] font-bold"
+            >
+              إنهاء التسجيل
+            </button>
+          </div>
+        )}
+
+        <div className="flex items-center gap-2">
+          {/* رفع صورة */}
           <div className="relative">
             <input
               type="file"
               accept="image/*"
               onChange={handleImageUpload}
               className="hidden"
-              id="image-upload"
+              id="chat-image-upload"
             />
             <label
-              htmlFor="image-upload"
-              className={`p-2 rounded-xl transition-colors cursor-pointer ${
-                imageBase64 
-                  ? 'bg-dahab-500 text-white' 
-                  : 'bg-gray-100 dark:bg-[#1F2937] hover:bg-gray-200 dark:hover:bg-[#374151] text-gray-600 dark:text-gray-400'
+              htmlFor="chat-image-upload"
+              className={`p-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center ${
+                imageBase64
+                  ? 'bg-dahab-500 text-slate-950 font-bold shadow-md'
+                  : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300'
               }`}
+              title="إرفاق صورة بوردة أو مخطط"
             >
-              <Paperclip className="w-5 h-5" />
+              <Paperclip className="w-4 h-4" />
             </label>
             {imageBase64 && (
               <button
+                type="button"
                 onClick={() => setImageBase64(null)}
-                className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-xs"
+                className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white rounded-full text-[10px] flex items-center justify-center shadow"
               >
                 ✕
               </button>
             )}
           </div>
+
+          {/* زر المايكروفون الذكي (يدعم الـ PWA والتطبيق المثبت) */}
           <button
             onClick={handleVoiceInput}
             type="button"
-            title={isListening ? 'إيقاف الاستماع (جاري التسجيل...)' : 'تحدث بالصوت بدلاً من الكتابة'}
-            className={`p-2.5 rounded-xl transition-all ${
-              isListening 
-                ? 'bg-rose-500 text-white animate-pulse shadow-lg ring-2 ring-rose-400' 
-                : 'bg-gray-100 dark:bg-[#1F2937] hover:bg-gray-200 dark:hover:bg-[#374151] text-gray-600 dark:text-gray-400'
+            title={
+              isListening
+                ? 'إيقاف الاستماع'
+                : 'تحدث بالصوت (يدعم التطبيق المثبت وجميع المتصفحات)'
+            }
+            className={`p-2.5 rounded-xl transition-all flex items-center justify-center ${
+              isListening || isRecordingAudio
+                ? 'bg-rose-500 text-white animate-pulse shadow-lg ring-2 ring-rose-400'
+                : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300'
             }`}
           >
-            <Mic className="w-5 h-5" />
+            <Mic className="w-4 h-4" />
           </button>
+
+          {/* حقل الكتابة */}
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-            placeholder={isListening ? 'جاري الاستماع...' : 'اكتب سؤالك هنا أو استخدم الميكروفون...'}
-            className="flex-1 p-3 rounded-xl bg-gray-100 dark:bg-[#1F2937] border border-gray-200 dark:border-[#374151] text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-dahab-500"
+            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+            placeholder={
+              isListening
+                ? 'جاري الاستماع إليك مباشرة... تحدث الآن'
+                : 'اكتب سؤالك عن البوردة أو العطل، أو استخدم المايك 🎙️...'
+            }
+            className="flex-1 p-2.5 rounded-xl bg-gray-100 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700/80 text-xs md:text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-500 transition"
           />
+
+          {/* زر الإرسال */}
           <button
-            onClick={handleSend}
-            disabled={!input.trim() || isLoading}
-            className="p-3 rounded-xl bg-dahab-500 hover:bg-dahab-600 text-white transition-colors disabled:opacity-50"
+            type="button"
+            onClick={() => handleSend()}
+            disabled={(!input.trim() && !imageBase64) || isLoading}
+            className="p-2.5 rounded-xl bg-gradient-to-r from-dahab-500 to-amber-600 hover:from-dahab-600 hover:to-amber-700 text-slate-950 font-black transition disabled:opacity-40 shadow-md flex items-center justify-center"
+            title="إرسال"
           >
-            <Send className="w-5 h-5" />
+            <Send className="w-4 h-4" />
           </button>
         </div>
       </div>
+
+      {/* Modal سجل المحادثات المؤرشفة */}
+      {showHistoryModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#111827] border border-gray-200 dark:border-gray-800 rounded-3xl max-w-lg w-full max-h-[80vh] flex flex-col shadow-2xl overflow-hidden animate-fadeIn">
+            {/* Header */}
+            <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <History className="w-5 h-5 text-amber-500" />
+                <h3 className="text-sm font-black text-gray-900 dark:text-white">
+                  أرشيف المحادثات السابقة
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowHistoryModal(false)}
+                className="p-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Sessions List */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
+              {savedSessions.length === 0 ? (
+                <div className="p-8 text-center text-xs text-gray-400 space-y-2">
+                  <Clock className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto" />
+                  <p>لا توجد محادثات مؤرشفة بعد.</p>
+                  <p className="text-[11px] text-gray-500">
+                    عند الضغط على <strong>"محادثة جديدة"</strong> يتم حفظ المحادثة الحالية تلقائياً هنا للرجوع إليها في أي وقت.
+                  </p>
+                </div>
+              ) : (
+                savedSessions.map((session) => (
+                  <div
+                    key={session.id}
+                    onClick={() => handleRestoreSession(session)}
+                    className="p-3.5 rounded-2xl border border-gray-200 dark:border-gray-800 hover:border-amber-500/50 bg-gray-50 dark:bg-gray-800/40 hover:bg-amber-500/5 transition cursor-pointer flex items-center justify-between gap-3 group"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <strong className="text-xs font-bold text-gray-900 dark:text-gray-100 truncate block">
+                          {session.title}
+                        </strong>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 shrink-0">
+                          {session.messageCount} رسائل
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
+                        {session.preview}
+                      </p>
+                      <span className="text-[10px] text-gray-400 mt-1 block">
+                        {session.date}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={(e) => handleDeleteSavedSession(session.id, e)}
+                      title="حذف من الأرشيف"
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-rose-500 hover:bg-rose-500/10 transition opacity-0 group-hover:opacity-100"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
