@@ -280,14 +280,17 @@ export default function AIChat() {
     utterance.lang = 'ar-SA';
 
     utterance.onstart = () => {
+      console.log('SpeechSynthesis onstart fired');
       setSpeakingMessageId(targetId);
     };
 
     utterance.onend = () => {
+      console.log('SpeechSynthesis onend fired');
       setSpeakingMessageId(null);
     };
 
-    utterance.onerror = () => {
+    utterance.onerror = (e) => {
+      console.log('SpeechSynthesis onerror fired:', e.error);
       setSpeakingMessageId(null);
     };
 
