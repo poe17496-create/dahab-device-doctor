@@ -248,57 +248,72 @@ export default function AIChat() {
     }
   }, []);
 
-  // 🎙️ محرك النطق الصوتي الفوري المباشر (Direct Responsive SpeechSynthesis)
+  // 🎙️ محرك النطق الصوتي الفوري المباشر (ResponsiveVoice - Free Arabic TTS)
   const speakText = (text: string, msgId?: string) => {
     console.log('speakText called with text:', text.substring(0, 50));
     
-    if (typeof window === 'undefined' || !window.speechSynthesis) {
-      console.log('SpeechSynthesis not available');
-      return;
-    }
-    
-    console.log('SpeechSynthesis available');
+    const targetId = msgId || Date.now().toString();
 
     // إذا كان المساعد يقرأ نفس الرسالة حالياً، نوقفه فوراً (Toggle Stop)
     if (speakingMessageId && (!msgId || speakingMessageId === msgId)) {
-      window.speechSynthesis.cancel();
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.pause();
+        audioPlayerRef.current = null;
+      }
       setSpeakingMessageId(null);
       return;
     }
 
-    // إيقاف أي قراءة سابقة فوراً
-    window.speechSynthesis.cancel();
+    // إيقاف أي صوت سابق
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.pause();
+      audioPlayerRef.current = null;
+    }
 
     // تنظيف النص البسيط
     const cleanText = text.replace(/[*#_`~\[\]\(\)>]/g, ' ').replace(/\s+/g, ' ').trim();
     if (!cleanText) return;
 
-    const targetId = msgId || Date.now().toString();
+    // استخدام ResponsiveVoice المجاني للنطق العربي
+    const encodedText = encodeURIComponent(cleanText);
+    const ttsUrl = `https://responsivevoice.org/responsivevoice/getvoice.php?t=${encodedText}&tl=ar&sv=g1&vn=male`;
 
-    // إنشاء utterance أبسط
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    // جرب اللغة الإنجليزية أولاً للاختبار
-    utterance.lang = 'en-US';
+    console.log('Using ResponsiveVoice TTS');
 
-    utterance.onstart = () => {
-      console.log('SpeechSynthesis onstart fired');
+    const audio = new Audio(ttsUrl);
+    audioPlayerRef.current = audio;
+
+    audio.onplay = () => {
+      console.log('Audio started playing');
       setSpeakingMessageId(targetId);
     };
 
-    utterance.onend = () => {
-      console.log('SpeechSynthesis onend fired');
+    audio.onended = () => {
+      console.log('Audio finished playing');
       setSpeakingMessageId(null);
+      audioPlayerRef.current = null;
     };
 
-    utterance.onerror = (e) => {
-      console.log('SpeechSynthesis onerror fired:', e.error);
+    audio.onerror = (e) => {
+      console.log('Audio error:', e);
       setSpeakingMessageId(null);
+      audioPlayerRef.current = null;
+      // Fallback to browser SpeechSynthesis if ResponsiveVoice fails
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        try {
+          const utterance = new SpeechSynthesisUtterance(cleanText);
+          utterance.lang = 'ar-SA';
+          window.speechSynthesis.speak(utterance);
+        } catch (err) {
+          console.log('Fallback SpeechSynthesis also failed:', err);
+        }
+      }
     };
 
-    // تشغيل مباشر
-    console.log('About to speak:', utterance.text);
-    window.speechSynthesis.speak(utterance);
-    console.log('Speak called');
+    audio.play().catch(err => {
+      console.log('Failed to play audio:', err);
+      setSpeakingMessageId(null);
+    });
   };
 
   // إرسال الرسالة
