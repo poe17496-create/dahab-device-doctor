@@ -288,7 +288,21 @@ export default function AIChat() {
     // نطق أول 250 حرف بطلاقة لتفادي توقف محرك المتصفح في النصوص الطويلة
     const textToSpeak = cleanText.length > 250 ? cleanText.slice(0, 250) + '...' : cleanText;
 
-    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+    // التأكد من أن utterance يتم إنشاؤه بشكل صحيح
+    let utterance: SpeechSynthesisUtterance | null = null;
+    try {
+      utterance = new SpeechSynthesisUtterance(textToSpeak);
+    } catch (e) {
+      console.error('Failed to create utterance:', e);
+      setToastMsg('⚠️ فشل إنشاء النطق الصوتي');
+      return;
+    }
+
+    if (!utterance) {
+      setToastMsg('⚠️ فشل إنشاء النطق الصوتي');
+      return;
+    }
+
     currentUtteranceRef.current = utterance;
     (window as any).__dahab_active_utterance = utterance;
 
@@ -299,19 +313,31 @@ export default function AIChat() {
     // محاولة اختيار أفضل صوت عربي متاح في نظام العميل أو المتصفح
     try {
       const voices = window.speechSynthesis.getVoices();
-      const arabicVoice = voices.find(
-        (v) =>
-          v.lang.toLowerCase().startsWith('ar') ||
-          v.name.toLowerCase().includes('arabic') ||
-          v.name.toLowerCase().includes('shakir') ||
-          v.name.toLowerCase().includes('salma') ||
-          v.name.toLowerCase().includes('tarik')
-      );
-      if (arabicVoice) {
-        utterance.voice = arabicVoice;
-        utterance.lang = arabicVoice.lang;
+      if (voices && voices.length > 0) {
+        // حاول استخدام صوت عربي أولاً
+        const arabicVoice = voices.find(
+          (v) =>
+            v.lang.toLowerCase().startsWith('ar') ||
+            v.name.toLowerCase().includes('arabic') ||
+            v.name.toLowerCase().includes('shakir') ||
+            v.name.toLowerCase().includes('salma') ||
+            v.name.toLowerCase().includes('tarik')
+        );
+        if (arabicVoice) {
+          utterance.voice = arabicVoice;
+          utterance.lang = arabicVoice.lang;
+        } else {
+          // إذا لم يوجد صوت عربي، استخدم الصوت الافتراضي للغة الإنجليزية
+          const englishVoice = voices.find((v) => v.lang.toLowerCase().startsWith('en'));
+          if (englishVoice) {
+            utterance.voice = englishVoice;
+            utterance.lang = 'en-US';
+          }
+        }
       }
-    } catch {}
+    } catch (e) {
+      console.warn('Error selecting voice:', e);
+    }
 
     utterance.onstart = () => {
       setSpeakingMessageId(targetId);
@@ -355,7 +381,12 @@ export default function AIChat() {
     };
 
     // تشغيل فوري متزامن داخل نقرة المستخدم
-    window.speechSynthesis.speak(utterance);
+    try {
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      console.error('Failed to speak:', e);
+      setToastMsg('⚠️ فشل تشغيل الصوت');
+    }
   };
 
   // إرسال الرسالة
