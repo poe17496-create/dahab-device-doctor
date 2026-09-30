@@ -277,7 +277,8 @@ export default function AIChat() {
 
     // إنشاء utterance أبسط
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = 'ar-SA';
+    // جرب اللغة الإنجليزية أولاً للاختبار
+    utterance.lang = 'en-US';
 
     utterance.onstart = () => {
       console.log('SpeechSynthesis onstart fired');
