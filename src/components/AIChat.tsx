@@ -288,56 +288,16 @@ export default function AIChat() {
     // نطق أول 250 حرف بطلاقة لتفادي توقف محرك المتصفح في النصوص الطويلة
     const textToSpeak = cleanText.length > 250 ? cleanText.slice(0, 250) + '...' : cleanText;
 
-    // التأكد من أن utterance يتم إنشاؤه بشكل صحيح
-    let utterance: SpeechSynthesisUtterance | null = null;
-    try {
-      utterance = new SpeechSynthesisUtterance(textToSpeak);
-    } catch (e) {
-      console.error('Failed to create utterance:', e);
-      setToastMsg('⚠️ فشل إنشاء النطق الصوتي');
-      return;
-    }
-
-    if (!utterance) {
-      setToastMsg('⚠️ فشل إنشاء النطق الصوتي');
-      return;
-    }
-
+    // إنشاء utterance بسيط بدون اختيار صوت مخصص
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
     currentUtteranceRef.current = utterance;
     (window as any).__dahab_active_utterance = utterance;
 
+    // إعدادات بسيطة جداً
     utterance.lang = 'ar-SA';
     utterance.rate = 1.0;
     utterance.pitch = 1.0;
-
-    // محاولة اختيار أفضل صوت عربي متاح في نظام العميل أو المتصفح
-    try {
-      const voices = window.speechSynthesis.getVoices();
-      if (voices && voices.length > 0) {
-        // حاول استخدام صوت عربي أولاً
-        const arabicVoice = voices.find(
-          (v) =>
-            v.lang.toLowerCase().startsWith('ar') ||
-            v.name.toLowerCase().includes('arabic') ||
-            v.name.toLowerCase().includes('shakir') ||
-            v.name.toLowerCase().includes('salma') ||
-            v.name.toLowerCase().includes('tarik')
-        );
-        if (arabicVoice) {
-          utterance.voice = arabicVoice;
-          utterance.lang = arabicVoice.lang;
-        } else {
-          // إذا لم يوجد صوت عربي، استخدم الصوت الافتراضي للغة الإنجليزية
-          const englishVoice = voices.find((v) => v.lang.toLowerCase().startsWith('en'));
-          if (englishVoice) {
-            utterance.voice = englishVoice;
-            utterance.lang = 'en-US';
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('Error selecting voice:', e);
-    }
+    utterance.volume = 1.0;
 
     utterance.onstart = () => {
       setSpeakingMessageId(targetId);
@@ -361,32 +321,14 @@ export default function AIChat() {
     };
 
     utterance.onerror = (e) => {
-      // إذا كان الصوت قد بدأ بالفعل، تجاهل خطأ synthesis-failed
-      // لأن بعض المتصفحات ترمي هذا الخطأ حتى مع النطق الناجح
-      if (e.error === 'synthesis-failed' && speakingMessageId === targetId) {
-        // لا تفعل شيئاً - الصوت قد يعمل رغم الخطأ
-        // لا تسجل حتى في الكونسول لتجنب الإزعاج
-        return;
-      }
-      
-      // تجاهل أخطاء أخرى غير الحرجة
-      if (e.error === 'canceled' || e.error === 'interrupted') {
-        return;
-      }
-      
-      console.warn('SpeechSynthesis error:', e);
+      console.warn('SpeechSynthesis error:', e.error);
       if (speakTimerRef.current) clearInterval(speakTimerRef.current);
       setSpeakingMessageId(null);
       currentUtteranceRef.current = null;
     };
 
     // تشغيل فوري متزامن داخل نقرة المستخدم
-    try {
-      window.speechSynthesis.speak(utterance);
-    } catch (e) {
-      console.error('Failed to speak:', e);
-      setToastMsg('⚠️ فشل تشغيل الصوت');
-    }
+    window.speechSynthesis.speak(utterance);
   };
 
   // إرسال الرسالة
