@@ -11,11 +11,15 @@ export async function GET(request: Request) {
   }
 
   try {
-    // استخدام ResponsiveVoice من جانب الخادم لتجنب CORS
+    // استخدام Google Translate TTS (مجاني وبسيط)
     const encodedText = encodeURIComponent(text);
-    const ttsUrl = `https://responsivevoice.org/responsivevoice/getvoice.php?t=${encodedText}&tl=ar&sv=g1&vn=male`;
+    const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=ar&client=tw-ob`;
     
-    const response = await fetch(ttsUrl);
+    const response = await fetch(ttsUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      },
+    });
     
     if (!response.ok) {
       throw new Error('TTS service failed');
