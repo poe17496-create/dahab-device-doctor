@@ -274,11 +274,10 @@ export default function AIChat() {
     const cleanText = text.replace(/[*#_`~\[\]\(\)>]/g, ' ').replace(/\s+/g, ' ').trim();
     if (!cleanText) return;
 
-    // استخدام ResponsiveVoice المجاني للنطق العربي
-    const encodedText = encodeURIComponent(cleanText);
-    const ttsUrl = `https://responsivevoice.org/responsivevoice/getvoice.php?t=${encodedText}&tl=ar&sv=g1&vn=male`;
+    // استخدام API داخلي من جانب الخادم لتجنب CORS
+    const ttsUrl = `/api/tts?text=${encodeURIComponent(cleanText)}`;
 
-    console.log('Using ResponsiveVoice TTS');
+    console.log('Using server-side TTS API');
 
     const audio = new Audio(ttsUrl);
     audioPlayerRef.current = audio;
