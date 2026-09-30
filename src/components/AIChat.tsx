@@ -251,83 +251,42 @@ export default function AIChat() {
   // 🎙️ محرك النطق الصوتي الفوري المباشر (Direct Responsive SpeechSynthesis)
   const speakText = (text: string, msgId?: string) => {
     if (typeof window === 'undefined' || !window.speechSynthesis) {
-      setToastMsg('المتصفح لا يدعم القراءة الصوتية');
       return;
     }
 
     // إذا كان المساعد يقرأ نفس الرسالة حالياً، نوقفه فوراً (Toggle Stop)
     if (speakingMessageId && (!msgId || speakingMessageId === msgId)) {
-      if (speakTimerRef.current) clearInterval(speakTimerRef.current);
       window.speechSynthesis.cancel();
       setSpeakingMessageId(null);
       return;
     }
 
     // إيقاف أي قراءة سابقة فوراً
-    if (speakTimerRef.current) clearInterval(speakTimerRef.current);
     window.speechSynthesis.cancel();
 
-    // فك التجميد عن محرك SpeechSynthesis في Chrome
-    try {
-      window.speechSynthesis.resume();
-    } catch {}
-
-    // تنظيف النص بالكامل من علامات الماركداون والرموز والإيموجي لضمان نطق عربي سليم 100%
-    const cleanText = text
-      .replace(/[*#_`~\[\]\(\)>]/g, ' ')
-      .replace(/https?:\/\/\S+/g, ' ')
-      .replace(/<<<[\s\S]*?>>>/g, ' ')
-      .replace(/[^\u0600-\u06FFa-zA-Z0-9\s.,،؟!:\-]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-
+    // تنظيف النص البسيط
+    const cleanText = text.replace(/[*#_`~\[\]\(\)>]/g, ' ').replace(/\s+/g, ' ').trim();
     if (!cleanText) return;
 
     const targetId = msgId || Date.now().toString();
 
-    // نطق أول 250 حرف بطلاقة لتفادي توقف محرك المتصفح في النصوص الطويلة
-    const textToSpeak = cleanText.length > 250 ? cleanText.slice(0, 250) + '...' : cleanText;
-
-    // إنشاء utterance بسيط بدون اختيار صوت مخصص
-    const utterance = new SpeechSynthesisUtterance(textToSpeak);
-    currentUtteranceRef.current = utterance;
-    (window as any).__dahab_active_utterance = utterance;
-
-    // إعدادات بسيطة جداً
+    // إنشاء utterance أبسط
+    const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.lang = 'ar-SA';
-    utterance.rate = 1.0;
-    utterance.pitch = 1.0;
-    utterance.volume = 1.0;
 
     utterance.onstart = () => {
       setSpeakingMessageId(targetId);
-      // Heartbeat لمنع توقف Google Chrome في منتصف النطق
-      if (speakTimerRef.current) clearInterval(speakTimerRef.current);
-      speakTimerRef.current = setInterval(() => {
-        try {
-          if (window.speechSynthesis.speaking) {
-            window.speechSynthesis.resume();
-          } else {
-            clearInterval(speakTimerRef.current);
-          }
-        } catch {}
-      }, 3000);
     };
 
     utterance.onend = () => {
-      if (speakTimerRef.current) clearInterval(speakTimerRef.current);
       setSpeakingMessageId(null);
-      currentUtteranceRef.current = null;
     };
 
-    utterance.onerror = (e) => {
-      console.warn('SpeechSynthesis error:', e.error);
-      if (speakTimerRef.current) clearInterval(speakTimerRef.current);
+    utterance.onerror = () => {
       setSpeakingMessageId(null);
-      currentUtteranceRef.current = null;
     };
 
-    // تشغيل فوري متزامن داخل نقرة المستخدم
+    // تشغيل مباشر
     window.speechSynthesis.speak(utterance);
   };
 
