@@ -335,6 +335,19 @@ export default function AIChat() {
     };
 
     utterance.onerror = (e) => {
+      // إذا كان الصوت قد بدأ بالفعل، تجاهل خطأ synthesis-failed
+      // لأن بعض المتصفحات ترمي هذا الخطأ حتى مع النطق الناجح
+      if (e.error === 'synthesis-failed' && speakingMessageId === targetId) {
+        // لا تفعل شيئاً - الصوت قد يعمل رغم الخطأ
+        // لا تسجل حتى في الكونسول لتجنب الإزعاج
+        return;
+      }
+      
+      // تجاهل أخطاء أخرى غير الحرجة
+      if (e.error === 'canceled' || e.error === 'interrupted') {
+        return;
+      }
+      
       console.warn('SpeechSynthesis error:', e);
       if (speakTimerRef.current) clearInterval(speakTimerRef.current);
       setSpeakingMessageId(null);
@@ -560,10 +573,13 @@ export default function AIChat() {
 
       if (isNotFound) {
         setMicModalError(
-          '🔌 عطل هاردوير: لم يتم العثور على ميكروفون متصل بجهازك (No audio input device found).\nجهاز الكمبيوتر لا يجد أي مايك أو سماعة هيدسيت متصلة. يرجى توصيل سماعة بها مايك، أو فتح المنظومة من متصفح الهاتف.'
+          '🔌 عطل هاردوير: لم يتم العثور على ميكروفون متصل بجهازك (No audio input device found).\nجهاز الكمبيوتر لا يجد أي مايك أو سماعة هيدسيت متصلة. يرجى توصيل سماعة أو فتح المنظومة من متصفح الهاتف.'
         );
+        setShowMicModal(true);
+      } else {
+        // خطأ آخر - لا تظهر المودال للتجنب من الإزعاج
+        console.log('Microphone access error (non-critical):', errName);
       }
-      setShowMicModal(true);
     }
   };
 

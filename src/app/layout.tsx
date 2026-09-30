@@ -90,6 +90,7 @@ export default function RootLayout({
           }}
         />
         <script
+          type="text/javascript"
           dangerouslySetInnerHTML={{
             __html: `
               if ('serviceWorker' in navigator) {
