@@ -250,9 +250,14 @@ export default function AIChat() {
 
   // 🎙️ محرك النطق الصوتي الفوري المباشر (Direct Responsive SpeechSynthesis)
   const speakText = (text: string, msgId?: string) => {
+    console.log('speakText called with text:', text.substring(0, 50));
+    
     if (typeof window === 'undefined' || !window.speechSynthesis) {
+      console.log('SpeechSynthesis not available');
       return;
     }
+    
+    console.log('SpeechSynthesis available');
 
     // إذا كان المساعد يقرأ نفس الرسالة حالياً، نوقفه فوراً (Toggle Stop)
     if (speakingMessageId && (!msgId || speakingMessageId === msgId)) {
@@ -287,7 +292,9 @@ export default function AIChat() {
     };
 
     // تشغيل مباشر
+    console.log('About to speak:', utterance.text);
     window.speechSynthesis.speak(utterance);
+    console.log('Speak called');
   };
 
   // إرسال الرسالة
