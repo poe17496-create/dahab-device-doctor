@@ -1,0 +1,170 @@
+[
+  {
+    "id": "cf_iphone_11_vcc_main",
+    "model": "iPhone 11",
+    "brand": "Apple",
+    "faultName": "شورت VCC_MAIN",
+    "symptoms": [
+      "سحب أمبير عالي قبل الضغط على الباور",
+      "سخونة في منطقة PMIC",
+      "الجهاز لا يضيء أبداً"
+    ],
+    "suspectedComponent": "PMIC U1001 / مكثفات خط التغذية",
+    "measurementTest": "قياس الممانعة على خط VCC_MAIN بالدايود - إذا أقل من 0.015V فهو شورت",
+    "fixSteps": [
+      "فحص مكثفات C1100-C1120 على خط VCC_MAIN",
+      "فحص PMIC U1001 للتأكد من عدم تلفه",
+      "إزالة PMIC وفحص البوردة من بعده",
+      "استبدال PMIC أو المكثفات التالفة"
+    ],
+    "successRate": 92,
+    "isFactoryFault": true
+  },
+  {
+    "id": "cf_iphone_7_audio_ic",
+    "model": "iPhone 7",
+    "brand": "Apple",
+    "faultName": "مشكلة IC الصوت",
+    "symptoms": [
+      "لا يوجد صوت من السماعة",
+      "المايك لا يعمل",
+      "رسالة خطأ عند الاتصال"
+    ],
+    "suspectedComponent": "Audio IC U3501 / خطوط الاتصال",
+    "measurementTest": "فحص خطوط الصوت I2S على IC U3501",
+    "fixSteps": [
+      "فحص خطوط البيانات I2S_SDA و I2S_SCL",
+      "فحص Audio IC U3501 للتأكد من سلامته",
+      "إعادة لحام Audio IC",
+      "استبدال Audio IC إذا تلف"
+    ],
+    "successRate": 88,
+    "isFactoryFault": true
+  },
+  {
+    "id": "cf_samsung_s21_battery",
+    "model": "Samsung Galaxy S21",
+    "brand": "Samsung",
+    "faultName": "مشكلة البطارية والشحن",
+    "symptoms": [
+      "الجهاز لا يفرغ البطارية",
+      "إيقاف مفاجئ عند نسبة معينة",
+      "رسالة خطأ في البطارية"
+    ],
+    "suspectedComponent": "IC الشحن / البطارية / خطوط PMIC",
+    "measurementTest": "قياس فولت خط البطارية يجب أن يكون 4.2V",
+    "fixSteps": [
+      "فحص البطارية والتحقق من تورمها",
+      "فحص IC الشحن U1001",
+      "فحص مقاومات الشحن R1001-R1005",
+      "استبدال البطارية أو IC الشحن"
+    ],
+    "successRate": 85,
+    "isFactoryFault": false
+  },
+  {
+    "id": "cf_macbook_pro_m3_19v",
+    "model": "MacBook Pro M3",
+    "brand": "MacBook",
+    "faultName": "فاصل 19V",
+    "symptoms": [
+      "اللابتوب لا يفرض باور 20V",
+      "LED الشاحن لا يضيء",
+      "لا يوجد سحب للأمبير"
+    ],
+    "suspectedComponent": "IC الشحن ISL9240 / خطوط DC-IN",
+    "measurementTest": "قياس الفولت على خط DC-IN يجب أن يكون 19.5V",
+    "fixSteps": [
+      "فحص مقاومة خط DC-IN",
+      "فحص IC الشحن ISL9240",
+      "فحص MOSFETات خط التغذية",
+      "استبدال IC الشحن أو MOSFETات التالفة"
+    ],
+    "successRate": 90,
+    "isFactoryFault": false
+  },
+  {
+    "id": "cf_iphone_13_touch",
+    "model": "iPhone 13",
+    "brand": "Apple",
+    "faultName": "مشكلة اللمس",
+    "symptoms": [
+      "الشاشة لا تستجيب للمس",
+      "مناطق معينة لا تعمل",
+      "تجميد في وضع معين"
+    ],
+    "suspectedComponent": "Touch IC U2201 / خطوط الاتصال",
+    "measurementTest": "فحص خطوط اللمس على Flex Cable",
+    "fixSteps": [
+      "فحص كابل اللمس للشاشة",
+      "فحص Touch IC U2201",
+      "إعادة لحام كابل اللمس",
+      "استبدال الشاشة أو Touch IC"
+    ],
+    "successRate": 87,
+    "isFactoryFault": true
+  },
+  {
+    "id": "cf_samsung_a52_screen",
+    "model": "Samsung Galaxy A52",
+    "brand": "Samsung",
+    "faultName": "مشكلة الشاشة",
+    "symptoms": [
+      "الشاشة سوداء",
+      "خطوط ملونة",
+      "وميض متكرر"
+    ],
+    "suspectedComponent": "LCD IC / كابل الشاشة",
+    "measurementTest": "فحص فولت خط الشاشة يجب أن يكون 3.3V",
+    "fixSteps": [
+      "فحص كابل الشاشة",
+      "فحص LCD IC U5001",
+      "فحص مقاومات إضاءة الشاشة",
+      "استبدال الشاشة أو LCD IC"
+    ],
+    "successRate": 82,
+    "isFactoryFault": false
+  },
+  {
+    "id": "cf_macbook_air_m2_3v3",
+    "model": "MacBook Air M2",
+    "brand": "MacBook",
+    "faultName": "فاصل 3.3V",
+    "symptoms": [
+      "اللابتوب لا يعمل",
+      "LED الباور لا يضيء",
+      "لا يوجد سحب للأمبير"
+    ],
+    "suspectedComponent": "PMIC / خطوط 3.3V",
+    "measurementTest": "قياس فولت خط 3.3V يجب أن يكون 3.3V",
+    "fixSteps": [
+      "فحص PMIC الرئيسي",
+      "فحص مكثفات خط 3.3V",
+      "فحص مقاومات الرفع Pull-up",
+      "استبدال PMIC أو المكثفات التالفة"
+    ],
+    "successRate": 89,
+    "isFactoryFault": false
+  },
+  {
+    "id": "cf_iphone_12_proximity",
+    "model": "iPhone 12",
+    "brand": "Apple",
+    "faultName": "مشكلة Proximity Sensor",
+    "symptoms": [
+      "الشاشة لا تنطفئ عند الاتصال",
+      "المايك لا يعمل أثناء الاتصال",
+      "رسالة خطأ في السنسور"
+    ],
+    "suspectedComponent": "Proximity Sensor / خطوط الاتصال",
+    "measurementTest": "فحص خطوط السنسور على Flex Cable",
+    "fixSteps": [
+      "فحص كابل السنسور",
+      "فحص Proximity Sensor",
+      "إعادة لحام كابل السنسور",
+      "استبدال كابل السنسور"
+    ],
+    "successRate": 84,
+    "isFactoryFault": true
+  }
+]

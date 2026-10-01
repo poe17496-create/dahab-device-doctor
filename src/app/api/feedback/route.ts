@@ -13,17 +13,19 @@ interface FeedbackData {
   timestamp: string;
 }
 
+interface RepairOutcomeFeedback {
+  type: 'repair_outcome';
+  ticketId: string;
+  actualReplacedComponent: string;
+  repairTimeMinutes: number;
+  repairNotes: string;
+  aiAccuracy: 'accurate' | 'inaccurate' | 'partial';
+  timestamp: string;
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const feedback: FeedbackData = await req.json();
-
-    // التحقق من البيانات
-    if (!feedback.sessionId || !feedback.deviceModel || !feedback.aiOutput) {
-      return NextResponse.json(
-        { error: 'بيانات غير مكتملة' },
-        { status: 400 }
-      );
-    }
+    const feedback = await req.json();
 
     // مسار حفظ بيانات Feedback
     const feedbackDir = path.join(process.cwd(), 'data', 'feedback');
@@ -37,7 +39,7 @@ export async function POST(req: NextRequest) {
     }
 
     // قراءة البيانات الحالية
-    let existingFeedback: FeedbackData[] = [];
+    let existingFeedback: (FeedbackData | RepairOutcomeFeedback)[] = [];
     try {
       const existingData = await fs.readFile(feedbackFile, 'utf-8');
       existingFeedback = JSON.parse(existingData);
@@ -45,20 +47,34 @@ export async function POST(req: NextRequest) {
       // الملف غير موجود، سنبدأ بمصفوفة فارغة
     }
 
-    // إضافة الـ Feedback الجديد
-    existingFeedback.push(feedback);
+    // معالجة أنواع مختلفة من Feedback
+    if (feedback.type === 'repair_outcome') {
+      // Repair Outcome Feedback
+      const repairFeedback: RepairOutcomeFeedback = {
+        ...feedback,
+        timestamp: new Date().toISOString(),
+      };
+      existingFeedback.push(repairFeedback);
+    } else {
+      // Regular Feedback
+      const regularFeedback: FeedbackData = {
+        ...feedback,
+        timestamp: new Date().toISOString(),
+      };
+      existingFeedback.push(regularFeedback);
+    }
 
     // حفظ البيانات
     await fs.writeFile(feedbackFile, JSON.stringify(existingFeedback, null, 2), 'utf-8');
 
     return NextResponse.json(
-      { success: true, message: 'تم حفظ ملاحظاتك بنجاح' },
+      { success: true, message: 'تم حفظ البيانات بنجاح' },
       { status: 200 }
     );
   } catch (error) {
     console.error('Error saving feedback:', error);
     return NextResponse.json(
-      { error: 'حدث خطأ أثناء حفظ الملاحظات' },
+      { error: 'حدث خطأ أثناء حفظ البيانات' },
       { status: 500 }
     );
   }

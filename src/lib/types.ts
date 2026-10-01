@@ -83,3 +83,49 @@ export interface ReferenceSource {
   snippet: string;
   type: 'schematic' | 'video' | 'forum' | 'solution';
 }
+
+// Repair Status & Feedback Tracker Types
+export type RepairStatus =
+  | 'under_diagnosis'
+  | 'awaiting_parts'
+  | 'in_repair'
+  | 'repaired_success'
+  | 'unrepairable';
+
+export interface RepairTicket {
+  ticketId: string; // Format: DDD-XXXX
+  deviceModel: string;
+  deviceType: DeviceSpecialty;
+  symptoms: string;
+  aiDiagnosis: string;
+  suspectedComponent?: string;
+  status: RepairStatus;
+  createdAt: string;
+  updatedAt: string;
+  actualReplacedComponent?: string;
+  repairTimeMinutes?: number;
+  repairNotes?: string;
+  aiAccuracy?: 'accurate' | 'inaccurate' | 'partial';
+}
+
+export interface PostRepairFeedback {
+  ticketId: string;
+  actualReplacedComponent: string;
+  repairTimeMinutes: number;
+  repairNotes: string;
+  aiAccuracy: 'accurate' | 'inaccurate' | 'partial';
+}
+
+// Common Faults Library Types
+export interface CommonFault {
+  id: string;
+  model: string;
+  brand: string; // Changed from union type to string for JSON compatibility
+  faultName: string;
+  symptoms: string[];
+  suspectedComponent: string;
+  measurementTest: string;
+  fixSteps: string[];
+  successRate: number; // 0-100
+  isFactoryFault: boolean;
+}

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import ConsoleHeader from '@/components/ConsoleHeader';
-import { Image, Zap } from 'lucide-react';
+import { Image, Zap, Ticket } from 'lucide-react';
 import HardwareSoftwareIndicator from '@/components/HardwareSoftwareIndicator';
 import DiagnosticForm from '@/components/DiagnosticForm';
 import ResultStreamViewer from '@/components/ResultStreamViewer';
@@ -25,6 +25,8 @@ import FeedbackWidget from '@/components/FeedbackWidget';
 import DiagnosticTabs from '@/components/DiagnosticTabs';
 import VisualHighlightOverlay from '@/components/VisualHighlightOverlay';
 import InteractiveDiagnosticBoard from '@/components/InteractiveDiagnosticBoard';
+import RepairStatusTracker from '@/components/RepairStatusTracker';
+import CommonFaultsLibrary from '@/components/CommonFaultsLibrary';
 import {
   DeviceSpecialty,
   PowerSupplyReadings,
@@ -83,6 +85,8 @@ export default function DahabFixAiConsole() {
   const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [diagnosticTab, setDiagnosticTab] = useState<'report' | 'visual'>('report');
+  const [currentTicketId, setCurrentTicketId] = useState<string>('');
+  const [showCommonFaultsLibrary, setShowCommonFaultsLibrary] = useState(false);
 
   const toggleDesktopMode = () => {
     setIsDesktopMode(prev => {
@@ -354,6 +358,10 @@ export default function DahabFixAiConsole() {
     setMetrics(undefined);
     setSources([]);
 
+    // توليد معرف تذكرة فريد
+    const ticketId = `DDD-${Math.floor(1000 + Math.random() * 9000)}`;
+    setCurrentTicketId(ticketId);
+
     // محاكاة خطوات التحميل
     setTimeout(() => setLoadingMessage('جاري مطابقة الأعطال الشائعة ومسارات التغذية...'), 1500);
     setTimeout(() => setLoadingMessage('جاري استخراج تقرير التشخيص ونسبة الثقة...'), 3000);
@@ -552,6 +560,27 @@ export default function DahabFixAiConsole() {
               {/* شاشة الفحص والتشخيص الهندسي الأساسية */}
               {activeTab === 'diagnosis' && (
                 <>
+                  {/* Common Faults Library Button */}
+                  <button
+                    onClick={() => setShowCommonFaultsLibrary(!showCommonFaultsLibrary)}
+                    className="w-full mb-4 flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white px-4 py-2 rounded-xl font-bold text-xs transition shadow-md"
+                  >
+                    <Ticket className="w-4 h-4" />
+                    <span>{showCommonFaultsLibrary ? 'إخفاء مكتبة الأعطال' : 'مكتبة الأعطال الشائعة'}</span>
+                  </button>
+
+                  {showCommonFaultsLibrary && (
+                    <div className="mb-4 animate-fadeIn">
+                      <CommonFaultsLibrary
+                        onApplyFault={(fault) => {
+                          setDeviceModel(fault.model);
+                          setPrompt(`${fault.faultName}: ${fault.symptoms.join(', ')}`);
+                          setShowCommonFaultsLibrary(false);
+                        }}
+                      />
+                    </div>
+                  )}
+
                   <DiagnosticForm
                     specialty={specialty}
                     setSpecialty={setSpecialty}
@@ -583,6 +612,17 @@ export default function DahabFixAiConsole() {
                       reportContent={
                         <div className="space-y-4">
                           <ResultStreamViewer rawOutput={output} loading={loading} />
+                          {/* Repair Status Tracker */}
+                          {currentTicketId && (
+                            <RepairStatusTracker
+                              ticketId={currentTicketId}
+                              deviceModel={deviceModel}
+                              deviceType={specialty}
+                              symptoms={prompt}
+                              aiDiagnosis={output}
+                              suspectedComponent={metrics?.primarySuspectComponent}
+                            />
+                          )}
                           {/* Feedback Widget */}
                           <FeedbackWidget
                             sessionId={activeSessionId}
