@@ -25,6 +25,7 @@ import FeedbackWidget from '@/components/FeedbackWidget';
 import DiagnosticTabs from '@/components/DiagnosticTabs';
 import VisualHighlightOverlay from '@/components/VisualHighlightOverlay';
 import InteractiveDiagnosticBoard from '@/components/InteractiveDiagnosticBoard';
+import SchematicBoard from '@/components/SchematicBoard';
 import RepairStatusTracker from '@/components/RepairStatusTracker';
 import CommonFaultsLibrary from '@/components/CommonFaultsLibrary';
 import {
@@ -84,7 +85,7 @@ export default function DahabFixAiConsole() {
   });
   const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [diagnosticTab, setDiagnosticTab] = useState<'report' | 'visual'>('report');
+  const [diagnosticTab, setDiagnosticTab] = useState<'report' | 'visual' | 'schematic'>('report');
   const [currentTicketId, setCurrentTicketId] = useState<string>('');
   const [showCommonFaultsLibrary, setShowCommonFaultsLibrary] = useState(false);
   const [highlightedComponent, setHighlightedComponent] = useState<string | null>(null);
@@ -649,6 +650,7 @@ export default function DahabFixAiConsole() {
                               imageBase64={imageBase64}
                               targetRegion={metrics?.targetRegion}
                               highlightedComponent={highlightedComponent}
+                              isAnalysing={loading}
                             />
                           </div>
 
@@ -661,6 +663,22 @@ export default function DahabFixAiConsole() {
                             <InteractiveDiagnosticBoard
                               testPoints={metrics?.testPoints}
                               imageBase64={imageBase64}
+                            />
+                          </div>
+                        </div>
+                      }
+                      schematicContent={
+                        <div className="space-y-6">
+                          {/* Schematic Board */}
+                          <div className="p-6 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl">
+                            <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                              <Zap className="w-5 h-5 text-dahab-500" />
+                              <span>المخطط الهندسي التفاعلي</span>
+                            </h3>
+                            <SchematicBoard
+                              imageBase64={imageBase64}
+                              testPoints={metrics?.testPoints}
+                              isAnalysing={loading}
                             />
                           </div>
                         </div>

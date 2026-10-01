@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
-import { MessageSquare, LayoutGrid, Image } from 'lucide-react';
+import { MessageSquare, LayoutGrid, Image, CircuitBoard, BookOpen } from 'lucide-react';
 
 interface DiagnosticTabsProps {
-  activeTab: 'report' | 'visual';
-  onTabChange: (tab: 'report' | 'visual') => void;
+  activeTab: 'report' | 'visual' | 'schematic';
+  onTabChange: (tab: 'report' | 'visual' | 'schematic') => void;
   reportContent: React.ReactNode;
   visualContent: React.ReactNode;
+  schematicContent?: React.ReactNode;
 }
 
 export default function DiagnosticTabs({
@@ -15,6 +16,7 @@ export default function DiagnosticTabs({
   onTabChange,
   reportContent,
   visualContent,
+  schematicContent,
 }: DiagnosticTabsProps) {
   return (
     <div className="space-y-4">
@@ -39,14 +41,27 @@ export default function DiagnosticTabs({
               : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
           }`}
         >
-          <LayoutGrid className="w-4 h-4" />
-          <span>لوحة التشخيص المرئية</span>
+          <Image className="w-4 h-4" />
+          <span>صورة البوردة</span>
+        </button>
+        <button
+          onClick={() => onTabChange('schematic')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition ${
+            activeTab === 'schematic'
+              ? 'bg-white dark:bg-gray-800 text-dahab-600 dark:text-dahab-400 shadow-sm'
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+          }`}
+        >
+          <CircuitBoard className="w-4 h-4" />
+          <span>المخطط الهندسي</span>
         </button>
       </div>
 
       {/* Tab Content */}
       <div className="animate-fadeIn">
-        {activeTab === 'report' ? reportContent : visualContent}
+        {activeTab === 'report' && reportContent}
+        {activeTab === 'visual' && visualContent}
+        {activeTab === 'schematic' && schematicContent}
       </div>
     </div>
   );

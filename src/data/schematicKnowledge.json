@@ -1,0 +1,423 @@
+{
+  "schematics": [
+    {
+      "id": "iphone-11-vcc-main",
+      "name": "iPhone 11 - VCC_MAIN Circuit",
+      "description": "Main power distribution circuit for iPhone 11",
+      "device": "iPhone 11",
+      "boardNumber": "A2111 / A2113 / A2118",
+      "components": [
+        {
+          "name": "U2000",
+          "type": "IC",
+          "description": "PMIC - Power Management IC",
+          "package": "BGA",
+          "pins": 196,
+          "function": "Main power distribution and voltage regulation"
+        },
+        {
+          "name": "C2015",
+          "type": "Capacitor",
+          "description": "VCC_MAIN filter capacitor",
+          "package": "0402",
+          "value": "10μF",
+          "function": "Filter VCC_MAIN rail"
+        },
+        {
+          "name": "C2016",
+          "type": "Capacitor",
+          "description": "VCC_MAIN filter capacitor",
+          "package": "0402",
+          "value": "10μF",
+          "function": "Filter VCC_MAIN rail"
+        },
+        {
+          "name": "Q2010",
+          "type": "MOSFET",
+          "description": "VCC_MAIN power switch",
+          "package": "WLCSP",
+          "function": "Control VCC_MAIN flow"
+        },
+        {
+          "name": "R2015",
+          "type": "Resistor",
+          "description": "VCC_MAIN current sense",
+          "package": "0201",
+          "value": "0.1Ω",
+          "function": "Current sensing"
+        }
+      ],
+      "testPoints": [
+        {
+          "id": "tp-001",
+          "name": "VCC_MAIN",
+          "component": "C2015",
+          "expectedValue": "4.2V",
+          "measurement": "0V",
+          "instruction": "Measure voltage at C2015 with multimeter in DC mode",
+          "x": 25,
+          "y": 30,
+          "type": "voltage",
+          "status": "critical"
+        },
+        {
+          "id": "tp-002",
+          "name": "PP_VCC_MAIN",
+          "component": "C2016",
+          "expectedValue": "4.2V",
+          "measurement": "0V",
+          "instruction": "Check PP_VCC_MAIN rail at C2016",
+          "x": 30,
+          "y": 35,
+          "type": "voltage",
+          "status": "critical"
+        },
+        {
+          "id": "tp-003",
+          "name": "PP_BATT_VCC",
+          "component": "Q2010",
+          "expectedValue": "4.2V",
+          "measurement": "4.2V",
+          "instruction": "Verify battery voltage input",
+          "x": 35,
+          "y": 40,
+          "type": "voltage",
+          "status": "normal"
+        }
+      ],
+      "circuitTraces": [
+        {
+          "id": "trace-001",
+          "from": { "x": 20, "y": 25 },
+          "to": { "x": 25, "y": 30 },
+          "name": "VCC_MAIN input",
+          "type": "power",
+          "width": 2
+        },
+        {
+          "id": "trace-002",
+          "from": { "x": 25, "y": 30 },
+          "to": { "x": 30, "y": 35 },
+          "name": "VCC_MAIN distribution",
+          "type": "power",
+          "width": 1.5
+        },
+        {
+          "id": "trace-003",
+          "from": { "x": 30, "y": 35 },
+          "to": { "x": 35, "y": 40 },
+          "name": "VCC_MAIN to load",
+          "type": "power",
+          "width": 1
+        }
+      ],
+      "commonFaults": [
+        {
+          "fault": "VCC_MAIN short",
+          "suspectedComponent": "C2015 or C2016",
+          "testMethod": "Diode mode measurement",
+          "expectedValue": "Open",
+          "measuredValue": "0.000V",
+          "repairAction": "Replace shorted capacitor"
+        },
+        {
+          "fault": "PMIC failure",
+          "suspectedComponent": "U2000",
+          "testMethod": "Voltage measurement",
+          "expectedValue": "4.2V",
+          "measuredValue": "0V",
+          "repairAction": "Reball or replace U2000"
+        }
+      ]
+    },
+    {
+      "id": "samsung-s21-battery",
+      "name": "Samsung S21 - Battery Circuit",
+      "description": "Battery charging and power management circuit",
+      "device": "Samsung Galaxy S21",
+      "boardNumber": "G991B / G991U",
+      "components": [
+        {
+          "name": "U1000",
+          "type": "IC",
+          "description": "Charging IC - PMIC",
+          "package": "BGA",
+          "pins": 144,
+          "function": "Battery charging control"
+        },
+        {
+          "name": "C1001",
+          "type": "Capacitor",
+          "description": "VBAT filter",
+          "package": "0402",
+          "value": "10μF",
+          "function": "Filter battery voltage"
+        },
+        {
+          "name": "C1002",
+          "type": "Capacitor",
+          "description": "VCHG filter",
+          "package": "0402",
+          "value": "10μF",
+          "function": "Filter charging voltage"
+        },
+        {
+          "name": "Q1000",
+          "type": "MOSFET",
+          "description": "Battery power switch",
+          "package": "WLCSP",
+          "function": "Control battery power flow"
+        }
+      ],
+      "testPoints": [
+        {
+          "id": "tp-004",
+          "name": "VBAT",
+          "component": "C1001",
+          "expectedValue": "3.8V",
+          "measurement": "3.8V",
+          "instruction": "Measure battery voltage at C1001",
+          "x": 20,
+          "y": 25,
+          "type": "voltage",
+          "status": "normal"
+        },
+        {
+          "id": "tp-005",
+          "name": "VCHG",
+          "component": "C1002",
+          "expectedValue": "5V",
+          "measurement": "0V",
+          "instruction": "Check charging voltage at C1002",
+          "x": 25,
+          "y": 30,
+          "type": "voltage",
+          "status": "warning"
+        },
+        {
+          "id": "tp-006",
+          "name": "PP_5V_USB",
+          "component": "Q1000",
+          "expectedValue": "5V",
+          "measurement": "5V",
+          "instruction": "Verify USB 5V input",
+          "x": 30,
+          "y": 35,
+          "type": "voltage",
+          "status": "normal"
+        }
+      ],
+      "circuitTraces": [
+        {
+          "id": "trace-004",
+          "from": { "x": 15, "y": 20 },
+          "to": { "x": 20, "y": 25 },
+          "name": "Battery input",
+          "type": "power",
+          "width": 2
+        },
+        {
+          "id": "trace-005",
+          "from": { "x": 20, "y": 25 },
+          "to": { "x": 25, "y": 30 },
+          "name": "Battery to PMIC",
+          "type": "power",
+          "width": 1.5
+        },
+        {
+          "id": "trace-006",
+          "from": { "x": 25, "y": 30 },
+          "to": { "x": 30, "y": 35 },
+          "name": "Charging input",
+          "type": "power",
+          "width": 1
+        }
+      ],
+      "commonFaults": [
+        {
+          "fault": "No charging",
+          "suspectedComponent": "U1000",
+          "testMethod": "Voltage measurement",
+          "expectedValue": "5V",
+          "measuredValue": "0V",
+          "repairAction": "Check charging IC or replace"
+        },
+        {
+          "fault": "Battery drain",
+          "suspectedComponent": "Q1000",
+          "testMethod": "Current measurement",
+          "expectedValue": "< 50mA",
+          "measuredValue": "500mA",
+          "repairAction": "Replace MOSFET"
+        }
+      ]
+    },
+    {
+      "id": "macbook-pro-19v",
+      "name": "MacBook Pro - 19V Rail",
+      "description": "Main 19V power rail for MacBook Pro",
+      "device": "MacBook Pro 14\" M3",
+      "boardNumber": "A2779",
+      "components": [
+        {
+          "name": "U5000",
+          "type": "IC",
+          "description": "Main power controller",
+          "package": "BGA",
+          "pins": 128,
+          "function": "Convert 19V to system voltages"
+        },
+        {
+          "name": "C5001",
+          "type": "Capacitor",
+          "description": "19V input filter",
+          "package": "0603",
+          "value": "47μF",
+          "function": "Filter 19V input"
+        },
+        {
+          "name": "C5002",
+          "type": "Capacitor",
+          "description": "19V output filter",
+          "package": "0603",
+          "value": "47μF",
+          "function": "Filter 19V output"
+        },
+        {
+          "name": "Q5000",
+          "type": "MOSFET",
+          "description": "19V power switch",
+          "package": "SO-8",
+          "function": "Control 19V rail"
+        }
+      ],
+      "testPoints": [
+        {
+          "id": "tp-007",
+          "name": "PP_19V",
+          "component": "C5001",
+          "expectedValue": "19V",
+          "measurement": "19V",
+          "instruction": "Measure 19V input at C5001",
+          "x": 20,
+          "y": 25,
+          "type": "voltage",
+          "status": "normal"
+        },
+        {
+          "id": "tp-008",
+          "name": "PP_5V_S5",
+          "component": "C5002",
+          "expectedValue": "5V",
+          "measurement": "5V",
+          "instruction": "Check 5V rail at C5002",
+          "x": 25,
+          "y": 30,
+          "type": "voltage",
+          "status": "normal"
+        },
+        {
+          "id": "tp-009",
+          "name": "PP_3V3_S5",
+          "component": "Q5000",
+          "expectedValue": "3.3V",
+          "measurement": "3.3V",
+          "instruction": "Verify 3.3V rail at Q5000",
+          "x": 30,
+          "y": 35,
+          "type": "voltage",
+          "status": "normal"
+        }
+      ],
+      "circuitTraces": [
+        {
+          "id": "trace-007",
+          "from": { "x": 15, "y": 20 },
+          "to": { "x": 20, "y": 25 },
+          "name": "19V input",
+          "type": "power",
+          "width": 3
+        },
+        {
+          "id": "trace-008",
+          "from": { "x": 20, "y": 25 },
+          "to": { "x": 25, "y": 30 },
+          "name": "19V to converter",
+          "type": "power",
+          "width": 2
+        },
+        {
+          "id": "trace-009",
+          "from": { "x": 25, "y": 30 },
+          "to": { "x": 30, "y": 35 },
+          "name": "5V distribution",
+          "type": "power",
+          "width": 1.5
+        }
+      ],
+      "commonFaults": [
+        {
+          "fault": "No power",
+          "suspectedComponent": "U5000",
+          "testMethod": "Voltage measurement",
+          "expectedValue": "19V",
+          "measuredValue": "0V",
+          "repairAction": "Check power controller"
+        },
+        {
+          "fault": "19V short",
+          "suspectedComponent": "C5001",
+          "testMethod": "Diode mode",
+          "expectedValue": "Open",
+          "measuredValue": "0.000V",
+          "repairAction": "Replace shorted capacitor"
+        }
+      ]
+    }
+  ],
+  "componentLibrary": [
+    {
+      "category": "Capacitors",
+      "types": [
+        { "name": "Ceramic", "package": "0201", "commonValues": ["0.1μF", "1μF", "10μF"] },
+        { "name": "Ceramic", "package": "0402", "commonValues": ["1μF", "10μF", "22μF"] },
+        { "name": "Ceramic", "package": "0603", "commonValues": ["10μF", "47μF", "100μF"] },
+        { "name": "Tantalum", "package": "7343", "commonValues": ["10μF", "22μF", "47μF"] }
+      ]
+    },
+    {
+      "category": "Resistors",
+      "types": [
+        { "name": "Chip", "package": "0201", "commonValues": ["0Ω", "0.1Ω", "1Ω", "10Ω"] },
+        { "name": "Chip", "package": "0402", "commonValues": ["0Ω", "1Ω", "10Ω", "100Ω"] },
+        { "name": "Chip", "package": "0603", "commonValues": ["0Ω", "10Ω", "100Ω", "1kΩ"] }
+      ]
+    },
+    {
+      "category": "ICs",
+      "types": [
+        { "name": "PMIC", "package": "BGA", "commonPins": [144, 196, 256] },
+        { "name": "Power MOSFET", "package": "WLCSP", "commonPins": [8, 16] },
+        { "name": "SoC", "package": "BGA", "commonPins": [196, 256, 512] }
+      ]
+    }
+  ],
+  "measurementStandards": {
+    "voltage": {
+      "iPhone": { "battery": "3.8V", "vcc_main": "4.2V", "usb": "5V" },
+      "Samsung": { "battery": "3.8V", "vbat": "3.8V", "vchg": "5V" },
+      "MacBook": { "main": "19V", "5v_s5": "5V", "3v3_s5": "3.3V" }
+    },
+    "resistance": {
+      "shortThreshold": "0.1Ω",
+      "openThreshold": "∞",
+      "normalRange": "10Ω - 100kΩ"
+    },
+    "current": {
+      "standby": "< 50mA",
+      "normal": "50mA - 500mA",
+      "high": "> 500mA",
+      "short": "> 2A"
+    }
+  }
+}
