@@ -13,11 +13,13 @@ interface TargetRegion {
 interface VisualHighlightOverlayProps {
   imageBase64: string | null;
   targetRegion?: TargetRegion;
+  highlightedComponent?: string | null;
 }
 
 export default function VisualHighlightOverlay({
   imageBase64,
   targetRegion,
+  highlightedComponent,
 }: VisualHighlightOverlayProps) {
   if (!imageBase64) {
     return (
@@ -99,8 +101,23 @@ export default function VisualHighlightOverlay({
       {!targetRegion && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-lg">
           <div className="bg-white dark:bg-gray-800 px-4 py-2 rounded-lg text-sm font-bold text-gray-800 dark:text-gray-200">
-            📍 جاري تحليل الصورة...
+            {highlightedComponent ? (
+              <span className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-dahab-500 animate-pulse" />
+                <span>تظليل: {highlightedComponent}</span>
+              </span>
+            ) : (
+              <span>📍 جاري تحليل الصورة...</span>
+            )}
           </div>
+        </div>
+      )}
+
+      {/* Component Highlight Indicator */}
+      {highlightedComponent && !targetRegion && (
+        <div className="absolute bottom-4 right-4 bg-dahab-500 text-white px-3 py-1.5 rounded-lg shadow-lg flex items-center gap-2 text-xs font-bold animate-pulse">
+          <Target className="w-3.5 h-3.5" />
+          <span>التركيز على: {highlightedComponent}</span>
         </div>
       )}
     </div>

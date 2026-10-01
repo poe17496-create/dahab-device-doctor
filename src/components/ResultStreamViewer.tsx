@@ -15,18 +15,22 @@ import {
   AlertTriangle,
   CheckCircle2,
 } from 'lucide-react';
+import ComponentBadge from '@/components/ComponentBadge';
 
 interface ResultStreamViewerProps {
   rawOutput: string;
   loading: boolean;
   onPrint?: () => void;
+  onComponentHover?: (componentName: string) => void;
+  onComponentLeave?: () => void;
 }
 
-export default function ResultStreamViewer({ rawOutput, loading, onPrint }: ResultStreamViewerProps) {
+export default function ResultStreamViewer({ rawOutput, loading, onPrint, onComponentHover, onComponentLeave }: ResultStreamViewerProps) {
   const [copied, setCopied] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [displayedText, setDisplayedText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [highlightedComponent, setHighlightedComponent] = useState<string | null>(null);
 
   // Typewriter Effect - عرض النص تدريجياً
   useEffect(() => {
@@ -69,6 +73,50 @@ export default function ResultStreamViewer({ rawOutput, loading, onPrint }: Resu
     }
   }, [rawOutput, displayedText]);
 
+  // دالة للكشف عن المكونات في النص وتحويلها إلى Badges
+  const highlightComponents = (text: string) => {
+    // نمط للكشف عن أسماء المكونات (مثل U1001, C2015, R1502, etc.)
+    const componentPattern = /([UFRCKQLD]\d{3,4}|[A-Z]\d{3,4})/g;
+    
+    let lastIndex = 0;
+    const parts: { text: string; isComponent: boolean; name?: string; type?: 'ic' | 'capacitor' | 'resistor' | 'trace' }[] = [];
+    
+    let match;
+    while ((match = componentPattern.exec(text)) !== null) {
+      // إضافة النص قبل المكون
+      if (match.index > lastIndex) {
+        parts.push({ text: text.slice(lastIndex, match.index), isComponent: false });
+      }
+      
+      const componentName = match[1];
+      // تحديد نوع المكون
+      let type: 'ic' | 'capacitor' | 'resistor' | 'trace' = 'ic';
+      if (componentName.startsWith('C')) type = 'capacitor';
+      else if (componentName.startsWith('R')) type = 'resistor';
+      else if (componentName.startsWith('F') || componentName.startsWith('T')) type = 'trace';
+      
+      parts.push({ text: componentName, isComponent: true, name: componentName, type });
+      lastIndex = componentPattern.lastIndex;
+    }
+    
+    // إضافة النص بعد آخر مكون
+    if (lastIndex < text.length) {
+      parts.push({ text: text.slice(lastIndex), isComponent: false });
+    }
+    
+    return parts;
+  };
+
+  const handleComponentHover = (componentName: string) => {
+    setHighlightedComponent(componentName);
+    if (onComponentHover) onComponentHover(componentName);
+  };
+
+  const handleComponentLeave = () => {
+    setHighlightedComponent(null);
+    if (onComponentLeave) onComponentLeave();
+  };
+
   // إزالة بلوك الميتريكس من العرض النصي حتى لا يظهر ككود مشوش للفني
   const cleanContent = displayedText;
 
@@ -108,11 +156,26 @@ export default function ResultStreamViewer({ rawOutput, loading, onPrint }: Resu
   const renderFormattedSections = () => {
     if (!cleanContent) return null;
 
-    // إذا لم يكن هناك تنسيق عناوين بعد، اعرض النص كما هو بأسلوب نقي
+    // إذا لم يكن هناك تنسيق عناوين بعد، اعرض النص مع Badges المكونات
     if (!cleanContent.includes('###')) {
+      const parts = highlightComponents(cleanContent);
       return (
-        <div className="whitespace-pre-wrap leading-relaxed text-gray-800 dark:text-gray-200 font-sans text-sm">
-          {cleanContent}
+        <div className="leading-relaxed text-gray-800 dark:text-gray-200 font-sans text-sm">
+          {parts.map((part, idx) => {
+            if (part.isComponent && part.name && part.type) {
+              return (
+                <ComponentBadge
+                  key={idx}
+                  name={part.name}
+                  type={part.type}
+                  onHover={() => part.name && handleComponentHover(part.name)}
+                  onLeave={handleComponentLeave}
+                  isHighlighted={highlightedComponent === part.name}
+                />
+              );
+            }
+            return <span key={idx}>{part.text}</span>;
+          })}
         </div>
       );
     }
@@ -159,7 +222,24 @@ export default function ResultStreamViewer({ rawOutput, loading, onPrint }: Resu
                 <h4 className="font-black text-sm text-gray-900 dark:text-gray-100">{title}</h4>
               </div>
               <div className="whitespace-pre-wrap text-xs md:text-sm text-gray-700 dark:text-gray-300 leading-relaxed font-sans">
-                {body}
+                {(() => {
+                  const parts = highlightComponents(body);
+                  return parts.map((part, pIdx) => {
+                    if (part.isComponent && part.name && part.type) {
+                      return (
+                        <ComponentBadge
+                          key={pIdx}
+                          name={part.name}
+                          type={part.type}
+                          onHover={() => part.name ? handleComponentHover(part.name) : undefined}
+                          onLeave={handleComponentLeave}
+                          isHighlighted={highlightedComponent === part.name}
+                        />
+                      );
+                    }
+                    return <span key={pIdx}>{part.text}</span>;
+                  });
+                })()}
               </div>
             </div>
           );

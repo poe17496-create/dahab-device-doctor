@@ -87,6 +87,7 @@ export default function DahabFixAiConsole() {
   const [diagnosticTab, setDiagnosticTab] = useState<'report' | 'visual'>('report');
   const [currentTicketId, setCurrentTicketId] = useState<string>('');
   const [showCommonFaultsLibrary, setShowCommonFaultsLibrary] = useState(false);
+  const [highlightedComponent, setHighlightedComponent] = useState<string | null>(null);
 
   const toggleDesktopMode = () => {
     setIsDesktopMode(prev => {
@@ -611,7 +612,12 @@ export default function DahabFixAiConsole() {
                       onTabChange={setDiagnosticTab}
                       reportContent={
                         <div className="space-y-4">
-                          <ResultStreamViewer rawOutput={output} loading={loading} />
+                          <ResultStreamViewer
+                            rawOutput={output}
+                            loading={loading}
+                            onComponentHover={setHighlightedComponent}
+                            onComponentLeave={() => setHighlightedComponent(null)}
+                          />
                           {/* Repair Status Tracker */}
                           {currentTicketId && (
                             <RepairStatusTracker
@@ -642,6 +648,7 @@ export default function DahabFixAiConsole() {
                             <VisualHighlightOverlay
                               imageBase64={imageBase64}
                               targetRegion={metrics?.targetRegion}
+                              highlightedComponent={highlightedComponent}
                             />
                           </div>
 
