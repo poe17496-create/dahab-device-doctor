@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import ConsoleHeader from '@/components/ConsoleHeader';
+import { Image } from 'lucide-react';
 import HardwareSoftwareIndicator from '@/components/HardwareSoftwareIndicator';
 import DiagnosticForm from '@/components/DiagnosticForm';
 import ResultStreamViewer from '@/components/ResultStreamViewer';
@@ -20,6 +21,8 @@ import AIChat from '@/components/AIChat';
 import DahabEcosystem from '@/components/DahabEcosystem';
 import AuthGate from '@/components/AuthGate';
 import DeviceMemoryTab from '@/components/DeviceMemoryTab';
+import FeedbackWidget from '@/components/FeedbackWidget';
+import DiagnosticTabs from '@/components/DiagnosticTabs';
 import {
   DeviceSpecialty,
   PowerSupplyReadings,
@@ -75,6 +78,9 @@ export default function DahabFixAiConsole() {
     }
     return false;
   });
+  const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [diagnosticTab, setDiagnosticTab] = useState<'report' | 'visual'>('report');
 
   const toggleDesktopMode = () => {
     setIsDesktopMode(prev => {
@@ -315,7 +321,16 @@ export default function DahabFixAiConsole() {
 
   // تنفيذ الفحص وتشغيل البث الحي (Streaming)
   const handleDiagnose = async () => {
-    if (!prompt.trim() && !imageBase64) return;
+    // فحص التحقق من الإدخال
+    if (!deviceModel.trim()) {
+      setValidationError('برجاء كتابة موديل الجهاز أولاً');
+      return;
+    }
+    if (!prompt.trim() && !imageBase64) {
+      setValidationError('برجاء كتابة وصف العطل أو رفع صورة');
+      return;
+    }
+    setValidationError(null);
 
     if (isSubscriptionExpired) {
       alert('⚠️ حسابك معلق أو انتهت فترة الاشتراك. يرجى التواصل مع إدارة دهب دكتور للتجديد.');
@@ -332,9 +347,14 @@ export default function DahabFixAiConsole() {
     }
 
     setLoading(true);
+    setLoadingMessage('جاري قراءة المعطيات والقياسات...');
     setOutput('');
     setMetrics(undefined);
     setSources([]);
+
+    // محاكاة خطوات التحميل
+    setTimeout(() => setLoadingMessage('جاري مطابقة الأعطال الشائعة ومسارات التغذية...'), 1500);
+    setTimeout(() => setLoadingMessage('جاري استخراج تقرير التشخيص ونسبة الثقة...'), 3000);
 
     try {
       // 1. جلب المراجع الهندسية الموازية (ZXW, يوتيوب, GSM-Forum)
@@ -428,6 +448,7 @@ export default function DahabFixAiConsole() {
       setOutput('حدث خطأ أثناء الاتصال بمحرك التشخيص الهندسي.');
     } finally {
       setLoading(false);
+      setLoadingMessage(null);
     }
   };
 
@@ -542,6 +563,8 @@ export default function DahabFixAiConsole() {
                     setReadings={setReadings}
                     loading={loading}
                     onDiagnose={handleDiagnose}
+                    loadingMessage={loadingMessage}
+                    validationError={validationError}
                   />
 
                   {metrics && (
@@ -550,7 +573,53 @@ export default function DahabFixAiConsole() {
                     </div>
                   )}
 
-                  <ResultStreamViewer rawOutput={output} loading={loading} />
+                  {/* Tabbed Interface for Report and Visual Board */}
+                  {output && (
+                    <DiagnosticTabs
+                      activeTab={diagnosticTab}
+                      onTabChange={setDiagnosticTab}
+                      reportContent={
+                        <div className="space-y-4">
+                          <ResultStreamViewer rawOutput={output} loading={loading} />
+                          {/* Feedback Widget */}
+                          <FeedbackWidget
+                            sessionId={activeSessionId}
+                            deviceModel={deviceModel}
+                            aiOutput={output}
+                          />
+                        </div>
+                      }
+                      visualContent={
+                        <div className="p-6 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-center">
+                          {imageBase64 ? (
+                            <div className="space-y-4">
+                              <div className="relative inline-block">
+                                <img
+                                  src={imageBase64}
+                                  alt="Board Image"
+                                  className="max-w-full h-auto rounded-lg shadow-lg"
+                                />
+                                {/* Visual Highlight Overlay Placeholder */}
+                                <div className="absolute inset-0 border-4 border-dahab-500 rounded-lg animate-pulse opacity-50" />
+                              </div>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                📍 التحليل المرئي للبوردة - قيد التطوير
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="py-12">
+                              <Image className="w-16 h-16 mx-auto text-gray-400 dark:text-gray-600 mb-4" />
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                قم برفع صورة البوردة لتفعيل اللوحة المرئية
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      }
+                    />
+                  )}
+
+                  {!output && <ResultStreamViewer rawOutput={output} loading={loading} />}
 
                 </>
               )}

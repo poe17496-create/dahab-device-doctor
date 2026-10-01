@@ -33,6 +33,8 @@ interface DiagnosticFormProps {
   loading: boolean;
   onDiagnose: () => void;
   guestUsageRemaining?: number;
+  loadingMessage?: string | null;
+  validationError?: string | null;
 }
 
 const SPECIALTY_OPTIONS: { id: DeviceSpecialty; label: string; icon: any; hint: string }[] = [
@@ -143,10 +145,31 @@ export default function DiagnosticForm({
   loading,
   onDiagnose,
   guestUsageRemaining,
+  loadingMessage,
+  validationError,
 }: DiagnosticFormProps) {
   const [showAdvancedReadings, setShowAdvancedReadings] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<CategoryId>('mobile');
+  const [localValidationError, setLocalValidationError] = useState<string | null>(null);
+  const [loadingStep, setLoadingStep] = useState(0);
+
+  // رسائل التحميل الخطوة بخطوة
+  const loadingMessages = [
+    'جاري قراءة المعطيات والقياسات...',
+    'جاري مطابقة الأعطال الشائعة ومسارات التغذية...',
+    'جاري استخراج تقرير التشخيص ونسبة الثقة...',
+  ];
+
+  // التأثير التلقائي لرسائل التحميل
+  useEffect(() => {
+    if (loading && loadingStep < loadingMessages.length) {
+      const timer = setTimeout(() => {
+        setLoadingStep((prev) => prev + 1);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, loadingStep]);
 
   // Initialize correct category based on default specialty, or handle category changes
   useEffect(() => {
@@ -221,6 +244,76 @@ export default function DiagnosticForm({
       reader.onloadend = () => setImageBase64(reader.result as string);
       reader.readAsDataURL(file);
     }
+  };
+
+  // فحص الإدخال قبل التشخيص
+  const validateInputs = (): boolean => {
+    if (!deviceModel.trim()) {
+      setLocalValidationError('برجاء كتابة موديل الجهاز أولاً');
+      return false;
+    }
+    if (!prompt.trim() && !imageBase64) {
+      setLocalValidationError('برجاء كتابة وصف العطل أو رفع صورة');
+      return false;
+    }
+    setLocalValidationError(null);
+    return true;
+  };
+
+  // معالجة النقر على زر التشخيص
+  const handleDiagnoseClick = () => {
+    if (!validateInputs()) {
+      return;
+    }
+    onDiagnose();
+  };
+
+  // أمثلة الاختبار السريع (Presets)
+  const presets = [
+    {
+      name: 'آيفون 11 - شورت صريح في VCC_MAIN',
+      category: 'mobile' as CategoryId,
+      model: 'iPhone 11',
+      prompt: 'شورت صريح على خط VCC_MAIN مع سخونة على PMIC',
+      readings: {
+        currentBeforePower: 0.12,
+        currentAfterPower: 'متوقف عند 0.00A',
+        voltageInput: 4.2,
+        shortDetected: true,
+      },
+    },
+    {
+      name: 'سامسونج S21 - سحب أمبير ضعيف / فاصل باور',
+      category: 'mobile' as CategoryId,
+      model: 'Samsung Galaxy S21',
+      prompt: 'سحب أمبير ضعيف 0.15A فقط، اللابتوب يفرق شورت على الباور سبلاي',
+      readings: {
+        currentBeforePower: 0.15,
+        currentAfterPower: '0.15A ثابت',
+        voltageInput: 19.5,
+        shortDetected: false,
+      },
+    },
+    {
+      name: 'ماك بوك - فاصل إشارة الشحن ISL9240',
+      category: 'laptop' as CategoryId,
+      model: 'MacBook Pro 2021',
+      prompt: 'ماك بوك لا يفرق باور 20V، فاصل إشارة الشحن ISL9240 لا يعمل',
+      readings: {
+        currentBeforePower: 0.05,
+        currentAfterPower: '0.05A',
+        voltageInput: 0.00,
+        shortDetected: false,
+      },
+    },
+  ];
+
+  const applyPreset = (preset: typeof presets[0]) => {
+    setSelectedCategory(preset.category);
+    setDeviceModel(preset.model);
+    setPrompt(preset.prompt);
+    setReadings(preset.readings);
+    setLocalValidationError(null);
   };
 
   return (
@@ -428,7 +521,26 @@ export default function DiagnosticForm({
         </div>
       )}
 
-      {/* 3. صندوق وصف العطل والبرومبت السريع */}
+      {/* 3. أمثلة الاختبار السريع (Presets) */}
+      <div className="space-y-3 animate-fadeIn">
+        <label className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+          <span>🧪 أمثلة اختبار سريع (اضغط للتجربة فوراً):</span>
+        </label>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          {presets.map((preset, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => applyPreset(preset)}
+              className="text-[11px] px-3 py-2 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 border border-blue-200 text-blue-700 dark:from-blue-900/30 dark:to-indigo-900/30 dark:border-blue-800 dark:text-blue-300 transition-all text-right font-medium"
+            >
+              {preset.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 4. صندوق وصف العطل والبرومبت السريع */}
       <div className="space-y-3">
         <div className="flex justify-between items-center flex-wrap gap-2">
           <label className="text-sm font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
@@ -465,8 +577,19 @@ export default function DiagnosticForm({
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           placeholder="اكتب وصف العطل بوضوح للحصول على تشخيص دقيق..."
-          className="w-full p-4 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 focus:ring-2 focus:ring-dahab-500/50 focus:border-dahab-500 outline-none h-32 resize-none font-sans leading-relaxed transition shadow-inner"
+          className={`w-full p-4 border rounded-2xl text-sm font-sans leading-relaxed transition shadow-inner resize-none h-32 ${
+            localValidationError && !prompt.trim()
+              ? 'border-rose-500 bg-rose-50 dark:bg-rose-950/20 dark:border-rose-500 focus:border-rose-500 focus:ring-rose-500'
+              : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800 placeholder-gray-400 dark:placeholder-gray-600 focus:ring-2 focus:ring-dahab-500/50 focus:border-dahab-500'
+          }`}
         />
+
+        {/* رسالة خطأ التحقق */}
+        {localValidationError && (
+          <div className="text-xs font-bold text-rose-600 dark:text-rose-400 animate-fadeIn">
+            ⚠️ {localValidationError}
+          </div>
+        )}
 
         {/* أزرار سريعة للأعطال الشائعة */}
         <div className="flex flex-wrap gap-2 pt-1 items-center">
@@ -524,14 +647,14 @@ export default function DiagnosticForm({
 
           {/* زر بدء الفحص الهندسي الكبير */}
           <button
-            onClick={onDiagnose}
+            onClick={handleDiagnoseClick}
             disabled={loading || (!prompt.trim() && !imageBase64)}
             className="flex items-center justify-center gap-2 bg-gradient-to-r from-dahab-500 to-amber-600 hover:from-dahab-600 hover:to-amber-700 text-slate-950 px-8 py-4 rounded-2xl font-black text-sm transition-all shadow-lg shadow-dahab-500/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer w-full"
           >
             {loading ? (
               <>
                 <div className="w-5 h-5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
-                <span>جاري الفرز والتشخيص الهندسي...</span>
+                <span>{loadingMessages[loadingStep] || 'جاري التشخيص...'}</span>
               </>
             ) : (
               <>

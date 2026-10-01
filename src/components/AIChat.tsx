@@ -6,7 +6,6 @@ import {
   Mic,
   MicOff,
   Volume2,
-  VolumeX,
   Image as ImageIcon,
   X,
   Cpu,
@@ -90,9 +89,6 @@ export default function AIChat() {
   const [micErrorBanner, setMicErrorBanner] = useState<string | null>(null);
   const [showMicModal, setShowMicModal] = useState(false);
   const [micModalError, setMicModalError] = useState<string | null>(null);
-  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
-  const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const speakTimerRef = useRef<any>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -248,71 +244,11 @@ export default function AIChat() {
     }
   }, []);
 
-  // 🎙️ محرك النطق الصوتي الفوري المباشر (ResponsiveVoice - Free Arabic TTS)
+  // 🎙️ محرك النطق الصوتي الفوري المباشر (مؤقتاً تحت الصيانة)
   const speakText = (text: string, msgId?: string) => {
-    console.log('speakText called with text:', text.substring(0, 50));
-    
-    const targetId = msgId || Date.now().toString();
-
-    // إذا كان المساعد يقرأ نفس الرسالة حالياً، نوقفه فوراً (Toggle Stop)
-    if (speakingMessageId && (!msgId || speakingMessageId === msgId)) {
-      if (audioPlayerRef.current) {
-        audioPlayerRef.current.pause();
-        audioPlayerRef.current = null;
-      }
-      setSpeakingMessageId(null);
-      return;
-    }
-
-    // إيقاف أي صوت سابق
-    if (audioPlayerRef.current) {
-      audioPlayerRef.current.pause();
-      audioPlayerRef.current = null;
-    }
-
-    // تنظيف النص البسيط
-    const cleanText = text.replace(/[*#_`~\[\]\(\)>]/g, ' ').replace(/\s+/g, ' ').trim();
-    if (!cleanText) return;
-
-    // استخدام API داخلي من جانب الخادم لتجنب CORS
-    const ttsUrl = `/api/tts?text=${encodeURIComponent(cleanText)}`;
-
-    console.log('Using server-side TTS API');
-
-    const audio = new Audio(ttsUrl);
-    audioPlayerRef.current = audio;
-
-    audio.onplay = () => {
-      console.log('Audio started playing');
-      setSpeakingMessageId(targetId);
-    };
-
-    audio.onended = () => {
-      console.log('Audio finished playing');
-      setSpeakingMessageId(null);
-      audioPlayerRef.current = null;
-    };
-
-    audio.onerror = (e) => {
-      console.log('Audio error:', e);
-      setSpeakingMessageId(null);
-      audioPlayerRef.current = null;
-      // Fallback to browser SpeechSynthesis if ResponsiveVoice fails
-      if (typeof window !== 'undefined' && window.speechSynthesis) {
-        try {
-          const utterance = new SpeechSynthesisUtterance(cleanText);
-          utterance.lang = 'ar-SA';
-          window.speechSynthesis.speak(utterance);
-        } catch (err) {
-          console.log('Fallback SpeechSynthesis also failed:', err);
-        }
-      }
-    };
-
-    audio.play().catch(err => {
-      console.log('Failed to play audio:', err);
-      setSpeakingMessageId(null);
-    });
+    // مؤقتاً: إظهار رسالة أن النطق الصوتي تحت الصيانة
+    setToastMsg('⚠️ النطق الصوتي تحت الصيانة - سنقوم بتفعيله قريباً');
+    return;
   };
 
   // إرسال الرسالة
@@ -720,25 +656,12 @@ export default function AIChat() {
                   </span>
                   <button
                     type="button"
-                    onClick={() => speakText(message.content, message.id)}
-                    className={`flex items-center gap-1.5 transition px-2.5 py-1 rounded-xl text-[11px] font-bold ${
-                      speakingMessageId === message.id
-                        ? 'bg-amber-500 text-slate-950 shadow-md animate-pulse ring-2 ring-amber-400'
-                        : 'text-gray-500 hover:text-amber-500 hover:bg-gray-200/40 dark:hover:bg-gray-800'
-                    }`}
-                    title={speakingMessageId === message.id ? 'إيقاف القراءة الصوتية' : 'قراءة الرد صوتياً'}
+                    disabled
+                    className="flex items-center gap-1.5 transition px-2.5 py-1 rounded-xl text-[11px] font-bold text-gray-400 cursor-not-allowed opacity-60"
+                    title="النطق الصوتي تحت الصيانة مؤقتاً"
                   >
-                    {speakingMessageId === message.id ? (
-                      <>
-                        <span className="w-2 h-2 rounded-full bg-slate-950 animate-ping" />
-                        <span>⏹️ إيقاف</span>
-                      </>
-                    ) : (
-                      <>
-                        <Volume2 className="w-3.5 h-3.5 text-amber-500" />
-                        <span>استماع</span>
-                      </>
-                    )}
+                    <Volume2 className="w-3.5 h-3.5" />
+                    <span>الصوت تحت الصيانة</span>
                   </button>
                 </div>
               </>

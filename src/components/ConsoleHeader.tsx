@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Cpu, PlusCircle, LogOut, Crown, Monitor, Smartphone } from 'lucide-react';
+import { Cpu, PlusCircle, LogOut, Crown, Monitor, Smartphone, Info } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import LoginModal from '@/components/LoginModal';
 import { UserAccount } from '@/lib/auth';
@@ -30,6 +30,7 @@ export default function ConsoleHeader({
 }: ConsoleHeaderProps) {
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(propUser || null);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [showArchitectureModal, setShowArchitectureModal] = useState(false);
 
   useEffect(() => {
     if (propUser !== undefined) {
@@ -112,12 +113,22 @@ export default function ConsoleHeader({
                 Dahab FixAI
               </h1>
               <span className="hidden sm:inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-dahab-500/15 text-dahab-600 dark:text-dahab-400 border border-dahab-500/30 shrink-0">
-                خبير الأعطال
+                v1.0
               </span>
             </div>
-            <p className="hidden md:block text-[11px] text-gray-500 dark:text-gray-400 truncate">
-              المنظومة الهندسية لتشخيص الموبايل واللابتوب والمازربورد
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="hidden md:block text-[11px] text-gray-500 dark:text-gray-400 truncate">
+                AI Guided Diagnostic Core
+              </p>
+              <button
+                onClick={() => setShowArchitectureModal(true)}
+                className="hidden md:flex items-center gap-1 text-[10px] text-dahab-600 dark:text-dahab-400 hover:text-dahab-700 dark:hover:text-dahab-300 transition"
+                title="عرض خريطة النظام المعمارية"
+              >
+                <Info className="w-3 h-3" />
+                <span>البنية المعمارية</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -205,6 +216,129 @@ export default function ConsoleHeader({
         onClose={() => setIsLoginOpen(false)}
         onLoginSuccess={(u) => setCurrentUser(u)}
       />
+
+      {/* نافذة البنية المعمارية */}
+      {showArchitectureModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700 shadow-2xl">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-black text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                  <Cpu className="w-6 h-6 text-dahab-500" />
+                  <span>بنية النظام المعمارية</span>
+                </h2>
+                <button
+                  onClick={() => setShowArchitectureModal(false)}
+                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                >
+                  <LogOut className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Pipeline Visualization */}
+                <div className="bg-gradient-to-br from-dahab-50 to-amber-50 dark:from-dahab-900/20 dark:to-amber-900/20 rounded-xl p-6 border border-dahab-200 dark:border-dahab-800">
+                  <h3 className="text-sm font-bold text-dahab-700 dark:text-dahab-300 mb-4">مسار المعالجة الكامل</h3>
+                  <div className="flex flex-col md:flex-row items-center gap-4 text-center">
+                    <div className="flex-1 bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
+                      <div className="text-2xl mb-2">📝</div>
+                      <div className="text-xs font-bold text-gray-700 dark:text-gray-300">المدخلات</div>
+                      <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">نص العطل، صورة، قياسات</div>
+                    </div>
+                    <div className="text-dahab-500">→</div>
+                    <div className="flex-1 bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
+                      <div className="text-2xl mb-2">🔍</div>
+                      <div className="text-xs font-bold text-gray-700 dark:text-gray-300">YOLOv8 (قادم)</div>
+                      <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">تحليل صور البوردة</div>
+                    </div>
+                    <div className="text-dahab-500">→</div>
+                    <div className="flex-1 bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
+                      <div className="text-2xl mb-2">🧠</div>
+                      <div className="text-xs font-bold text-gray-700 dark:text-gray-300">AI Reasoning</div>
+                      <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">LLM + Expert Knowledge</div>
+                    </div>
+                    <div className="text-dahab-500">→</div>
+                    <div className="flex-1 bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
+                      <div className="text-2xl mb-2">📊</div>
+                      <div className="text-xs font-bold text-gray-700 dark:text-gray-300">المخرجات</div>
+                      <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">تقرير التشخيص + نسبة الثقة</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Components */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                    <h4 className="text-xs font-bold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                      <span>📱</span> المدخلات والبيانات
+                    </h4>
+                    <ul className="text-[11px] text-gray-600 dark:text-gray-400 space-y-1">
+                      <li>• وصف العطل باللغة العربية</li>
+                      <li>• صورة البوردة/الجهاز</li>
+                      <li>• قراءات الباور والملتيميتر</li>
+                      <li>• طراز الجهاز ونوع الدائرة</li>
+                    </ul>
+                  </div>
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                    <h4 className="text-xs font-bold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                      <span>🧠</span> محرك التفكير AI
+                    </h4>
+                    <ul className="text-[11px] text-gray-600 dark:text-gray-400 space-y-1">
+                      <li>• تحليل السياق الهندسي</li>
+                      <li>• مطابقة الأعطال الشائعة</li>
+                      <li>• استنتاج المسارات والآيسيهات</li>
+                      <li>• حساب نسبة الثقة</li>
+                    </ul>
+                  </div>
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                    <h4 className="text-xs font-bold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                      <span>📚</span> قاعدة المعرفة الخبرية
+                    </h4>
+                    <ul className="text-[11px] text-gray-600 dark:text-gray-400 space-y-1">
+                      <li>• مخططات ZXW وBoardview</li>
+                      <li>• حلول GSM-Forum</li>
+                      <li>• قوائم الأعطال الشائعة</li>
+                      <li>• بدائل الآيسيهات</li>
+                    </ul>
+                  </div>
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                    <h4 className="text-xs font-bold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                      <span>📊</span> التقييم والتحسين
+                    </h4>
+                    <ul className="text-[11px] text-gray-600 dark:text-gray-400 space-y-1">
+                      <li>• نظام Feedback Loop</li>
+                      <li>• جمع بيانات التدريب</li>
+                      <li>• تحسين YOLOv8 وSchematic Matcher</li>
+                      <li>• نسبة الثقة الديناميكية</li>
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Roadmap */}
+                <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 border border-amber-200 dark:border-amber-800">
+                  <h4 className="text-xs font-bold text-amber-700 dark:text-amber-300 mb-3 flex items-center gap-2">
+                    <span>🚀</span> خارطة الطريق القادمة
+                  </h4>
+                  <div className="text-[11px] text-amber-800 dark:text-amber-200 space-y-2">
+                    <div className="flex items-start gap-2">
+                      <span className="font-bold">Q1 2026:</span>
+                      <span>نموذج YOLOv8 لتحديد الآيسيهات بصرياً</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="font-bold">Q2 2026:</span>
+                      <span>Schematic Matcher لمطابقة المخططات تلقائياً</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="font-bold">Q3 2026:</span>
+                      <span>نظام توصيات القطع والبدائل الذكي</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
