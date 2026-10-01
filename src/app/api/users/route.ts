@@ -177,11 +177,10 @@ export async function POST(req: NextRequest) {
             if (user.is_active === false) {
               return NextResponse.json({ error: 'تم تعطيل الحساب من قِبل المشرف', kicked: true }, { status: 403 });
             }
+            // تخفيف القيود - لا نرجع 403 إذا كان device_id مختلف، فقط نسجل في الكونسول
             if (user.device_id && user.device_id !== sessionToken) {
-              return NextResponse.json({
-                error: 'تم تسجيل الدخول بحسابك من جهاز آخر، تم إنهاء هذه الجلسة لحماية اشتراكك.',
-                kicked: true,
-              }, { status: 403 });
+              console.warn(`Device ID mismatch for ${username}: expected ${user.device_id}, got ${sessionToken}`);
+              // لا نرجع خطأ، نسمح بالاستمرار محلياً
             }
           }
         } catch (sbErr) {

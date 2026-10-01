@@ -79,7 +79,8 @@ export default function ConsoleHeader({
           if (onLogout) onLogout();
         }
       } catch (err) {
-        // تجاهل أخطاء الشبكة المؤقتة
+        // تجاهل أخطاء الشبكة المؤقتة - لا تظهر للمستخدم
+        console.warn('Heartbeat error (silent):', err);
       }
     };
 

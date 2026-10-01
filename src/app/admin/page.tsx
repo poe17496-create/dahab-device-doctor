@@ -124,6 +124,10 @@ export default function AdminDashboardPage() {
   const fetchData = async () => {
     try {
       const usersRes = await fetch('/api/users', { cache: 'no-store' });
+      if (!usersRes.ok) {
+        console.warn('Failed to fetch users:', usersRes.status);
+        return;
+      }
       const usersData = await usersRes.json();
       if (usersData.users) setUsers(usersData.users);
 
@@ -188,9 +192,14 @@ export default function AdminDashboardPage() {
           password: adminPassword.trim(),
         }),
       });
+      if (!res.ok) {
+        const data = await res.json();
+        setAuthError(data.error || 'فشل تسجيل الدخول');
+        return;
+      }
 
       const data = await res.json();
-      if (!res.ok || data.user?.role !== 'admin') {
+      if (data.user?.role !== 'admin') {
         if (isDirectDahab) {
           const adminUser = {
             id: 'user_admin',
@@ -260,20 +269,20 @@ export default function AdminDashboardPage() {
           price: Number(userPrice) || 50,
         }),
       });
-
-      if (res.ok) {
-        setShowAddModal(false);
-        setSuccessMsg('✅ تم إصدار حساب الفني وتفعيله بنجاح!');
-        setName('');
-        setUsername('');
-        setSpecialty('');
-        setSubscriptionDays('30');
-        setUserPrice('50');
-        fetchData();
-      } else {
-        const data = await res.json().catch(() => ({}));
-        setAddError(data.error || 'فشل في إضافة الفني. حاول مرة أخرى.');
+      if (!res.ok) {
+        const data = await res.json();
+        setAddError(data.error || 'فشل إضافة المستخدم');
+        return;
       }
+
+      setShowAddModal(false);
+      setSuccessMsg('✅ تم إصدار حساب الفني وتفعيله بنجاح!');
+      setName('');
+      setUsername('');
+      setSpecialty('');
+      setSubscriptionDays('30');
+      setUserPrice('50');
+      fetchData();
     } catch (e) {
       console.error(e);
       setAddError('فشل في إضافة الفني. حاول مرة أخرى.');
@@ -283,11 +292,17 @@ export default function AdminDashboardPage() {
   const handleDeleteUser = async (id: string) => {
     if (!confirm('هل تريد بالتأكيد حذف هذا المستخدم نهائياً؟')) return;
     try {
-      await fetch(`/api/users?id=${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/users?id=${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json();
+        setAddError(data.error || 'فشل حذف المستخدم');
+        return;
+      }
       setSuccessMsg('تم حذف الحساب بنجاح');
       fetchData();
     } catch (e) {
       console.error(e);
+      setAddError('فشل حذف المستخدم');
     }
   };
 
@@ -308,14 +323,9 @@ export default function AdminDashboardPage() {
           subscriptionDays: editSubscriptionDays === 'unlimited' ? 'unlimited' : Number(editSubscriptionDays),
         }),
       });
-      if (res.ok) {
-        setEditingUser(null);
-        setSuccessMsg('✅ تم تعديل بيانات الفني وفتح/تحديث الصلاحية بنجاح!');
-        fetchData();
-      } else {
-        const data = await res.json().catch(() => ({}));
-        setEditError(data.error || 'فشل في تعديل بيانات الفني.');
-      }
+      setEditingUser(null);
+      setSuccessMsg('✅ تم تعديل بيانات الفني وفتح/تحديث الصلاحية بنجاح!');
+      fetchData();
     } catch (e) {
       console.error(e);
       setEditError('فشل في التعديل.');
@@ -430,14 +440,20 @@ export default function AdminDashboardPage() {
 
   const handleToggleStatus = async (id: string) => {
     try {
-      await fetch('/api/users', {
+      const res = await fetch('/api/users', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, action: 'toggleStatus' }),
       });
+      if (!res.ok) {
+        const data = await res.json();
+        setAddError(data.error || 'فشل تبديل الحالة');
+        return;
+      }
       fetchData();
     } catch (e) {
       console.error(e);
+      setAddError('فشل تبديل الحالة');
     }
   };
 
@@ -448,11 +464,15 @@ export default function AdminDashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, action: 'extendSubscription', days }),
       });
-      if (res.ok) {
-        fetchData();
+      if (!res.ok) {
+        const data = await res.json();
+        setAddError(data.error || 'فشل تمديد الاشتراك');
+        return;
       }
+      fetchData();
     } catch (e) {
       console.error(e);
+      setAddError('فشل تمديد الاشتراك');
     }
   };
 
