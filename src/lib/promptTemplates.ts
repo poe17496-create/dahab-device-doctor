@@ -48,9 +48,31 @@ export const DAHAB_SYSTEM_PROMPT = `
   "urgencyLevel": "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
   "primarySuspectComponent": "اسم الآيسي أو المسار أو نظام التشغيل المشتبه به",
   "recommendedAction": "التوصية الفورية الأولى بأسلوب هندسي موجز",
-  "confidenceScore": 85
+  "confidenceScore": 85,
+  "targetRegion": {
+    "x": 50,
+    "y": 30,
+    "width": 20,
+    "height": 15
+  },
+  "testPoints": [
+    {
+      "name": "PP_VDD_MAIN",
+      "expectedValue": "3.8V",
+      "coordinates": { "x": 45, "y": 35 },
+      "instruction": "قياس الفولت على خط التغذية الرئيسي"
+    }
+  ]
 }
 <<<END_DAHAB_METRICS>>>
+
+**ملاحظة هامة حول الإحداثيات (Coordinates):**
+- إذا تم إرفاق صورة للبوردة، يجب إرجاع إحداثيات المنطقة المشتبه بها في targetRegion بالنسب المئوية (0-100)
+- x: الموضع الأفقي من اليسار (0-100)
+- y: الموضع العمودي من الأعلى (0-100)
+- width: عرض المنطقة بالنسب المئوية (0-100)
+- height: ارتفاع المنطقة بالنسب المئوية (0-100)
+- testPoints: مصفوفة نقاط القياس مع إحداثياتها النسبية والقيم المتوقعة
 
 **ملاحظة هامة حول نسبة الثقة (Confidence Score):**
 - إذا كانت نسبة الثقة أقل من 70%، يجب إضافة صندوق اقتراح في نهاية التقرير يقول:

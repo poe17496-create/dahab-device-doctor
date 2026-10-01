@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Copy,
   Check,
@@ -25,11 +25,52 @@ interface ResultStreamViewerProps {
 export default function ResultStreamViewer({ rawOutput, loading, onPrint }: ResultStreamViewerProps) {
   const [copied, setCopied] = useState(false);
   const [speaking, setSpeaking] = useState(false);
+  const [displayedText, setDisplayedText] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+
+  // Typewriter Effect - عرض النص تدريجياً
+  useEffect(() => {
+    if (!rawOutput) {
+      setDisplayedText('');
+      setIsTyping(false);
+      return;
+    }
+
+    // إزالة بلوك الميتريكس من النص المعروض
+    const cleanText = rawOutput
+      .replace(/<<<DAHAB_DIAGNOSTIC_METRICS>>>[\s\S]*?<<<END_DAHAB_METRICS>>>/g, '')
+      .trim();
+
+    if (cleanText === displayedText) {
+      setIsTyping(false);
+      return;
+    }
+
+    // إذا كان النص الجديد أطول، استمر في الكتابة
+    if (cleanText.length > displayedText.length) {
+      setIsTyping(true);
+      const typingInterval = setInterval(() => {
+        setDisplayedText((prev) => {
+          const nextChar = cleanText[prev.length];
+          if (nextChar === undefined) {
+            clearInterval(typingInterval);
+            setIsTyping(false);
+            return prev;
+          }
+          return prev + nextChar;
+        });
+      }, 15); // سرعة الكتابة: 15ms لكل حرف
+
+      return () => clearInterval(typingInterval);
+    } else {
+      // إذا كان النص الجديد أقصر (تم تغييره)، اعرضه فوراً
+      setDisplayedText(cleanText);
+      setIsTyping(false);
+    }
+  }, [rawOutput, displayedText]);
 
   // إزالة بلوك الميتريكس من العرض النصي حتى لا يظهر ككود مشوش للفني
-  const cleanContent = rawOutput
-    .replace(/<<<DAHAB_DIAGNOSTIC_METRICS>>>[\s\S]*?<<<END_DAHAB_METRICS>>>/g, '')
-    .trim();
+  const cleanContent = displayedText;
 
   const handleCopy = () => {
     if (!cleanContent) return;
@@ -141,10 +182,10 @@ export default function ResultStreamViewer({ rawOutput, loading, onPrint }: Resu
             <Terminal className="w-3.5 h-3.5" />
             <span>تقرير الفحص والتشخيص الهندسي المعتمد</span>
           </span>
-          {loading && (
+          {(loading || isTyping) && (
             <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 animate-pulse flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span>جاري التدفق والتحليل الهندسي الحي...</span>
+              <span>{isTyping ? 'جاري كتابة التقرير تدريجياً...' : 'جاري التدفق والتحليل الهندسي الحي...'}</span>
             </span>
           )}
         </div>

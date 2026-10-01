@@ -30,6 +30,24 @@ export interface DiagnosticMetrics {
   urgencyLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   primarySuspectComponent?: string;       // المكون أو الآيسي أو المسار المشتبه به الرئيسي
   recommendedAction: string;              // التوصية الهندسية الفورية الأولى
+  confidenceScore?: number;              // نسبة الثقة في التشخيص (0 - 100%)
+  targetRegion?: {                        // إحداثيات المنطقة المشتبه بها على الصورة
+    x: number;                            // الموضع الأفقي بالنسب المئوية (0-100)
+    y: number;                            // الموضع العمودي بالنسب المئوية (0-100)
+    width: number;                        // العرض بالنسب المئوية (0-100)
+    height: number;                       // الارتفاع بالنسب المئوية (0-100)
+  };
+  testPoints?: TestPoint[];               // نقاط القياس التفاعلية
+}
+
+export interface TestPoint {
+  name: string;                           // اسم نقطة القياس (مثلاً PP_VDD_MAIN)
+  expectedValue: string;                  // القيمة المتوقعة (مثلاً 3.8V أو 0Ω)
+  coordinates: {                          // إحداثيات النقطة على الصورة
+    x: number;                            // الموضع الأفقي بالنسب المئوية (0-100)
+    y: number;                            // الموضع العمودي بالنسب المئوية (0-100)
+  };
+  instruction: string;                     // خطوة الفحص المطلوبة
 }
 
 export interface ChatMessage {

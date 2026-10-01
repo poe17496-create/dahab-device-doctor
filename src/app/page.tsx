@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import ConsoleHeader from '@/components/ConsoleHeader';
-import { Image } from 'lucide-react';
+import { Image, Zap } from 'lucide-react';
 import HardwareSoftwareIndicator from '@/components/HardwareSoftwareIndicator';
 import DiagnosticForm from '@/components/DiagnosticForm';
 import ResultStreamViewer from '@/components/ResultStreamViewer';
@@ -23,6 +23,8 @@ import AuthGate from '@/components/AuthGate';
 import DeviceMemoryTab from '@/components/DeviceMemoryTab';
 import FeedbackWidget from '@/components/FeedbackWidget';
 import DiagnosticTabs from '@/components/DiagnosticTabs';
+import VisualHighlightOverlay from '@/components/VisualHighlightOverlay';
+import InteractiveDiagnosticBoard from '@/components/InteractiveDiagnosticBoard';
 import {
   DeviceSpecialty,
   PowerSupplyReadings,
@@ -590,30 +592,30 @@ export default function DahabFixAiConsole() {
                         </div>
                       }
                       visualContent={
-                        <div className="p-6 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-center">
-                          {imageBase64 ? (
-                            <div className="space-y-4">
-                              <div className="relative inline-block">
-                                <img
-                                  src={imageBase64}
-                                  alt="Board Image"
-                                  className="max-w-full h-auto rounded-lg shadow-lg"
-                                />
-                                {/* Visual Highlight Overlay Placeholder */}
-                                <div className="absolute inset-0 border-4 border-dahab-500 rounded-lg animate-pulse opacity-50" />
-                              </div>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">
-                                📍 التحليل المرئي للبوردة - قيد التطوير
-                              </p>
-                            </div>
-                          ) : (
-                            <div className="py-12">
-                              <Image className="w-16 h-16 mx-auto text-gray-400 dark:text-gray-600 mb-4" />
-                              <p className="text-sm text-gray-600 dark:text-gray-400">
-                                قم برفع صورة البوردة لتفعيل اللوحة المرئية
-                              </p>
-                            </div>
-                          )}
+                        <div className="space-y-6">
+                          {/* Visual Highlight Overlay */}
+                          <div className="p-6 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl">
+                            <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                              <Image className="w-5 h-5 text-dahab-500" />
+                              <span>التظليل المرئي على البوردة</span>
+                            </h3>
+                            <VisualHighlightOverlay
+                              imageBase64={imageBase64}
+                              targetRegion={metrics?.targetRegion}
+                            />
+                          </div>
+
+                          {/* Interactive Diagnostic Board */}
+                          <div className="p-6 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl">
+                            <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                              <Zap className="w-5 h-5 text-dahab-500" />
+                              <span>لوحة القياس التفاعلية</span>
+                            </h3>
+                            <InteractiveDiagnosticBoard
+                              testPoints={metrics?.testPoints}
+                              imageBase64={imageBase64}
+                            />
+                          </div>
                         </div>
                       }
                     />
