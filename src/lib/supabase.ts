@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import type { Database } from './database.types'
 
 // Environment variables
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -14,12 +15,12 @@ export const isSupabaseConfigured = Boolean(
 
 // Client-side Supabase client
 export const supabaseClient = isSupabaseConfigured
-  ? createClient(supabaseUrl!, supabaseAnonKey!)
+  ? createClient<Database>(supabaseUrl!, supabaseAnonKey!)
   : null as any
 
 // Server-side Supabase client with service role key (for API routes and server actions)
 export const supabaseAdmin = isSupabaseConfigured
-  ? createClient(supabaseUrl!, supabaseServiceRoleKey!, {
+  ? createClient<Database>(supabaseUrl!, supabaseServiceRoleKey!, {
       auth: {
         autoRefreshToken: false,
         persistSession: false
@@ -35,7 +36,7 @@ export function createSupabaseServerClient() {
 
   const cookieStore = cookies()
 
-  return createServerClient(supabaseUrl!, supabaseAnonKey!, {
+  return createServerClient<Database>(supabaseUrl!, supabaseAnonKey!, {
     cookies: {
       get(name: string) {
         return cookieStore.get(name)?.value
