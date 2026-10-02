@@ -72,9 +72,9 @@ export function checkRateLimit(req: NextRequest, maxRequests = 25, windowMs = 60
 
 /**
  * حماية مشددة لتسجيل الدخول من هجمات التخمين (Brute-Force Attack Protection)
- * يسمح بـ 5 محاولات دخول خاطئة فقط كل 10 دقائق
+ * يسمح بـ 3 محاولات دخول خاطئة فقط كل 15 دقيقة (أكثر صرامة)
  */
-export function checkLoginBruteForce(req: NextRequest, maxAttempts = 5, windowMs = 10 * 60 * 1000): { allowed: boolean; remainingAttempts: number; resetInMinutes: number } {
+export function checkLoginBruteForce(req: NextRequest, maxAttempts = 3, windowMs = 15 * 60 * 1000): { allowed: boolean; remainingAttempts: number; resetInMinutes: number } {
   const ip = getClientIP(req);
   const now = Date.now();
 

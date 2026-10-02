@@ -9,6 +9,7 @@ export interface UserAccount {
   role: 'admin' | 'technician';
   specialty?: string;
   password?: string;
+  passwordHash?: string; // كلمة المرور المشفرة (للاستخدام المستقبلي)
   active: boolean;
   diagnosesCount: number;
   createdAt: string;
@@ -20,6 +21,8 @@ export interface UserAccount {
   expiresAt?: string; // تاريخ انتهاء الصلاحية أو فارغ لغير محدود
   subscriptionDays?: number;
   price?: number;
+  loginAttempts?: number; // عدد محاولات الدخول الفاشلة
+  lockedUntil?: string; // تاريخ فتح القفل
 }
 
 const BASE_DIR = process.env.VERCEL ? '/tmp' : process.cwd();
@@ -133,7 +136,12 @@ export function addUser(
   user: Omit<UserAccount, 'id' | 'createdAt' | 'diagnosesCount'> & { subscriptionDays?: number }
 ): UserAccount {
   const users = getAllUsers();
-  
+
+  // فحص قوة كلمة المرور
+  if (user.password && user.password.length < 8) {
+    throw new Error('كلمة المرور يجب أن تكون 8 أحرف على الأقل');
+  }
+
   let expiresAt = user.expiresAt;
   if (!expiresAt && user.subscriptionDays && user.subscriptionDays > 0) {
     expiresAt = new Date(Date.now() + user.subscriptionDays * 24 * 60 * 60 * 1000).toISOString();
@@ -146,6 +154,7 @@ export function addUser(
     createdAt: new Date().toISOString(),
     expiresAt,
     isOnline: false,
+    loginAttempts: 0,
   };
   users.push(newUser);
   saveAllUsers(users);
@@ -255,6 +264,7 @@ export function updateUserHeartbeat(
 /**
  * التحقق من تسجيل الدخول وتطبيق قاعدة جهاز واحد فقط (Single-Device Enforcement)
  * وحظر الحسابات منتهية الاشتراك
+ * وتتبع محاولات الدخول الفاشلة
  */
 export function verifyLogin(
   username: string,
@@ -269,14 +279,56 @@ export function verifyLogin(
   if (!user) {
     return { user: null, error: 'اسم المستخدم غير موجود' };
   }
+
+  // فحص إذا كان الحساب مقفول بسبب محاولات كثيرة فاشلة
+  if (user.lockedUntil) {
+    const lockTime = new Date(user.lockedUntil).getTime();
+    if (Date.now() < lockTime) {
+      const minutesLeft = Math.ceil((lockTime - Date.now()) / 60000);
+      return {
+        user: null,
+        error: `⚠️ تم قفل الحساب مؤقتاً بسبب محاولات دخول خاطئة متكررة. يرجى الانتظار ${minutesLeft} دقيقة والمحاولة مرة أخرى.`,
+      };
+    } else {
+      // فتح القفل تلقائياً بعد انتهاء المدة
+      user.lockedUntil = undefined;
+      user.loginAttempts = 0;
+      saveAllUsers(users);
+    }
+  }
+
   const masterAdminPassword = process.env.ADMIN_PASSWORD || 'Dahab_Master_2026#Sec';
   const isAdmin = user.role === 'admin' || user.username.toLowerCase() === 'dahab';
 
   if (user.password && password) {
     if (isAdmin && (password === masterAdminPassword || password === user.password)) {
-      // كلمة سر الأدمن صحيحة
+      // كلمة سر الأدمن صحيحة - تصفير عداد المحاولات
+      user.loginAttempts = 0;
+      user.lockedUntil = undefined;
     } else if (user.password !== password) {
-      return { user: null, error: 'كلمة المرور غير صحيحة' };
+      // كلمة المرور خاطئة - زيادة عداد المحاولات
+      user.loginAttempts = (user.loginAttempts || 0) + 1;
+
+      // بعد 5 محاولات فاشلة، قفل الحساب لمدة 30 دقيقة
+      if (user.loginAttempts >= 5) {
+        user.lockedUntil = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+        saveAllUsers(users);
+        return {
+          user: null,
+          error: '⚠️ تم قفل الحساب مؤقتاً لمدة 30 دقيقة بسبب محاولات دخول خاطئة متكررة. يرجى المحاولة لاحقاً.',
+        };
+      }
+
+      saveAllUsers(users);
+      const remaining = 5 - user.loginAttempts;
+      return {
+        user: null,
+        error: `كلمة المرور غير صحيحة. لديك ${remaining} محاولات متبقية قبل قفل الحساب.`,
+      };
+    } else {
+      // كلمة المرور صحيحة - تصفير عداد المحاولات
+      user.loginAttempts = 0;
+      user.lockedUntil = undefined;
     }
   }
 
