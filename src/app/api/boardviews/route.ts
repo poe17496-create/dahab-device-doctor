@@ -1,39 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
+import { getAllBoardviews } from '@/lib/dataServices';
 import { BoardData } from '@/components/InteractiveBoardviewSimulator';
 
 export const dynamic = 'force-dynamic';
 
-// 1. GET: جلب جميع البوردات من Supabase
+// 1. GET: جلب جميع البوردات من Supabase أو local fallback
 export async function GET() {
   try {
-    if (!isSupabaseConfigured || !supabaseAdmin) {
-      return NextResponse.json({ boards: [], total: 0 });
-    }
+    const boards = await getAllBoardviews();
 
-    const { data, error } = await supabaseAdmin
-      .from('boardviews')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching boardviews:', error);
-      return NextResponse.json({ error: 'فشل في جلب البوردات' }, { status: 500 });
-    }
-
-    const boards: BoardData[] = (data || []).map((row: any) => ({
-      id: row.id,
-      title: row.device_name,
-      deviceModel: row.model,
-      brand: row.brand,
-      category: row.category,
-      parts: row.specifications?.parts || [],
-      nets: row.specifications?.nets || [],
-      description: row.description,
-      imageUrl: row.image_url,
-    }));
-
-    return NextResponse.json({ boards, total: boards.length });
+    return NextResponse.json({ boards, total: boards.length, source: 'supabase-or-fallback' });
   } catch (err: any) {
     return NextResponse.json({ error: 'فشل في جلب البوردات', details: err?.message }, { status: 500 });
   }
