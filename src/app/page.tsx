@@ -38,6 +38,7 @@ import {
 import { createIntegratedContext } from '@/lib/schematicIntegration';
 import { consumeGuestTrial, getGuestRemainingTrials } from '@/lib/guestUsage';
 import { Menu, Crown, AlertCircle, Cpu } from 'lucide-react';
+import { useDiagnosticContext } from '@/contexts/DiagnosticContext';
 
 export type MasterTab =
   | 'diagnosis'
@@ -53,18 +54,32 @@ export type MasterTab =
   | 'ecosystem';
 
 export default function DahabFixAiConsole() {
+  const diagnosticContext = useDiagnosticContext();
+  const {
+    deviceModel: ctxDeviceModel,
+    setDeviceModel: ctxSetDeviceModel,
+    specialty: ctxSpecialty,
+    setSpecialty: ctxSetSpecialty,
+    readings: ctxReadings,
+    setReadings: ctxSetReadings,
+    metrics: ctxMetrics,
+    setMetrics: ctxSetMetrics,
+    boardData: ctxBoardData,
+    setBoardData: ctxSetBoardData,
+  } = diagnosticContext;
+
   const [activeTab, setActiveTab] = useState<MasterTab>('diagnosis');
   const [activeSessionId, setActiveSessionId] = useState<string>(() => `dahab_${Date.now()}`);
   const [sessions, setSessions] = useState<RepairSession[]>([]);
-  const [specialty, setSpecialty] = useState<DeviceSpecialty>('mobile-repair');
-  const [deviceModel, setDeviceModel] = useState('');
+  const [specialty, setSpecialty] = useState<DeviceSpecialty>(ctxSpecialty);
+  const [deviceModel, setDeviceModel] = useState(ctxDeviceModel);
   const [prompt, setPrompt] = useState('');
   const [imageBase64, setImageBase64] = useState<string | null>(null);
-  const [readings, setReadings] = useState<PowerSupplyReadings>({});
+  const [readings, setReadings] = useState<PowerSupplyReadings>(ctxReadings);
   const [output, setOutput] = useState('');
   const [loading, setLoading] = useState(false);
   const [sources, setSources] = useState<ReferenceSource[]>([]);
-  const [metrics, setMetrics] = useState<DiagnosticMetrics | undefined>(undefined);
+  const [metrics, setMetrics] = useState<DiagnosticMetrics | undefined>(ctxMetrics);
   const [isNavSidebarOpen, setIsNavSidebarOpen] = useState(false);
 
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -237,6 +252,23 @@ export default function DahabFixAiConsole() {
     const interval = setInterval(sendGuestHeartbeat, 45000);
     return () => clearInterval(interval);
   }, [currentUser]);
+
+  // مزامنة الحالة المحلية مع الـ Context
+  useEffect(() => {
+    ctxSetDeviceModel(deviceModel);
+  }, [deviceModel, ctxSetDeviceModel]);
+
+  useEffect(() => {
+    ctxSetSpecialty(specialty);
+  }, [specialty, ctxSetSpecialty]);
+
+  useEffect(() => {
+    ctxSetReadings(readings);
+  }, [readings, ctxSetReadings]);
+
+  useEffect(() => {
+    ctxSetMetrics(metrics);
+  }, [metrics, ctxSetMetrics]);
 
   // اختيار جلسة سابقة من الذاكرة واسترجاع كامل حالتها
   const handleSelectSession = (sessionId: string) => {
