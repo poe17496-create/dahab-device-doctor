@@ -47,6 +47,11 @@ interface SavedChatSession {
   messages: any[];
 }
 
+// دالة لإنشاء ID فريد
+const generateUniqueId = () => {
+  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${Math.random().toString(36).substr(2, 9)}`;
+};
+
 const INITIAL_MESSAGE: ChatMessage = {
   id: '1',
   role: 'assistant',
@@ -289,7 +294,7 @@ export default function AIChat() {
     }
 
     const userMessage: ChatMessage = {
-      id: Date.now().toString(),
+      id: generateUniqueId(),
       role: 'user',
       content: textToSend || 'تحليل الصورة المرفقة',
       timestamp: new Date(),
@@ -301,7 +306,8 @@ export default function AIChat() {
     setIsLoading(true);
 
     // إنشاء رسالة مساعد فارغة للـ streaming
-    const assistantId = (Date.now() + 1).toString();
+    const assistantId = generateUniqueId();
+    console.log('[Mobile Debug] Creating assistant message with ID:', assistantId);
     setStreamingMessageId(assistantId);
     setMessages((prev) => [
       ...prev,
@@ -340,11 +346,18 @@ export default function AIChat() {
         checklistProgress: checklistProgress || null,
       };
 
-      // استخدام streaming mode
+      // كشف الموبايل - إذا كان موبايل، استخدم non-streaming كـ fallback
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      const useStreaming = !isMobile;
+
+      console.log('[Mobile Debug] Is mobile device:', isMobile);
+      console.log('[Mobile Debug] Using streaming:', useStreaming);
+
+      // استخدام streaming mode (مع fallback للموبايل)
       const requestBody: any = {
         chatHistory: historyPayload,
         customKeys,
-        stream: true,
+        stream: useStreaming,
         diagnosticContext,
       };
 
@@ -364,16 +377,18 @@ export default function AIChat() {
         hasHistory: !!requestBody.chatHistory?.length,
       });
 
-      // إضافة timestamp لمنع الـ caching على الموبايل
-      const timestamp = Date.now();
-      const url = `/api/chat?_t=${timestamp}`;
+      // إضافة timestamp عشوائي لمنع الـ caching على الموبايل
+      const timestamp = Date.now() + Math.random();
+      const randomId = Math.random().toString(36).substr(2, 9);
+      const url = `/api/chat?_t=${timestamp}&_r=${randomId}`;
 
       const res = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
+          'Expires': '0',
         },
         body: JSON.stringify(requestBody),
         cache: 'no-store',
@@ -384,99 +399,119 @@ export default function AIChat() {
         throw new Error(errData.error || `خطأ في الخادم (${res.status})`);
       }
 
-      // قراءة الـ stream مع fallback للـ JSON
-      const reader = res.body?.getReader();
-      const decoder = new TextDecoder();
+      console.log('[Mobile Debug] Response headers:', Object.fromEntries(res.headers.entries()));
+      console.log('[Mobile Debug] Response status:', res.status);
+
       let fullText = '';
-      let rawBuffer = '';
 
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+      // إذا كان موبايل أو لا نريد streaming، استخدم non-streaming mode
+      if (!useStreaming) {
+        console.log('[Mobile Debug] Using non-streaming mode for mobile');
+        const jsonData = await res.json();
+        fullText = jsonData.message || jsonData.text || jsonData.response || '';
+        console.log('[Mobile Debug] Non-streaming response length:', fullText.length);
+      } else {
+        // قراءة الـ stream للـ desktop
+        const reader = res.body?.getReader();
+        const decoder = new TextDecoder();
+        let rawBuffer = '';
+        let streamChunkCount = 0;
 
-          const chunk = decoder.decode(value, { stream: true });
-          rawBuffer += chunk;
+        console.log('[Mobile Debug] Response body available:', !!reader);
+        console.log('[Mobile Debug] Response body exists:', !!res.body);
 
-          // تقسيم السطور بشكل أفضل للموبايل
-          const lines = rawBuffer.split('\n');
-          rawBuffer = lines.pop() || ''; // الاحتفاظ بالسطر الأخير غير المكتمل
+        if (!res.body) {
+          console.error('[Mobile Debug] CRITICAL: Response body is null/undefined!');
+          throw new Error('الخادم لم يرجع body للرد');
+        }
 
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                if (data.chunk) {
-                  fullText += data.chunk;
-                  // تحديث الرسالة بشكل تدريجي
-                  setMessages((prev) =>
-                    prev.map((msg) =>
-                      msg.id === assistantId ? { ...msg, content: fullText } : msg
-                    )
-                  );
+        if (reader) {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value, { stream: true });
+            rawBuffer += chunk;
+            streamChunkCount++;
+
+            console.log('[Mobile Debug] Chunk received:', streamChunkCount, 'length:', chunk.length);
+            console.log('[Mobile Debug] Raw buffer length:', rawBuffer.length);
+
+            // تقسيم السطور بشكل أفضل للموبايل
+            const lines = rawBuffer.split('\n');
+            rawBuffer = lines.pop() || ''; // الاحتفاظ بالسطر الأخير غير المكتمل
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6));
+                  if (data.chunk) {
+                    fullText += data.chunk;
+                    console.log('[Mobile Debug] Parsed chunk, total length:', fullText.length);
+                    // تحديث الرسالة بشكل تدريجي
+                    setMessages((prev) =>
+                      prev.map((msg) =>
+                        msg.id === assistantId ? { ...msg, content: fullText } : msg
+                      )
+                    );
+                  }
+                  if (data.done) {
+                    // انتهى الـ streaming
+                    console.log('[Mobile Debug] Stream done signal received');
+                    setStreamingMessageId(null);
+                  }
+                } catch (e) {
+                  console.error('Error parsing SSE data:', e);
                 }
-                if (data.done) {
-                  // انتهى الـ streaming
-                  setStreamingMessageId(null);
-                }
-              } catch (e) {
-                console.error('Error parsing SSE data:', e);
               }
             }
           }
-        }
 
-        // معالجة أي بيانات متبقية في الـ buffer
-        if (rawBuffer.trim()) {
-          const lines = rawBuffer.split('\n');
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                if (data.chunk) {
-                  fullText += data.chunk;
-                  setMessages((prev) =>
-                    prev.map((msg) =>
-                      msg.id === assistantId ? { ...msg, content: fullText } : msg
-                    )
-                  );
+          console.log('[Mobile Debug] Stream finished, total chunks:', streamChunkCount);
+          console.log('[Mobile Debug] Final fullText length:', fullText.length);
+
+          // معالجة أي بيانات متبقية في الـ buffer
+          if (rawBuffer.trim()) {
+            console.log('[Mobile Debug] Processing remaining buffer:', rawBuffer.length);
+            const lines = rawBuffer.split('\n');
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6));
+                  if (data.chunk) {
+                    fullText += data.chunk;
+                    setMessages((prev) =>
+                      prev.map((msg) =>
+                        msg.id === assistantId ? { ...msg, content: fullText } : msg
+                      )
+                    );
+                  }
+                  if (data.done) {
+                    setStreamingMessageId(null);
+                  }
+                } catch (e) {
+                  console.error('Error parsing remaining SSE data:', e);
                 }
-                if (data.done) {
-                  setStreamingMessageId(null);
-                }
-              } catch (e) {
-                console.error('Error parsing remaining SSE data:', e);
               }
             }
           }
+        } else {
+          console.warn('[Mobile Debug] No reader available for streaming');
+        }
+
+        // إذا لم يتم استلام أي نص من الـ stream، أظهر خطأ واضح
+        if (!fullText) {
+          console.error('[Mobile Debug] No content received from stream!');
+          fullText = '⚠️ خطأ: لم يتم استلام أي رد من الخادم. يرجى المحاولة مرة أخرى.';
         }
       }
 
-      // Fallback: إذا لم يتم استلام أي نص من الـ stream، حاول قراءة كـ JSON
-      if (!fullText && rawBuffer.trim()) {
-        try {
-          const parsed = JSON.parse(rawBuffer.trim());
-          fullText = parsed.message || parsed.text || parsed.response || '';
-          console.log('Fallback JSON response:', fullText);
-        } catch (e) {
-          console.warn('Failed to parse fallback JSON:', e);
-        }
-      }
-
-      // Fallback آخر: حاول قراءة الرد كـ JSON مباشرة من الـ response
-      if (!fullText) {
-        try {
-          const jsonData = await res.clone().json();
-          fullText = jsonData.message || jsonData.text || jsonData.response || '';
-          console.log('Direct JSON response:', fullText);
-        } catch (e) {
-          console.warn('Failed to parse direct JSON:', e);
-        }
-      }
+      console.log('[Mobile Debug] Final content length:', fullText.length);
+      console.log('[Mobile Debug] Setting message with content:', fullText.substring(0, 50));
 
       setMessages((prev) =>
         prev.map((msg) =>
-          msg.id === assistantId ? { ...msg, content: fullText || 'عذراً، لم يتوفر رد من المحرك.' } : msg
+          msg.id === assistantId ? { ...msg, content: fullText } : msg
         )
       );
     } catch (err: any) {

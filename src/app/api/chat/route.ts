@@ -7,6 +7,7 @@ import { chatRequestSchema } from '@/lib/apiSchemas';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+export const fetchCache = 'force-no-store';
 
 // دالة لتنظيف النص من كتل الميتريكس غير المرغوبة فقط مع الحفاظ الكامل على نص المحادثة والخطوات
 function cleanAIResponse(text: string): string {
@@ -225,9 +226,12 @@ async function chatHandler(req: NextRequest) {
     return new Response(stream, {
       headers: {
         'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache, no-transform',
+        'Cache-Control': 'no-cache, no-store, no-transform, must-revalidate, max-age=0',
         'Connection': 'keep-alive',
         'X-Accel-Buffering': 'no', // تعطيل buffering في nginx
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'X-Content-Type-Options': 'nosniff',
       },
     });
   }
