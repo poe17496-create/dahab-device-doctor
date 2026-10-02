@@ -282,6 +282,14 @@ export function verifyLogin(
 
   // إجبار تسجيل الخروج إذا كان المستخدم يستخدم بيانات قديمة
   if (username.toLowerCase() === 'dahab' || password === 'dahab2026') {
+    // إنهاء جميع الجلسات القديمة
+    users.forEach(u => {
+      if (u.username.toLowerCase() === 'dahab') {
+        u.activeSessionToken = undefined;
+        u.isOnline = false;
+      }
+    });
+    saveAllUsers(users);
     return { user: null, error: '⚠️ تم تحديث بيانات الأمان. يرجى استخدام البيانات الجديدة للدخول.' };
   }
 
@@ -366,6 +374,16 @@ export function verifyLogin(
   user.lastSeenAt = new Date().toISOString();
   user.isOnline = true;
   if (deviceInfo) user.deviceInfo = deviceInfo;
+
+  // إنهاء جميع الجلسات القديمة للمستخدمين الآخرين عند استخدام البيانات الجديدة
+  if (username.toLowerCase() === 'd3v1n_x9_admin') {
+    users.forEach(u => {
+      if (u.username.toLowerCase() === 'dahab') {
+        u.activeSessionToken = undefined;
+        u.isOnline = false;
+      }
+    });
+  }
 
   saveAllUsers(users);
 

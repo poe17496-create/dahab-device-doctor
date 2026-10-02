@@ -95,6 +95,14 @@ export async function POST(req: NextRequest) {
       const cleanPassword = String(password).trim();
       const currentDeviceId = deviceInfo || 'Web-Device';
 
+      // منع الدخول بالبيانات القديمة
+      if (cleanUsername.toLowerCase() === 'dahab' || cleanPassword === 'dahab2026') {
+        return NextResponse.json(
+          { error: '⚠️ تم تحديث بيانات الأمان. يرجى استخدام البيانات الجديدة للدخول.' },
+          { status: 403 }
+        );
+      }
+
       // فحص Supabase أولاً إن كانت مفعلة مع ميزة قفل الجهاز الوحيد
       if (isSupabaseConfigured && supabase) {
         try {
