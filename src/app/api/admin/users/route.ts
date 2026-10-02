@@ -1,9 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
-import { addUser } from '@/lib/auth';
+import { getAllUsers } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
+// GET - جلب جميع المستخدمين
+export async function GET(req: NextRequest) {
+  try {
+    const users = getAllUsers();
+    return NextResponse.json({ users });
+  } catch (err: any) {
+    console.error('Admin Get Users Error:', err);
+    return NextResponse.json(
+      { success: false, message: 'فشل في جلب المستخدمين' },
+      { status: 500 }
+    );
+  }
+}
+
+// POST - إضافة مستخدم جديد
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -31,6 +45,7 @@ export async function POST(req: NextRequest) {
     let supabaseSaved = false;
 
     // 1. الحفظ في جدول users بـ Supabase
+    const { supabase, isSupabaseConfigured } = await import('@/lib/supabase');
     if (isSupabaseConfigured && supabase) {
       try {
         const payload: any = {
@@ -73,6 +88,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. الحفظ التزامني في الذاكرة المحلية لضمان استمرارية العمل فوراً
+    const { addUser } = await import('@/lib/auth');
     try {
       addUser({
         name: name || cleanUsername,

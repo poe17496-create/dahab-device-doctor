@@ -1,0 +1,18 @@
+[
+  {
+    "id": "user_admin",
+    "username": "dahab",
+    "name": "المهندس إسلام دهب (المشرف العام ومطور المنظومة)",
+    "email": "dahab@doctor.com",
+    "role": "admin",
+    "specialty": "كبير مهندسي الإلكترونيات والميكروسولديرنج ومطور أنظمة دهب",
+    "password": "Dahab_Master_2026#Sec",
+    "active": true,
+    "diagnosesCount": 185,
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "isOnline": true,
+    "lastSeenAt": "2026-10-02T12:00:00.000Z",
+    "expiresAt": null,
+    "loginAttempts": 0
+  }
+]
