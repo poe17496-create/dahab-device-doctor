@@ -20,8 +20,8 @@ CREATE TABLE IF NOT EXISTS engineering_references (
   tags TEXT[],
   source TEXT, -- Source of the reference (e.g., TI, Analog Devices, Apple, etc.)
   reliability_score INTEGER DEFAULT 0 CHECK (reliability_score >= 0 AND reliability_score <= 100),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  created_at TIMESTAMP WITH TIME ZONE,
+  updated_at TIMESTAMP WITH TIME ZONE,
   created_by UUID REFERENCES users(id),
   verified_by UUID REFERENCES users(id),
   verified_at TIMESTAMP WITH TIME ZONE,
@@ -51,8 +51,8 @@ CREATE TABLE IF NOT EXISTS case_studies (
   related_faults TEXT[], -- Array of fault codes
   images TEXT[], -- Array of image URLs
   video_url TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  created_at TIMESTAMP WITH TIME ZONE,
+  updated_at TIMESTAMP WITH TIME ZONE,
   created_by UUID REFERENCES users(id),
   verified_by UUID REFERENCES users(id),
   verified_at TIMESTAMP WITH TIME ZONE,
@@ -81,8 +81,8 @@ CREATE TABLE IF NOT EXISTS repair_logs (
   time_spent INTEGER, -- in minutes
   cost DECIMAL(10,2),
   lessons_learned TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  created_at TIMESTAMP WITH TIME ZONE,
+  updated_at TIMESTAMP WITH TIME ZONE,
   images TEXT[],
   notes TEXT
 );
@@ -100,8 +100,8 @@ CREATE TABLE IF NOT EXISTS component_relationships (
   device_model TEXT,
   confidence_score INTEGER DEFAULT 50 CHECK (confidence_score >= 0 AND confidence_score <= 100),
   source_reference TEXT, -- Where this relationship came from (schematic, measurement, etc.)
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  created_at TIMESTAMP WITH TIME ZONE,
+  updated_at TIMESTAMP WITH TIME ZONE,
   created_by UUID REFERENCES users(id),
   verified BOOLEAN DEFAULT FALSE
 );
@@ -121,8 +121,8 @@ CREATE TABLE IF NOT EXISTS technical_specifications (
   timing_specs JSONB DEFAULT '{}'::jsonb, -- Timing characteristics
   application_notes TEXT,
   typical_applications TEXT[],
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  created_at TIMESTAMP WITH TIME ZONE,
+  updated_at TIMESTAMP WITH TIME ZONE,
   datasheet_id UUID REFERENCES engineering_references(id)
 );
 
@@ -133,8 +133,8 @@ CREATE TABLE IF NOT EXISTS knowledge_graph (
   node_id TEXT NOT NULL, -- ID of the entity (part number, fault code, etc.)
   node_label TEXT NOT NULL,
   properties JSONB DEFAULT '{}'::jsonb,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW
+  created_at TIMESTAMP WITH TIME ZONE,
+  updated_at TIMESTAMP WITH TIME ZONE
 );
 
 -- 7. Knowledge Graph Edges Table (علاقات رسم المعرفة)
@@ -145,7 +145,7 @@ CREATE TABLE IF NOT EXISTS knowledge_graph_edges (
   edge_type TEXT NOT NULL, -- Type of relationship
   edge_weight INTEGER DEFAULT 1,
   properties JSONB DEFAULT '{}'::jsonb,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  created_at TIMESTAMP WITH TIME ZONE,
   UNIQUE(source_node_id, target_node_id, edge_type)
 );
 
@@ -160,7 +160,7 @@ CREATE TABLE IF NOT EXISTS image_gallery (
   related_type TEXT CHECK (related_type IN ('case_study', 'repair_log', 'ic', 'boardview', 'reference')),
   related_id UUID,
   tags TEXT[],
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  created_at TIMESTAMP WITH TIME ZONE,
   created_by UUID REFERENCES users(id),
   is_verified BOOLEAN DEFAULT FALSE
 );
@@ -178,8 +178,8 @@ CREATE TABLE IF NOT EXISTS diagnostic_rules (
   device_model TEXT,
   fault_category TEXT,
   is_active BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  created_at TIMESTAMP WITH TIME ZONE,
+  updated_at TIMESTAMP WITH TIME ZONE,
   created_by UUID REFERENCES users(id),
   usage_count INTEGER DEFAULT 0,
   success_count INTEGER DEFAULT 0
@@ -197,8 +197,8 @@ CREATE TABLE IF NOT EXISTS quick_reference_guides (
   language TEXT DEFAULT 'ar',
   order_index INTEGER DEFAULT 0,
   is_featured BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  created_at TIMESTAMP WITH TIME ZONE,
+  updated_at TIMESTAMP WITH TIME ZONE,
   created_by UUID REFERENCES users(id)
 );
 
@@ -355,4 +355,102 @@ DO $$ BEGIN
   CREATE POLICY "Public read access for quick_reference_guides" ON quick_reference_guides FOR SELECT USING (true);
   CREATE POLICY "Authenticated insert for quick_reference_guides" ON quick_reference_guides FOR INSERT WITH CHECK (auth.uid() = created_by);
   CREATE POLICY "Authenticated update for quick_reference_guides" ON quick_reference_guides FOR UPDATE USING (auth.uid() = created_by);
+END $$;
+
+-- Create trigger function for automatic timestamp management
+CREATE OR REPLACE FUNCTION handle_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create trigger function for automatic created_at
+CREATE OR REPLACE FUNCTION handle_created_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.created_at = NOW();
+  IF TG_OP = 'INSERT' THEN
+    NEW.updated_at = NOW();
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Apply triggers to all tables with created_at and updated_at
+DO $$ BEGIN
+  -- engineering_references
+  DROP TRIGGER IF EXISTS set_updated_at_engineering_references ON engineering_references;
+  DROP TRIGGER IF EXISTS set_created_at_engineering_references ON engineering_references;
+  CREATE TRIGGER set_updated_at_engineering_references BEFORE UPDATE ON engineering_references
+    FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
+  CREATE TRIGGER set_created_at_engineering_references BEFORE INSERT ON engineering_references
+    FOR EACH ROW EXECUTE FUNCTION handle_created_at();
+
+  -- case_studies
+  DROP TRIGGER IF EXISTS set_updated_at_case_studies ON case_studies;
+  DROP TRIGGER IF EXISTS set_created_at_case_studies ON case_studies;
+  CREATE TRIGGER set_updated_at_case_studies BEFORE UPDATE ON case_studies
+    FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
+  CREATE TRIGGER set_created_at_case_studies BEFORE INSERT ON case_studies
+    FOR EACH ROW EXECUTE FUNCTION handle_created_at();
+
+  -- repair_logs
+  DROP TRIGGER IF EXISTS set_updated_at_repair_logs ON repair_logs;
+  DROP TRIGGER IF EXISTS set_created_at_repair_logs ON repair_logs;
+  CREATE TRIGGER set_updated_at_repair_logs BEFORE UPDATE ON repair_logs
+    FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
+  CREATE TRIGGER set_created_at_repair_logs BEFORE INSERT ON repair_logs
+    FOR EACH ROW EXECUTE FUNCTION handle_created_at();
+
+  -- component_relationships
+  DROP TRIGGER IF EXISTS set_updated_at_component_relationships ON component_relationships;
+  DROP TRIGGER IF EXISTS set_created_at_component_relationships ON component_relationships;
+  CREATE TRIGGER set_updated_at_component_relationships BEFORE UPDATE ON component_relationships
+    FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
+  CREATE TRIGGER set_created_at_component_relationships BEFORE INSERT ON component_relationships
+    FOR EACH ROW EXECUTE FUNCTION handle_created_at();
+
+  -- technical_specifications
+  DROP TRIGGER IF EXISTS set_updated_at_technical_specifications ON technical_specifications;
+  DROP TRIGGER IF EXISTS set_created_at_technical_specifications ON technical_specifications;
+  CREATE TRIGGER set_updated_at_technical_specifications BEFORE UPDATE ON technical_specifications
+    FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
+  CREATE TRIGGER set_created_at_technical_specifications BEFORE INSERT ON technical_specifications
+    FOR EACH ROW EXECUTE FUNCTION handle_created_at();
+
+  -- knowledge_graph
+  DROP TRIGGER IF EXISTS set_updated_at_knowledge_graph ON knowledge_graph;
+  DROP TRIGGER IF EXISTS set_created_at_knowledge_graph ON knowledge_graph;
+  CREATE TRIGGER set_updated_at_knowledge_graph BEFORE UPDATE ON knowledge_graph
+    FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
+  CREATE TRIGGER set_created_at_knowledge_graph BEFORE INSERT ON knowledge_graph
+    FOR EACH ROW EXECUTE FUNCTION handle_created_at();
+
+  -- knowledge_graph_edges
+  DROP TRIGGER IF EXISTS set_created_at_knowledge_graph_edges ON knowledge_graph_edges;
+  CREATE TRIGGER set_created_at_knowledge_graph_edges BEFORE INSERT ON knowledge_graph_edges
+    FOR EACH ROW EXECUTE FUNCTION handle_created_at();
+
+  -- image_gallery
+  DROP TRIGGER IF EXISTS set_created_at_image_gallery ON image_gallery;
+  CREATE TRIGGER set_created_at_image_gallery BEFORE INSERT ON image_gallery
+    FOR EACH ROW EXECUTE FUNCTION handle_created_at();
+
+  -- diagnostic_rules
+  DROP TRIGGER IF EXISTS set_updated_at_diagnostic_rules ON diagnostic_rules;
+  DROP TRIGGER IF EXISTS set_created_at_diagnostic_rules ON diagnostic_rules;
+  CREATE TRIGGER set_updated_at_diagnostic_rules BEFORE UPDATE ON diagnostic_rules
+    FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
+  CREATE TRIGGER set_created_at_diagnostic_rules BEFORE INSERT ON diagnostic_rules
+    FOR EACH ROW EXECUTE FUNCTION handle_created_at();
+
+  -- quick_reference_guides
+  DROP TRIGGER IF EXISTS set_updated_at_quick_reference_guides ON quick_reference_guides;
+  DROP TRIGGER IF EXISTS set_created_at_quick_reference_guides ON quick_reference_guides;
+  CREATE TRIGGER set_updated_at_quick_reference_guides BEFORE UPDATE ON quick_reference_guides
+    FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
+  CREATE TRIGGER set_created_at_quick_reference_guides BEFORE INSERT ON quick_reference_guides
+    FOR EACH ROW EXECUTE FUNCTION handle_created_at();
 END $$;
