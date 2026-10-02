@@ -11,7 +11,6 @@ import {
   verifyLogin,
   updateUserHeartbeat,
   checkSubscription,
-  getDeletedUserIds,
   UserAccount,
 } from '@/lib/auth';
 
@@ -19,51 +18,9 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    let localUsers: UserAccount[] = getAllUsers();
+    const users = await getAllUsers();
 
-    // إذا كانت Supabase مفعلة، نجلب المستخدمين منها وندمجهم
-    if (isSupabaseConfigured && supabaseAdmin) {
-      try {
-        const { data: sbUsers, error } = await supabaseAdmin.from('users').select('*');
-        if (!error && sbUsers && sbUsers.length > 0) {
-          const localMap = new Map(localUsers.map((u) => [u.username.toLowerCase(), u]));
-
-          for (const sbu of sbUsers) {
-            // تجاهل المستخدمين المحذوفين من Supabase
-            if (sbu.device_id === '__DELETED__') continue;
-            const usernameKey = sbu.username.toLowerCase();
-            const existing = localMap.get(usernameKey);
-            const userObj: UserAccount = {
-              id: String(sbu.id || sbu.username),
-              name: sbu.name || sbu.username,
-              username: sbu.username,
-              email: sbu.email || `${sbu.username}@doctor.com`,
-              role: sbu.role || (sbu.username === 'D3V1N_X9_ADMIN' ? 'admin' : 'technician'),
-              specialty: sbu.specialty || 'فني صيانة إلكترونيات',
-              active: sbu.is_active !== false,
-              expiresAt: sbu.expires_at || undefined,
-              price: sbu.price !== undefined ? Number(sbu.price) : 50,
-              createdAt: sbu.created_at || existing?.createdAt || new Date().toISOString(),
-              diagnosesCount: existing?.diagnosesCount || 0,
-              activeSessionToken: (sbu.device_id && sbu.device_id !== '__DELETED__') ? sbu.device_id : existing?.activeSessionToken,
-            };
-            localMap.set(usernameKey, userObj);
-          }
-          localUsers = Array.from(localMap.values());
-          // تصفية المستخدمين المحذوفين فقط (المقبرة)
-          const deletedSet = getDeletedUserIds();
-          localUsers = localUsers.filter(
-            u => !deletedSet.has(u.username.toLowerCase()) && !deletedSet.has(u.id.toLowerCase())
-          );
-          // مزامنة القائمة الكاملة محلياً لضمان عدم اختفائها بين سيرفرات Vercel
-          saveAllUsers(localUsers);
-        }
-      } catch (sbErr) {
-        console.warn('Supabase fetch in users GET route:', sbErr);
-      }
-    }
-
-    const users = localUsers.map(({ password, ...rest }) => {
+    const usersWithoutPassword = users.map(({ password, ...rest }) => {
       const sub = checkSubscription(rest as any);
       return {
         ...rest,
@@ -74,7 +31,7 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json({ users });
+    return NextResponse.json({ users: usersWithoutPassword });
   } catch (err) {
     return NextResponse.json({ error: 'فشل في جلب المستخدمين' }, { status: 500 });
   }
@@ -153,7 +110,7 @@ export async function POST(req: NextRequest) {
       }
 
       // الفحص المحلي
-      const loginRes = verifyLogin(cleanUsername, cleanPassword, currentDeviceId);
+      const loginRes = await verifyLogin(cleanUsername, cleanPassword, currentDeviceId);
       if (!loginRes.user) {
         return NextResponse.json({ error: loginRes.error || 'فشل تسجيل الدخول' }, { status: 401 });
       }
@@ -196,7 +153,7 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      const hb = updateUserHeartbeat(username, sessionToken, deviceInfo);
+      const hb = await updateUserHeartbeat(username, sessionToken, deviceInfo);
       if (!hb.valid) {
         if (hb.error?.includes('غير متاح')) {
           return NextResponse.json({ success: true, rebuilt: true });
@@ -259,7 +216,7 @@ export async function POST(req: NextRequest) {
     }
 
     // حفظ محلي
-    const newUser = addUser({
+    const newUser = await addUser({
       name,
       username: cleanUsername,
       email: email || `${cleanUsername}@doctor.com`,
@@ -290,7 +247,7 @@ export async function PUT(req: NextRequest) {
 
     // تبديل حالة التفعيل / التعطيل
     if (action === 'toggleStatus') {
-      const updated = toggleUserStatus(id);
+      const updated = await toggleUserStatus(id);
       if (isSupabaseConfigured && supabaseAdmin && updated) {
         try {
           await supabaseAdmin.from('users').update({ is_active: updated.active }).eq('username', updated.username);
@@ -303,7 +260,7 @@ export async function PUT(req: NextRequest) {
     // تمديد فترة الاشتراك بالأيام
     if (action === 'extendSubscription') {
       const daysToAdd = days !== undefined ? Number(days) : 30;
-      const updated = extendSubscription(id, daysToAdd);
+      const updated = await extendSubscription(id, daysToAdd);
       if (isSupabaseConfigured && supabaseAdmin && updated) {
         try {
           await supabaseAdmin.from('users').update({ expires_at: updated.expiresAt }).eq('username', updated.username);
@@ -318,8 +275,8 @@ export async function PUT(req: NextRequest) {
 
     // إنهاء الجلسة وطرد المستخدم فوراً
     if (action === 'terminateSession') {
-      const success = terminateUserSession(id);
-      const user = getAllUsers().find((u) => u.id === id);
+      const success = await terminateUserSession(id);
+      const user = (await getAllUsers()).find((u) => u.id === id);
       if (isSupabaseConfigured && supabaseAdmin && user) {
         try {
           await supabaseAdmin.from('users').update({ device_id: null }).eq('username', user.username);
@@ -331,7 +288,7 @@ export async function PUT(req: NextRequest) {
 
     // تعديل بيانات المستخدم
     if (action === 'updateUser') {
-      const users = getAllUsers();
+      const users = await getAllUsers();
       const user = users.find((u: any) => u.id === id);
       if (!user) return NextResponse.json({ error: 'المستخدم غير موجود' }, { status: 404 });
 
@@ -358,7 +315,7 @@ export async function PUT(req: NextRequest) {
         }
       }
 
-      saveAllUsers(users);
+      await saveAllUsers(users);
 
       if (isSupabaseConfigured && supabaseAdmin) {
         try {
@@ -387,12 +344,12 @@ export async function DELETE(req: NextRequest) {
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'معرف المستخدم مطلوب' }, { status: 400 });
 
-    const all = getAllUsers();
+    const all = await getAllUsers();
     const user = all.find((u) => u.id === id || u.username.toLowerCase() === id.toLowerCase());
     // 1. حذف محلياً وتسجيل في المقبرة
-    deleteUser(id);
+    await deleteUser(id);
     if (user?.username) {
-      deleteUser(user.username);
+      await deleteUser(user.username);
     }
 
     if (isSupabaseConfigured && supabaseAdmin) {

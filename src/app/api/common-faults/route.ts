@@ -1,70 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server';
-import commonFaultsData from '@/data/commonFaults.json';
 import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
+    if (!isSupabaseConfigured || !supabaseAdmin) {
+      return NextResponse.json({ results: [] });
+    }
+
     const { searchParams } = new URL(req.url);
     const query = searchParams.get('q') || '';
     const brand = searchParams.get('brand') || '';
 
-    // البحث في Supabase أولاً إذا كانت مفعلة
-    if (isSupabaseConfigured && supabaseAdmin) {
-      try {
-        let supabaseQuery = supabaseAdmin.from('verified_faults').select('*');
-
-        if (query) {
-          supabaseQuery = supabaseQuery.or(`fault_description.ilike.%${query}%,fault_code.ilike.%${query}%`);
-        }
-
-        if (brand && brand !== 'all') {
-          supabaseQuery = supabaseQuery.ilike('fault_code', `%${brand}%`);
-        }
-
-        const { data: faults, error } = await supabaseQuery.limit(50);
-
-        if (!error && faults && faults.length > 0) {
-          // تحويل البيانات من Supabase إلى الشكل المتوقع
-          const results = faults.map((fault: any) => ({
-            id: fault.id,
-            model: fault.boardview_id || 'غير محدد',
-            brand: 'Other',
-            faultName: fault.fault_description,
-            symptoms: [fault.fault_code],
-            suspectedComponent: 'غير محدد',
-            measurementTest: fault.solution,
-            fixSteps: [fault.solution],
-            successRate: 85,
-            isFactoryFault: fault.status === 'verified',
-          }));
-
-          return NextResponse.json({ results, source: 'supabase' });
-        }
-      } catch (sbErr) {
-        console.warn('Supabase common faults lookup failed, falling back to local:', sbErr);
-      }
-    }
-
-    // الفallback للبحث المحلي
-    let filtered = commonFaultsData;
-
-    if (brand && brand !== 'all') {
-      filtered = filtered.filter((fault) => fault.brand === brand);
-    }
+    let supabaseQuery = supabaseAdmin.from('verified_faults').select('*');
 
     if (query) {
-      const term = query.toLowerCase();
-      filtered = filtered.filter(
-        (fault) =>
-          fault.model.toLowerCase().includes(term) ||
-          fault.faultName.toLowerCase().includes(term) ||
-          fault.symptoms.some((s) => s.toLowerCase().includes(term))
-      );
+      supabaseQuery = supabaseQuery.or(`fault_title.ilike.%${query}%,symptoms.ilike.%${query}%,diagnosis.ilike.%${query}%`);
     }
 
-    return NextResponse.json({ results: filtered, source: 'local' });
+    if (brand && brand !== 'all') {
+      supabaseQuery = supabaseQuery.ilike('device_model', `%${brand}%`);
+    }
+
+    const { data: faults, error } = await supabaseQuery.limit(50);
+
+    if (error) {
+      console.error('Error searching verified faults:', error);
+      return NextResponse.json({ error: 'فشل في البحث عن الأعطال الشائعة' }, { status: 500 });
+    }
+
+    // تحويل البيانات من Supabase إلى الشكل المتوقع
+    const results = (faults || []).map((fault: any) => ({
+      id: fault.id,
+      model: fault.device_model || 'غير محدد',
+      brand: fault.device_type || 'Other',
+      faultName: fault.fault_title,
+      symptoms: fault.symptoms ? fault.symptoms.split(', ') : [],
+      suspectedComponent: 'غير محدد',
+      measurementTest: fault.diagnosis || 'غير محدد',
+      fixSteps: fault.solution ? fault.solution.split(', ') : [],
+      successRate: 85,
+      isFactoryFault: fault.status === 'verified',
+      difficultyLevel: fault.difficulty_level,
+      images: fault.media_urls,
+      videoUrl: null,
+    }));
+
+    return NextResponse.json({ results, source: 'supabase' });
   } catch (error) {
     console.error('Common Faults API error:', error);
     return NextResponse.json({ error: 'فشل في البحث عن الأعطال الشائعة' }, { status: 500 });

@@ -1,5 +1,13 @@
 [
   {
+    "id": "guest_1790961047445",
+    "createdAt": "2026-10-02T17:10:47.919Z",
+    "lastSeenAt": "2026-10-02T17:27:17.831Z",
+    "deviceInfo": "Win32 - Desktop",
+    "diagnosesCount": 0,
+    "remainingTrials": 5
+  },
+  {
     "id": "guest_1790726263663",
     "createdAt": "2026-09-29T23:57:43.692Z",
     "lastSeenAt": "2026-09-29T23:59:59.752Z",

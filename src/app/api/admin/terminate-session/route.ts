@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const success = terminateUserSession(userId);
+    const success = await terminateUserSession(userId);
 
     if (success) {
       return NextResponse.json({

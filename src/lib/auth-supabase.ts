@@ -415,6 +415,11 @@ export async function verifyLogin(
     return { user: null, error: 'اسم المستخدم غير موجود' };
   }
 
+  // إجبار تسجيل الخروج للبيانات القديمة
+  if (username.toLowerCase() === 'dahab' || password === 'dahab2026') {
+    return { user: null, error: '⚠️ تم تحديث بيانات الأمان. يرجى استخدام البيانات الجديدة.' };
+  }
+
   // فحص القفل
   if (user.lockedUntil) {
     const lockTime = new Date(user.lockedUntil).getTime();

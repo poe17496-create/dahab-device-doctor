@@ -1,80 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
 import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
 import { BoardData } from '@/components/InteractiveBoardviewSimulator';
 
 export const dynamic = 'force-dynamic';
 
-const BASE_DIR = process.env.VERCEL ? '/tmp' : process.cwd();
-const DATA_DIR = path.join(BASE_DIR, 'data');
-const BOARDS_FILE = path.join(DATA_DIR, 'custom_boardviews.json');
-
-function ensureDataFile() {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    if (!fs.existsSync(BOARDS_FILE)) {
-      fs.writeFileSync(BOARDS_FILE, JSON.stringify([], null, 2), 'utf8');
-    }
-  } catch (e) {
-    console.warn('Boardviews storage init note:', e);
-  }
-}
-
-function getLocalBoards(): BoardData[] {
-  ensureDataFile();
-  try {
-    if (fs.existsSync(BOARDS_FILE)) {
-      const content = fs.readFileSync(BOARDS_FILE, 'utf8');
-      return JSON.parse(content || '[]');
-    }
-  } catch (e) {
-    console.error('Error reading local boards:', e);
-  }
-  return [];
-}
-
-function saveLocalBoards(boards: BoardData[]) {
-  ensureDataFile();
-  try {
-    fs.writeFileSync(BOARDS_FILE, JSON.stringify(boards, null, 2), 'utf8');
-  } catch (e) {
-    console.error('Error saving local boards:', e);
-  }
-}
-
-// 1. GET: جلب جميع البوردات المرفوعة سحابياً
+// 1. GET: جلب جميع البوردات من Supabase
 export async function GET() {
   try {
-    let boards: BoardData[] = getLocalBoards();
-
-    // جلب من Supabase إذا كانت مفعلة
-    if (isSupabaseConfigured && supabaseAdmin) {
-      try {
-        const { data, error } = await supabaseAdmin.from('boardviews').select('*').order('created_at', { ascending: false });
-        if (!error && data && data.length > 0) {
-          const map = new Map<string, BoardData>();
-          // وضع المحلي أولاً
-          boards.forEach((b) => map.set(b.id, b));
-          // دمج السحابي
-          data.forEach((row: any) => {
-            if (row.data) {
-              map.set(row.id, {
-                ...row.data,
-                id: row.id,
-                title: row.title || row.data.title,
-                deviceModel: row.device_model || row.data.deviceModel,
-              });
-            }
-          });
-          boards = Array.from(map.values());
-        }
-      } catch (sbErr) {
-        console.warn('Supabase boardviews get note:', sbErr);
-      }
+    if (!isSupabaseConfigured || !supabaseAdmin) {
+      return NextResponse.json({ boards: [], total: 0 });
     }
+
+    const { data, error } = await supabaseAdmin
+      .from('boardviews')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching boardviews:', error);
+      return NextResponse.json({ error: 'فشل في جلب البوردات' }, { status: 500 });
+    }
+
+    const boards: BoardData[] = (data || []).map((row: any) => ({
+      id: row.id,
+      title: row.device_name,
+      deviceModel: row.model,
+      brand: row.brand,
+      category: row.category,
+      parts: row.specifications?.parts || [],
+      nets: row.specifications?.nets || [],
+      description: row.description,
+      imageUrl: row.image_url,
+    }));
 
     return NextResponse.json({ boards, total: boards.length });
   } catch (err: any) {
@@ -82,9 +39,13 @@ export async function GET() {
   }
 }
 
-// 2. POST: رفع وحفظ بوردفيو جديدة في السحابة
+// 2. POST: رفع وحفظ بوردفيو جديدة في Supabase
 export async function POST(req: NextRequest) {
   try {
+    if (!isSupabaseConfigured || !supabaseAdmin) {
+      return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 });
+    }
+
     const body = await req.json();
     const { title, deviceModel, category, boardData, rawContent, fileName } = body;
 
@@ -204,31 +165,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'محتوى البوردة غير متوفر' }, { status: 400 });
     }
 
-    // 1. الحفظ في Supabase إذا كانت مفعلة
-    if (isSupabaseConfigured && supabaseAdmin) {
-      try {
-        await supabaseAdmin.from('boardviews').insert([
-          {
-            id: finalBoardData.id,
-            title: finalBoardData.title,
-            device_model: finalBoardData.deviceModel,
-            category: category || 'mobile',
-            data: finalBoardData,
-          },
-        ]);
-      } catch (sbErr) {
-        console.warn('Supabase boardview save note:', sbErr);
-      }
-    }
+    // الحفظ في Supabase
+    const { error } = await supabaseAdmin.from('boardviews').insert([
+      {
+        id: finalBoardData.id,
+        user_id: null, // يمكن إضافة user_id لاحقاً
+        device_name: finalBoardData.title,
+        model: finalBoardData.deviceModel,
+        brand: category || 'custom',
+        category: category || 'mobile',
+        description: finalBoardData.title,
+        specifications: finalBoardData,
+      },
+    ]);
 
-    // 2. الحفظ المحلي المزدوج
-    const existing = getLocalBoards();
-    const updated = [finalBoardData, ...existing.filter((b) => b.id !== finalBoardData.id)];
-    saveLocalBoards(updated);
+    if (error) {
+      console.error('Error saving boardview:', error);
+      return NextResponse.json({ error: 'فشل في حفظ البوردفيو', details: error.message }, { status: 500 });
+    }
 
     return NextResponse.json({
       success: true,
-      message: 'تم حفظ وتخزين البوردة بنجاح في السحابة والمكتبة! ✓',
+      message: 'تم حفظ البوردة بنجاح في Supabase! ✓',
       board: finalBoardData,
     });
   } catch (err: any) {
@@ -237,9 +195,13 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// 3. DELETE: حذف بوردفيو مخصصة
+// 3. DELETE: حذف بوردفيو من Supabase
 export async function DELETE(req: NextRequest) {
   try {
+    if (!isSupabaseConfigured || !supabaseAdmin) {
+      return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 });
+    }
+
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
 
@@ -247,14 +209,12 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'معرف البوردة مطلوب' }, { status: 400 });
     }
 
-    if (isSupabaseConfigured && supabaseAdmin) {
-      try {
-        await supabaseAdmin.from('boardviews').delete().eq('id', id);
-      } catch (e) {}
-    }
+    const { error } = await supabaseAdmin.from('boardviews').delete().eq('id', id);
 
-    const existing = getLocalBoards();
-    saveLocalBoards(existing.filter((b) => b.id !== id));
+    if (error) {
+      console.error('Error deleting boardview:', error);
+      return NextResponse.json({ error: 'فشل في حذف البوردة' }, { status: 500 });
+    }
 
     return NextResponse.json({ success: true, message: 'تم حذف البوردة بنجاح' });
   } catch (err: any) {

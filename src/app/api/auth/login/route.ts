@@ -35,14 +35,6 @@ export async function POST(req: NextRequest) {
     const masterAdminPassword = process.env.ADMIN_PASSWORD || 'X7#K9@mP2$Qw8!Rz5*Ln3';
     const isMasterAdminLogin = cleanUsername.toLowerCase() === 'd3v1n_x9_admin' && cleanPassword === masterAdminPassword;
 
-    // منع الدخول بالبيانات القديمة
-    if (cleanUsername.toLowerCase() === 'dahab' || cleanPassword === 'dahab2026') {
-      return NextResponse.json(
-        { error: '⚠️ تم تحديث بيانات الأمان. يرجى استخدام البيانات الجديدة للدخول.' },
-        { status: 403 }
-      );
-    }
-
     // 1. الفحص عبر Supabase إذا كانت مفعلة
     if (isSupabaseConfigured && supabaseAdmin) {
       try {
@@ -125,7 +117,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. الفحص الاحتياطي عبر قاعدة البيانات المحلية (Local Fallback)
-    const localLogin = verifyLogin(cleanUsername, cleanPassword, effectiveDeviceId);
+    const localLogin = await verifyLogin(cleanUsername, cleanPassword, effectiveDeviceId);
     if (!localLogin.user) {
       return NextResponse.json(
         { success: false, message: localLogin.error || 'بيانات الدخول غير صحيحة أو الحساب غير موجود' },

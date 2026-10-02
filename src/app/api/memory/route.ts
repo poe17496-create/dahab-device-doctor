@@ -1,11 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  getAllSessions,
-  getSessionById,
-  saveSession,
-  deleteSession,
-  appendMessageToSession,
-} from '@/lib/jsonMemory';
 import { RepairSession } from '@/lib/types';
 import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
 
@@ -13,61 +6,41 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
+    if (!isSupabaseConfigured || !supabaseAdmin) {
+      return NextResponse.json({ sessions: [] });
+    }
+
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
 
     if (id) {
-      let session = getSessionById(id);
-      if (!session && isSupabaseConfigured && supabaseAdmin) {
-        try {
-          const { data } = await supabaseAdmin
-            .from('diagnostic_logs')
-            .select('*')
-            .eq('id', id)
-            .single();
-          if (data && data.data) {
-            session = data.data as RepairSession;
-          }
-        } catch {}
-      }
+      const { data, error } = await supabaseAdmin
+        .from('diagnosis_history')
+        .select('*')
+        .eq('id', id)
+        .single();
 
-      if (!session) {
+      if (error || !data) {
         return NextResponse.json({ error: 'الجلسة غير موجودة' }, { status: 404 });
       }
+
+      const session = data.device_info as RepairSession;
       return NextResponse.json({ session });
     }
 
-    const localSessions = getAllSessions();
-    let mergedSessions = [...localSessions];
+    const { data, error } = await supabaseAdmin
+      .from('diagnosis_history')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(100);
 
-    // جلب ومزامنة الجلسات السحابية من Supabase لضمان عدم ضياع أي سجل عند مسح الكاش
-    if (isSupabaseConfigured && supabaseAdmin) {
-      try {
-        const { data: cloudLogs, error } = await supabaseAdmin
-          .from('diagnostic_logs')
-          .select('*')
-          .order('updated_at', { ascending: false })
-          .limit(100);
-
-        if (!error && Array.isArray(cloudLogs)) {
-          const localIds = new Set(localSessions.map((s) => s.id));
-          for (const row of cloudLogs) {
-            const sess = (row.data || row) as RepairSession;
-            if (sess && sess.id && !localIds.has(sess.id)) {
-              mergedSessions.push(sess);
-            }
-          }
-        }
-      } catch (sbErr) {
-        console.warn('Supabase sessions fetch fallback to local:', sbErr);
-      }
+    if (error) {
+      console.error('Error fetching sessions:', error);
+      return NextResponse.json({ error: 'فشل في استرجاع سجلات الذاكرة' }, { status: 500 });
     }
 
-    mergedSessions.sort(
-      (a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()
-    );
-
-    return NextResponse.json({ sessions: mergedSessions });
+    const sessions = (data || []).map((row: any) => row.device_info as RepairSession);
+    return NextResponse.json({ sessions });
   } catch (error) {
     console.error('API Memory GET error:', error);
     return NextResponse.json({ error: 'فشل في استرجاع سجلات الذاكرة' }, { status: 500 });
@@ -76,6 +49,10 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    if (!isSupabaseConfigured || !supabaseAdmin) {
+      return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 });
+    }
+
     const body = await req.json();
 
     if (body.action === 'appendMessage') {
@@ -83,8 +60,36 @@ export async function POST(req: NextRequest) {
       if (!sessionId || !message) {
         return NextResponse.json({ error: 'بيانات غير مكتملة' }, { status: 400 });
       }
-      const updated = appendMessageToSession(sessionId, message);
-      return NextResponse.json({ session: updated });
+
+      // جلب الجلسة الحالية
+      const { data: currentData } = await supabaseAdmin
+        .from('diagnosis_history')
+        .select('*')
+        .eq('id', sessionId)
+        .single();
+
+      if (!currentData) {
+        return NextResponse.json({ error: 'الجلسة غير موجودة' }, { status: 404 });
+      }
+
+      const session = currentData.device_info as RepairSession;
+      session.messages.push(message);
+      session.updatedAt = new Date().toISOString();
+
+      // تحديث الجلسة
+      const { error } = await supabaseAdmin
+        .from('diagnosis_history')
+        .update({
+          device_info: session,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', sessionId);
+
+      if (error) {
+        return NextResponse.json({ error: 'فشل في تحديث الجلسة' }, { status: 500 });
+      }
+
+      return NextResponse.json({ session });
     }
 
     // حفظ الجلسة بالكامل
@@ -93,58 +98,52 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'بيانات الجلسة غير صالحة' }, { status: 400 });
     }
 
-    const saved = saveSession(session);
+    const { error } = await supabaseAdmin.from('diagnosis_history').upsert({
+      id: session.id,
+      user_id: null, // يمكن إضافة user_id لاحقاً
+      device_info: session,
+      symptoms: session.messages.map((m) => m.text).slice(0, 5),
+      diagnosis: session.messages[session.messages.length - 1]?.text || '',
+      confidence: 0.8,
+      created_at: session.createdAt || new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
 
-    // مزامنة فورية مع قاعدة بيانات Supabase لضمان الأرشفة السحابية الدائمة
-    if (isSupabaseConfigured && supabaseAdmin) {
-      try {
-        await supabaseAdmin.from('diagnostic_logs').upsert({
-          id: session.id,
-          title: session.title || 'جلسة تشخيص هندسي',
-          device_model: session.deviceModel || 'غير محدد',
-          device_type: session.deviceType || 'mobile-repair',
-          data: session,
-          updated_at: new Date().toISOString(),
-        });
-      } catch (sbErr) {
-        console.warn('Supabase session backup notice:', sbErr);
-      }
+    if (error) {
+      console.error('Error saving session:', error);
+      return NextResponse.json({ error: 'فشل في حفظ الجلسة' }, { status: 500 });
     }
 
-    return NextResponse.json({ session: saved, message: 'تم حفظ الجلسة ومزامنتها بنجاح' });
+    return NextResponse.json({ session });
   } catch (error) {
     console.error('API Memory POST error:', error);
-    return NextResponse.json({ error: 'فشل في حفظ بيانات الجلسة' }, { status: 500 });
+    return NextResponse.json({ error: 'فشل في حفظ سجل الذاكرة' }, { status: 500 });
   }
 }
 
 export async function DELETE(req: NextRequest) {
   try {
+    if (!isSupabaseConfigured || !supabaseAdmin) {
+      return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 });
+    }
+
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
 
     if (!id) {
-      return NextResponse.json({ error: 'يجب تحديد معرف الجلسة' }, { status: 400 });
+      return NextResponse.json({ error: 'معرف الجلسة مطلوب' }, { status: 400 });
     }
 
-    const success = deleteSession(id);
+    const { error } = await supabaseAdmin.from('diagnosis_history').delete().eq('id', id);
 
-    // حذف من Supabase أيضاً
-    if (isSupabaseConfigured && supabaseAdmin) {
-      try {
-        await supabaseAdmin.from('diagnostic_logs').delete().eq('id', id);
-      } catch (sbErr) {
-        console.warn('Supabase delete session notice:', sbErr);
-      }
+    if (error) {
+      console.error('Error deleting session:', error);
+      return NextResponse.json({ error: 'فشل في حذف الجلسة' }, { status: 500 });
     }
 
-    if (!success) {
-      return NextResponse.json({ error: 'تعذر حذف الجلسة أو أنها غير موجودة' }, { status: 404 });
-    }
-
-    return NextResponse.json({ message: 'تم حذف الجلسة بنجاح' });
+    return NextResponse.json({ success: true, message: 'تم حذف الجلسة بنجاح' });
   } catch (error) {
     console.error('API Memory DELETE error:', error);
-    return NextResponse.json({ error: 'فشل في حذف الجلسة' }, { status: 500 });
+    return NextResponse.json({ error: 'فشل في حذف سجل الذاكرة' }, { status: 500 });
   }
 }
