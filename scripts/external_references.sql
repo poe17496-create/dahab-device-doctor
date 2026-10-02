@@ -616,8 +616,7 @@ INSERT INTO engineering_references (title, description, reference_type, manufact
   95,
   true,
   '{"pages": 22, "year": 2018, "package": "M.2-2230"}'::jsonb
-);
-
+),
 -- Additional Power Management ICs (40 references)
 (
   'BQ25896 3A Battery Charger',
