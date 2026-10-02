@@ -56,7 +56,6 @@ describe('handleZodError', () => {
       {
         code: 'invalid_type',
         expected: 'string',
-        received: 'number',
         path: ['email'],
         message: 'Expected string, received number',
       },

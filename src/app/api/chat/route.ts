@@ -52,19 +52,50 @@ async function chatHandler(req: NextRequest) {
   console.log('Chat History Length:', chatHistory?.length || 0);
   console.log('Stream Mode:', stream);
 
-  // بناء سياق تاريخ المحادثة
+  // بناء سياق تاريخ المحادثة المحسن
   let contextPrompt = '';
   if (chatHistory && chatHistory.length > 0) {
-    const recentHistory = chatHistory.slice(-6);
-    contextPrompt = '\nسجل المحادثة السابق مع الفني:\n';
-    recentHistory.forEach((msg: any) => {
+    const recentHistory = chatHistory.slice(-8); // زيادة الذاكرة من 6 إلى 8
+    contextPrompt = '\nسجل المحادثة السابق مع الفني (تحليل السياق المستمر):\n';
+    
+    // تحليل ذكي للتاريخ
+    let currentFault = '';
+    let previousDiagnoses: string[] = [];
+    let attemptedSolutions: string[] = [];
+    
+    recentHistory.forEach((msg: any, index: any) => {
       if (msg.role === 'user') {
-        contextPrompt += `الفني: ${msg.content}\n`;
+        contextPrompt += `الفني [الرسالة ${index + 1}]: ${msg.content}\n`;
+        // استخراج الأعطال المذكورة
+        if (msg.content.includes('شورت') || msg.content.includes('سحب') || msg.content.includes('لا يعمل')) {
+          currentFault = msg.content;
+        }
       } else if (msg.role === 'assistant') {
-        contextPrompt += `المساعد: ${msg.content}\n`;
+        contextPrompt += `المساعد [الرد ${index + 1}]: ${msg.content}\n`;
+        // استخراج التشخيصات والحلول المقترحة
+        if (msg.content.includes('تشخيص') || msg.content.includes('يبدو أن')) {
+          previousDiagnoses.push(msg.content);
+        }
+        if (msg.content.includes('ينصح') || msg.content.includes('خطوة') || msg.content.includes('افحص')) {
+          attemptedSolutions.push(msg.content);
+        }
       }
     });
-    contextPrompt += '--- نهاية السجل السابق ---\n\n';
+    
+    // إضافة ملخص ذكي للسياق
+    if (currentFault) {
+      contextPrompt += `\n📊 ملخص السياق:\n`;
+      contextPrompt += `- العطل الحالي: ${currentFault}\n`;
+      if (previousDiagnoses.length > 0) {
+        contextPrompt += `- التشخيصات السابقة: ${previousDiagnoses.length} تشخيص\n`;
+      }
+      if (attemptedSolutions.length > 0) {
+        contextPrompt += `- الحلول المقترحة سابقاً: ${attemptedSolutions.length} حل\n`;
+      }
+      contextPrompt += `- يجب أن تقدم تشخيصاً متقدماً يبنى على المحاولات السابقة\n`;
+    }
+    
+    contextPrompt += '\n--- نهاية السجل السابق ---\n\n';
   }
 
   // استخراج بيانات المخططات والبوردات وقاعدة الخبرات المضغوطة للمساعد
@@ -110,7 +141,7 @@ async function chatHandler(req: NextRequest) {
     contextInfo += '--- نهاية سياق الجهاز ---\n';
   }
 
-  // System prompt للمساعد الذكي
+  // System prompt للمساعد الذكي المحسن
   const systemPrompt = `أنت كبير مهندسي وفنيي الإلكترونيات ومستشار الصيانة الذكي في منظومة "دهب دكتور" (Dahab Device Doctor).
 مهمتك مساعدة فنيي الصيانة ومهندسي الإلكترونيات في تشخيص أعطال الموبايل، واللابتوب، والماك بوك، وكروت الباور بدقة واحترافية وبأسلوب محادثة عملي وتفاعلي.
 
@@ -122,7 +153,20 @@ async function chatHandler(req: NextRequest) {
 5. حدود أمان حقن الفولت الصارمة: يُحظر نهائياً اقتراح حقن فولت أعلى من 3.8V أو تيار أعلى من 3.0A لخطوط الباور الرئيسية، ويُحظر حقن أكثر من 0.9V لخطوط المعالج. انصح دائماً بالبدء بجهد 1.0V-1.8V وتيار 1A تدريجياً، والتأكيد على مراجعة الممانعة بوضع الدايود قبل الحقن.
 6. تذكر سياق الحوار السابق وأجب بذكاء وترابط، وإذا كان استفساراً عاماً أو تحية، رحب بالفني بحرارة وسله عن الجهاز أو البوردة التي يعمل عليها.
 7. لديك وصول لقاعدة بيانات خبراء الصيانة المتخصصين. عند وجود بيانات مرجعية من قاعدة الخبرات في الرسالة، استخدمها كمرجع أول وادمج أكواد المكونات (مثل PQ301, PU201) في إجابتك.
-8. استخدم سياق الجهاز الحالي (الموديل، القراءات، نتائج التشخيص) لتقديم إجابات أكثر دقة وملاءمة للحالة المحددة.`;
+8. استخدم سياق الجهاز الحالي (الموديل، القراءات، نتائج التشخيص) لتقديم إجابات أكثر دقة وملاءمة للحالة المحددة.
+
+قواعد التتبع الذكي للسياق المستمر:
+9. تتبع تقدم الفني: إذا كان الفني قد جرب حلولاً سابقاً، لا تكررها. بدلاً من ذلك، اقترح حلولاً بديلة أو أعمق.
+10. التعلم من المحاولات السابقة: إذا فشل حل سابق، اشرح لماذا قد يكون فشل واقترح نهجاً مختلفاً.
+11. التعمق التدريجي: مع كل رسالة جديدة، قدم تحليلاً أعمق بناءً على المعلومات الجديدة.
+12. الربط بين المعلومات: اربط بين الأعراض المختلفة والمكونات المحتملة بناءً على السياق التراكمي.
+13. التنبؤ بالنتائج: بناءً على القراءات والأعراض، تنبأ بالاحتمالات الأكثر شيوعاً وقدم خطوات للتحقق منها.
+
+أسلوب الإجابة:
+- ابدأ دائماً بتلخيص الوضع الحالي بناءً على السياق المتراكم
+- إذا كان هناك تشخيص سابق، راجعه وحدد ما تم وما لم يتم فحصه
+- قدم خطوات جديدة تتكامل مع ما تم فعله سابقاً
+- اختم بتوجيه الفني للخطوة التالية المنطقية`;
 
   // استدعاء محرك الذكاء الاصطناعي مع timeout safeguard
   const aiResponse = await withTimeout(

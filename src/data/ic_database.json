@@ -340,5 +340,563 @@
     "compatibles": ["Touch ID (same model only)"],
     "commonSymptoms": "البصمة لا تعمل، خطأ 40 في iTunes، لا يمكن إضافة بصمة.",
     "diodeReadings": "فحص خطوط SPI و RESET، الممانعة المتوقعة 0.600V-0.800V."
+  },
+  {
+    "partNumber": "PM8998",
+    "category": "PMIC (Main Power IC)",
+    "deviceFamily": "Qualcomm Snapdragon 845 Devices (Pixel 3, Galaxy S9, etc.)",
+    "function": "آيسي الباور الرئيسي لتوليد خطوط الـ S1-S4, LDOs",
+    "compatibles": ["PM8998-002", "PM8998-102"],
+    "commonSymptoms": "موت الجهاز بالكامل، سحب 0.05A-0.12A وتوقف عند البوت الأولي.",
+    "diodeReadings": "قياس ممانعة ملفات البك المحيطة LDO/BUCK (لا تقل عن 0.200V)."
+  },
+  {
+    "partNumber": "PM8005",
+    "category": "PMIC (Secondary Power)",
+    "deviceFamily": "Qualcomm Snapdragon 845/855 Devices",
+    "function": "آيسي الباور الثانوي للمعالج والـ GPU",
+    "compatibles": ["PM8005-002", "PM8005-102"],
+    "commonSymptoms": "سخونة على الآيسي، غياب فولتات المعالج.",
+    "diodeReadings": "فحص خطوط VDD_CPU و VDD_GPU الممانعة 0.025V-0.080V."
+  },
+  {
+    "partNumber": "S2MPB02",
+    "category": "PMIC (Power Management)",
+    "deviceFamily": "Samsung Galaxy S7 / S7 Edge / Note 5",
+    "function": "آيسي إدارة الطاقة الرئيسي",
+    "compatibles": ["S2MPB01", "S2MPB03"],
+    "commonSymptoms": "لا يشتغل، سحب 0.00A، سخونة على PMIC.",
+    "diodeReadings": "فحص خطوط V_BATT و V_USB، الممانعة المتوقعة 0.300V-0.400V."
+  },
+  {
+    "partNumber": "S2MPS14",
+    "category": "PMIC (Power Management)",
+    "deviceFamily": "Samsung Galaxy S8 / S8+ / Note 8",
+    "function": "آيسي إدارة الطاقة الرئيسي",
+    "compatibles": ["S2MPS15", "S2MPS16"],
+    "commonSymptoms": "لا يشتغل، سحب 0.00A، سخونة على PMIC.",
+    "diodeReadings": "فحص خطوط V_BATT و V_USB، الممانعة المتوقعة 0.350V-0.450V."
+  },
+  {
+    "partNumber": "MT6359",
+    "category": "PMIC (Power Management)",
+    "deviceFamily": "MediaTek Helio P60/P70 Devices (Oppo, Vivo, Realme)",
+    "function": "آيسي إدارة الطاقة الرئيسي",
+    "compatibles": ["MT6358", "MT6360"],
+    "commonSymptoms": "لا يشتغل، سحب 0.05A وتوقف، سخونة على PMIC.",
+    "diodeReadings": "فحص خطوط V_BATT و V_CPU، الممانعة المتوقعة 0.250V-0.350V."
+  },
+  {
+    "partNumber": "BD71837",
+    "category": "PMIC (Power Management)",
+    "deviceFamily": "NXP i.MX8 Devices (Industrial Tablets)",
+    "function": "آيسي إدارة الطاقة الرئيسي",
+    "compatibles": ["BD71838", "BD71847"],
+    "commonSymptoms": "لا يشتغل، سحب 0.00A، سخونة على PMIC.",
+    "diodeReadings": "فحص خطوط V_BATT و V_SYS، الممانعة المتوقعة 0.300V-0.400V."
+  },
+  {
+    "partNumber": "RT9719",
+    "category": "Battery Charger / Power Path",
+    "deviceFamily": "Xiaomi / Redmi / Oppo Devices",
+    "function": "آيسي الشحن ومسار التغذية",
+    "compatibles": ["RT9719A", "RT9719B"],
+    "commonSymptoms": "الجهاز لا يشعر بالشاحن، شحن بطيء.",
+    "diodeReadings": "رجل الـ VBUS ممانعة 0.500V، رجل الـ SW ممانعة 0.380V-0.450V."
+  },
+  {
+    "partNumber": "SM5436",
+    "category": "Battery Charger / Power Path",
+    "deviceFamily": "Samsung Galaxy S21 / S21+ / S21 Ultra",
+    "function": "آيسي الشحن السريع (45W)",
+    "compatibles": ["SM5436E", "SM5436F"],
+    "commonSymptoms": "شحن بطيء، لا يشحن بالشاحن السريع.",
+    "diodeReadings": "فحص مسارات VBUS و VPH_PWR."
+  },
+  {
+    "partNumber": "BQ24195",
+    "category": "Battery Charger / Power Path",
+    "deviceFamily": "Huawei / Xiaomi Mid-range Devices",
+    "function": "آيسي الشحن وادارة البطارية",
+    "compatibles": ["BQ24195A", "BQ24195B"],
+    "commonSymptoms": "الجهاز لا يشحن، شحن وهمي.",
+    "diodeReadings": "رجل الـ VBUS ممانعة 0.500V، رجل الـ BAT ممانعة 0.450V."
+  },
+  {
+    "partNumber": "BQ25890",
+    "category": "Battery Charger / Power Path",
+    "deviceFamily": "Samsung Galaxy Note 10 / Note 20",
+    "function": "آيسي الشحن السريع (Fast Charger)",
+    "compatibles": ["BQ25891", "BQ25892"],
+    "commonSymptoms": "شحن بطيء جداً، لا يشحن بالشاحن السريع.",
+    "diodeReadings": "فحص مسارات VBUS و VPH_PWR."
+  },
+  {
+    "partNumber": "ISL9239",
+    "category": "Battery Charger / Power Path",
+    "deviceFamily": "MacBook Pro 2018-2019 (Intel)",
+    "function": "آيسي الشحن وإدارة الباور",
+    "compatibles": ["ISL9239A", "ISL9239B"],
+    "commonSymptoms": "الابتوب لا يشحن، LED ضوء الشحن لا يعمل.",
+    "diodeReadings": "فحص مسارات DC-IN و 20.5V الجهد."
+  },
+  {
+    "partNumber": "CD3215",
+    "category": "USB-C Controller",
+    "deviceFamily": "MacBook Pro 2015",
+    "function": "متحكم USB-C وشحن",
+    "compatibles": ["CD3215B00", "CD3215B10"],
+    "commonSymptoms": "الابتوب لا يشحن، لا يتعرف على الأجهزة الخارجية.",
+    "diodeReadings": "فحص مسارات USB-C CC1 و CC2."
+  },
+  {
+    "partNumber": "T2 Chip",
+    "category": "Security / Bridge",
+    "deviceFamily": "MacBook Pro 2018-2020 (Intel T2)",
+    "function": "شريحة الأمان والجسر بين المعالج والأنظمة",
+    "compatibles": ["T2 (same model only)"],
+    "commonSymptoms": "الابتوب لا يشتغل، لمبة رمادية فقط، لا يمكن التحميل.",
+    "diodeReadings": "فحص خطوط SPI و POWER، الممانعة المتوقعة 0.600V-0.800V."
+  },
+  {
+    "partNumber": "ISL6559",
+    "category": "CPU VCORE PWM Controller",
+    "deviceFamily": "Laptop Motherboards (Intel 5th Gen)",
+    "function": "متحكم دائرة فولتية المعالج",
+    "compatibles": ["ISL6559A", "ISL6559B"],
+    "commonSymptoms": "غياب فولتية الـ VCORE.",
+    "diodeReadings": "فحص رجل الـ VDD_5V ورجل الـ VR_ON."
+  },
+  {
+    "partNumber": "ADP3198",
+    "category": "CPU VCORE PWM Controller",
+    "deviceFamily": "Laptop Motherboards (Intel 4th/5th Gen)",
+    "function": "متحكم دائرة فولتية المعالج",
+    "compatibles": ["ADP3198A", "ADP3198B"],
+    "commonSymptoms": "غياب فولتية الـ VCORE.",
+    "diodeReadings": "فحص رجل الـ VDD_5V ورجل الـ VR_ON."
+  },
+  {
+    "partNumber": "RT8224",
+    "category": "CPU VCORE PWM Controller",
+    "deviceFamily": "Laptop Motherboards (Intel)",
+    "function": "متحكم دائرة فولتية المعالج",
+    "compatibles": ["RT8224A", "RT8224B"],
+    "commonSymptoms": "غياب فولتية الـ VCORE.",
+    "diodeReadings": "فحص رجل الـ VDD_5V ورجل الـ VR_ON."
+  },
+  {
+    "partNumber": "MP2949",
+    "category": "CPU VCORE PWM Controller",
+    "deviceFamily": "Laptop Motherboards (Intel 11th/12th Gen)",
+    "function": "متحكم دائرة فولتية المعالج الحديث",
+    "compatibles": ["MP2949A", "MP2949B"],
+    "commonSymptoms": "غياب فولتية الـ VCORE.",
+    "diodeReadings": "فحص رجل الـ VDD_5V ورجل الـ VR_ON."
+  },
+  {
+    "partNumber": "TPS51125",
+    "category": "Power Controller",
+    "deviceFamily": "Laptop Motherboards (Dell/HP)",
+    "function": "متحكم باور رئيسي",
+    "compatibles": ["TPS51125A", "TPS51125B"],
+    "commonSymptoms": "لا يشتغل، سحب 0.00A، سخونة على الآيسي.",
+    "diodeReadings": "فحص خطوط PP3V3 و PP5V، الممانعة المتوقعة 0.300V-0.500V."
+  },
+  {
+    "partNumber": "TPS51200",
+    "category": "Power Controller",
+    "deviceFamily": "Laptop Motherboards (Lenovo/Asus)",
+    "function": "متحكم باور رئيسي",
+    "compatibles": ["TPS51200A", "TPS51200B"],
+    "commonSymptoms": "لا يشتغل، سحب 0.00A، سخونة على الآيسي.",
+    "diodeReadings": "فحص خطوط PP3V3 و PP5V، الممانعة المتوقعة 0.300V-0.500V."
+  },
+  {
+    "partNumber": "RT8209",
+    "category": "Power Controller",
+    "deviceFamily": "Laptop Motherboards (Asus/Acer)",
+    "function": "متحكم باور رئيسي",
+    "compatibles": ["RT8209A", "RT8209B"],
+    "commonSymptoms": "لا يشتغل، سحب 0.00A، سخونة على الآيسي.",
+    "diodeReadings": "فحص خطوط PP3V3 و PP5V، الممانعة المتوقعة 0.300V-0.500V."
+  },
+  {
+    "partNumber": "A12",
+    "category": "Main CPU",
+    "deviceFamily": "Apple iPhone XS / XS Max / XR",
+    "function": "المعالج الرئيسي (Bionic)",
+    "compatibles": ["A12 Bionic (different batch)"],
+    "commonSymptoms": "موت كامل، سحب 0.00A، سخونة على المعالج.",
+    "diodeReadings": "فحص خطوط VDD_CPU و VDD_GPU، الممانعة الطبيعية 0.025V-0.080V."
+  },
+  {
+    "partNumber": "A13",
+    "category": "Main CPU",
+    "deviceFamily": "Apple iPhone 11 / 11 Pro / 11 Pro Max",
+    "function": "المعالج الرئيسي (Bionic)",
+    "compatibles": ["A13 Bionic (different batch)"],
+    "commonSymptoms": "موت كامل، سحب 0.00A، سخونة على المعالج.",
+    "diodeReadings": "فحص خطوط VDD_CPU و VDD_GPU، الممانعة الطبيعية 0.025V-0.080V."
+  },
+  {
+    "partNumber": "A14",
+    "category": "Main CPU",
+    "deviceFamily": "Apple iPhone 12 / 12 Pro / 12 Pro Max",
+    "function": "المعالج الرئيسي (Bionic)",
+    "compatibles": ["A14 Bionic (different batch)"],
+    "commonSymptoms": "موت كامل، سحب 0.00A، سخونة على المعالج.",
+    "diodeReadings": "فحص خطوط VDD_CPU و VDD_GPU، الممانعة الطبيعية 0.025V-0.080V."
+  },
+  {
+    "partNumber": "A15",
+    "category": "Main CPU",
+    "deviceFamily": "Apple iPhone 13 / 13 Pro / 13 Pro Max",
+    "function": "المعالج الرئيسي (Bionic)",
+    "compatibles": ["A15 Bionic (different batch)"],
+    "commonSymptoms": "موت كامل، سحب 0.00A، سخونة على المعالج.",
+    "diodeReadings": "فحص خطوط VDD_CPU و VDD_GPU، الممانعة الطبيعية 0.025V-0.080V."
+  },
+  {
+    "partNumber": "A16",
+    "category": "Main CPU",
+    "deviceFamily": "Apple iPhone 14 / 14 Pro / 14 Pro Max",
+    "function": "المعالج الرئيسي (Bionic)",
+    "compatibles": ["A16 Bionic (different batch)"],
+    "commonSymptoms": "موت كامل، سحب 0.00A، سخونة على المعالج.",
+    "diodeReadings": "فحص خطوط VDD_CPU و VDD_GPU، الممانعة الطبيعية 0.025V-0.080V."
+  },
+  {
+    "partNumber": "M1",
+    "category": "Main SoC",
+    "deviceFamily": "MacBook Air/Pro 2020-2021",
+    "function": "معالج Apple Silicon الرئيسي",
+    "compatibles": ["M1 (same batch only)"],
+    "commonSymptoms": "لا يشتغل، لمبة رمادية، سخونة على المعالج.",
+    "diodeReadings": "فحص خطوط VDD_CPU و VDD_GPU، الممانعة الطبيعية 0.020V-0.070V."
+  },
+  {
+    "partNumber": "M2",
+    "category": "Main SoC",
+    "deviceFamily": "MacBook Air/Pro 2022-2023",
+    "function": "معالج Apple Silicon الرئيسي",
+    "compatibles": ["M2 (same batch only)"],
+    "commonSymptoms": "لا يشتغل، لمبة رمادية، سخونة على المعالج.",
+    "diodeReadings": "فحص خطوط VDD_CPU و VDD_GPU، الممانعة الطبيعية 0.020V-0.070V."
+  },
+  {
+    "partNumber": "Snapdragon 8 Gen 1",
+    "category": "Main SoC",
+    "deviceFamily": "Samsung Galaxy S22 / Xiaomi Mi 12 / OnePlus 10",
+    "function": "معالج كوالكوم الرئيسي",
+    "compatibles": ["Snapdragon 8+ Gen 1", "Snapdragon 8 Gen 2 (with board modification)"],
+    "commonSymptoms": "سخونة شديدة، ريستارت، توقف عند لوجو.",
+    "diodeReadings": "فحص خطوط VDD_CPU و VDD_GPU، الممانعة الطبيعية 0.020V-0.070V."
+  },
+  {
+    "partNumber": "Snapdragon 8 Gen 2",
+    "category": "Main SoC",
+    "deviceFamily": "Samsung Galaxy S23 / Xiaomi Mi 13 / OnePlus 11",
+    "function": "معالج كوالكوم الرئيسي",
+    "compatibles": ["Snapdragon 8+ Gen 2", "Snapdragon 8 Gen 3 (with board modification)"],
+    "commonSymptoms": "سخونة شديدة، ريستارت، توقف عند لوجو.",
+    "diodeReadings": "فحص خطوط VDD_CPU و VDD_GPU، الممانعة الطبيعية 0.020V-0.070V."
+  },
+  {
+    "partNumber": "Dimensity 9000",
+    "category": "Main SoC",
+    "deviceFamily": "Oppo Find X5 / Vivo X80",
+    "function": "معالج MediaTek الرئيسي",
+    "compatibles": ["Dimensity 9000+", "Dimensity 8100"],
+    "commonSymptoms": "سخونة شديدة، ريستارت، توقف عند لوجو.",
+    "diodeReadings": "فحص خطوط VDD_CPU و VDD_GPU، الممانعة الطبيعية 0.020V-0.070V."
+  },
+  {
+    "partNumber": "Dimensity 8100",
+    "category": "Main SoC",
+    "deviceFamily": "Oppo / Vivo / Realme High-end",
+    "function": "معالج MediaTek الرئيسي",
+    "compatibles": ["Dimensity 8100+", "Dimensity 9000"],
+    "commonSymptoms": "سخونة شديدة، ريستارت، توقف عند لوجو.",
+    "diodeReadings": "فحص خطوط VDD_CPU و VDD_GPU، الممانعة الطبيعية 0.020V-0.070V."
+  },
+  {
+    "partNumber": "Exynos 2100",
+    "category": "Main SoC",
+    "deviceFamily": "Samsung Galaxy S21 (Exynos Version)",
+    "function": "معالج Exynos الرئيسي",
+    "compatibles": ["Exynos 2200", "Exynos 1080"],
+    "commonSymptoms": "سخونة شديدة، ريستارت، توقف عند لوجو.",
+    "diodeReadings": "فحص خطوط VDD_CPU و VDD_GPU، الممانعة الطبيعية 0.020V-0.070V."
+  },
+  {
+    "partNumber": "Exynos 2200",
+    "category": "Main SoC",
+    "deviceFamily": "Samsung Galaxy S22 (Exynos Version)",
+    "function": "معالج Exynos الرئيسي مع AMD GPU",
+    "compatibles": ["Exynos 2100", "Exynos 2300"],
+    "commonSymptoms": "سخونة شديدة، ريستارت، توقف عند لوجو.",
+    "diodeReadings": "فحص خطوط VDD_CPU و VDD_GPU، الممانعة الطبيعية 0.020V-0.070V."
+  },
+  {
+    "partNumber": "MT6789",
+    "category": "Main SoC",
+    "deviceFamily": "Oppo / Vivo / Realme High-end",
+    "function": "معالج MediaTek Dimensity 8000",
+    "compatibles": ["MT6789T", "MT6789 (different batch)"],
+    "commonSymptoms": "لا يشتغل، سحب 0.05A وتوقف، سخونة شديدة.",
+    "diodeReadings": "فحص خطوط VDD_CPU و VDD_MEM، الممانعة المتوقعة 0.020V-0.070V."
+  },
+  {
+    "partNumber": "MT6877",
+    "category": "Main SoC",
+    "deviceFamily": "Oppo / Vivo / Realme Mid-range",
+    "function": "معالج MediaTek Dimensity 900",
+    "compatibles": ["MT6877T", "MT6877 (different batch)"],
+    "commonSymptoms": "لا يشتغل، سحب 0.05A وتوقف.",
+    "diodeReadings": "فحص خطوط VDD_CPU و VDD_MEM، الممانعة المتوقعة 0.030V-0.090V."
+  },
+  {
+    "partNumber": "U2",
+    "category": "Audio Codec",
+    "deviceFamily": "iPhone 6-8 / iPad",
+    "function": "آيسي الصوت (Audio IC)",
+    "compatibles": ["338S0010", "338S0028"],
+    "commonSymptoms": "لا صوت، سماعة الرأس لا تعمل.",
+    "diodeReadings": "فحص خطوط I2S_SCLK و I2S_LRCLK، الممانعة المتوقعة 0.550V-0.750V."
+  },
+  {
+    "partNumber": "U14",
+    "category": "Audio Codec",
+    "deviceFamily": "iPhone X / XS / XR",
+    "function": "آيسي الصوت والميكروفون",
+    "compatibles": ["U14 (different batch)", "U14A"],
+    "commonSymptoms": "لا يوجد صوت، المايك لا يعمل.",
+    "diodeReadings": "فحص مسارات الصوت والميكروفون."
+  },
+  {
+    "partNumber": "Display IC",
+    "category": "Display Controller",
+    "deviceFamily": "iPhone / Android Smartphones",
+    "function": "آيسي الشاشة والعرض",
+    "compatibles": ["Display IC (same model only)"],
+    "commonSymptoms": "الشاشة سوداء، خطوط أفقية، ألوان مشوهة.",
+    "diodeReadings": "فحص مسارات SPI و MIPI، الممانعة المتوقعة 0.600V-0.800V."
+  },
+  {
+    "partNumber": "Touch IC",
+    "category": "Touch Controller",
+    "deviceFamily": "iPhone / Android Smartphones",
+    "function": "آيسي اللمس",
+    "compatibles": ["Touch IC (same model only)"],
+    "commonSymptoms": "اللمس لا يعمل، مناطق ميتة في الشاشة.",
+    "diodeReadings": "فحص مسارات I2C و SPI، الممانعة المتوقعة 0.550V-0.750V."
+  },
+  {
+    "partNumber": "NAND Flash",
+    "category": "Storage Memory",
+    "deviceFamily": "iPhone / Android Smartphones",
+    "function": "ذاكرة التخزين الرئيسية",
+    "compatibles": ["NAND Flash (same capacity only)"],
+    "commonSymptoms": "لا يشتغل، يعلق عند لوجو، خطأ 4014.",
+    "diodeReadings": "فحص مسارات SPI و CLK، الممانعة المتوقعة 0.600V-0.800V."
+  },
+  {
+    "partNumber": "eMMC",
+    "category": "Storage Memory",
+    "deviceFamily": "Android Smartphones / Tablets",
+    "function": "ذاكرة التخزين المدمجة",
+    "compatibles": ["eMMC (same capacity only)"],
+    "commonSymptoms": "لا يشتغل، يعلق عند لوجو، لا يتعرف في MTK Port.",
+    "diodeReadings": "فحص مسارات CMD و CLK و DAT، الممانعة المتوقعة 0.600V-0.800V."
+  },
+  {
+    "partNumber": "UFS",
+    "category": "Storage Memory",
+    "deviceFamily": "High-end Android Smartphones",
+    "function": "ذاكرة التخزين السريعة",
+    "compatibles": ["UFS (same generation only)"],
+    "commonSymptoms": "لا يشتغل، يعلق عند لوجو، بطء في النظام.",
+    "diodeReadings": "فحص مسارات UniPro و M-PHY، الممانعة المتوقعة 0.550V-0.750V."
+  },
+  {
+    "partNumber": "DRAM",
+    "category": "RAM Memory",
+    "deviceFamily": "iPhone / Android Smartphones",
+    "function": "ذاكرة الوصول العشوائي",
+    "compatibles": ["DRAM (same capacity only)"],
+    "commonSymptoms": "لا يشتغل، ريستارت مستمر، خطأ ذاكرة.",
+    "diodeReadings": "فحص مسارات ADDR و DATA، الممانعة المتوقعة 0.300V-0.500V."
+  },
+  {
+    "partNumber": "LPDDR4",
+    "category": "RAM Memory",
+    "deviceFamily": "iPhone / Android Smartphones",
+    "function": "ذاكرة الوصول العشوائي منخفضة الطاقة",
+    "compatibles": ["LPDDR4 (same capacity only)"],
+    "commonSymptoms": "لا يشتغل، ريستارت مستمر، خطأ ذاكرة.",
+    "diodeReadings": "فحص مسارات ADDR و DATA، الممانعة المتوقعة 0.300V-0.500V."
+  },
+  {
+    "partNumber": "LPDDR5",
+    "category": "RAM Memory",
+    "deviceFamily": "High-end Smartphones (iPhone 13+, Galaxy S22+)",
+    "function": "ذاكرة الوصول العشوائي منخفضة الطاقة الجيل الخامس",
+    "compatibles": ["LPDDR5 (same capacity only)"],
+    "commonSymptoms": "لا يشتغل، ريستارت مستمر، خطأ ذاكرة.",
+    "diodeReadings": "فحص مسارات ADDR و DATA، الممانعة المتوقعة 0.250V-0.450V."
+  },
+  {
+    "partNumber": "Broadcom WiFi",
+    "category": "Wireless Module",
+    "deviceFamily": "iPhone / iPad / MacBook",
+    "function": "وحدة الواي فاي Broadcom",
+    "compatibles": ["Broadcom WiFi (same model only)"],
+    "commonSymptoms": "لا يوجد واي فاي، قوة إشارة ضعيفة.",
+    "diodeReadings": "فحص مسارات SDIO و Power، الممانعة المتوقعة 0.450V-0.650V."
+  },
+  {
+    "partNumber": "Qualcomm WiFi",
+    "category": "Wireless Module",
+    "deviceFamily": "Android Smartphones",
+    "function": "وحدة الواي فاي كوالكوم",
+    "compatibles": ["Qualcomm WiFi (same model only)"],
+    "commonSymptoms": "لا يوجد واي فاي، قوة إشارة ضعيفة.",
+    "diodeReadings": "فحص مسارات SDIO و Power، الممانعة المتوقعة 0.450V-0.650V."
+  },
+  {
+    "partNumber": "LTE Modem",
+    "category": "Cellular Modem",
+    "deviceFamily": "iPhone / Android Smartphones",
+    "function": "مودم LTE/4G",
+    "compatibles": ["LTE Modem (same model only)"],
+    "commonSymptoms": "لا يوجد شبكة، IMEI null، خطأ 4014.",
+    "diodeReadings": "فحص مسارات RF و Power، الممانعة المتوقعة 0.400V-0.600V."
+  },
+  {
+    "partNumber": "5G Modem",
+    "category": "Cellular Modem",
+    "deviceFamily": "iPhone 12+ / High-end Android",
+    "function": "مودم 5G",
+    "compatibles": ["5G Modem (same model only)"],
+    "commonSymptoms": "لا يوجد 5G، لا يوجد شبكة، IMEI null.",
+    "diodeReadings": "فحص مسارات RF و Power، الممانعة المتوقعة 0.400V-0.600V."
+  },
+  {
+    "partNumber": "Baseband",
+    "category": "Baseband Processor",
+    "deviceFamily": "iPhone / Android Smartphones",
+    "function": "معالج الشبكة والاتصالات",
+    "compatibles": ["Baseband (same model only)"],
+    "commonSymptoms": "لا يوجد شبكة، IMEI null، خطأ 4014.",
+    "diodeReadings": "فحص خطوط PMU_TO_BB و BB_PMU_RTC، الممانعة المتوقعة 0.450V-0.550V."
+  },
+  {
+    "partNumber": "PMIC A12",
+    "category": "PMIC (Power Management)",
+    "deviceFamily": "Apple iPhone XS / XS Max / XR",
+    "function": "آيسي إدارة الطاقة الرئيسي",
+    "compatibles": ["338S00407", "338S00408"],
+    "commonSymptoms": "لا يشتغل، سحب 0.00A، سخونة على PMIC.",
+    "diodeReadings": "فحص خطوط V_BATT و V_USB، الممانعة المتوقعة 0.350V-0.450V."
+  },
+  {
+    "partNumber": "PMIC A13",
+    "category": "PMIC (Power Management)",
+    "deviceFamily": "Apple iPhone 11 / 11 Pro / 11 Pro Max",
+    "function": "آيسي إدارة الطاقة الرئيسي",
+    "compatibles": ["338S00427", "338S00428"],
+    "commonSymptoms": "لا يشتغل، سحب 0.00A، سخونة على PMIC.",
+    "diodeReadings": "فحص خطوط V_BATT و V_USB، الممانعة المتوقعة 0.350V-0.450V."
+  },
+  {
+    "partNumber": "PMIC A14",
+    "category": "PMIC (Power Management)",
+    "deviceFamily": "Apple iPhone 12 / 12 Pro / 12 Pro Max",
+    "function": "آيسي إدارة الطاقة الرئيسي",
+    "compatibles": ["338S00453", "338S00454"],
+    "commonSymptoms": "لا يشتغل، سحب 0.00A، سخونة على PMIC.",
+    "diodeReadings": "فحص خطوط V_BATT و V_USB، الممانعة المتوقعة 0.350V-0.450V."
+  },
+  {
+    "partNumber": "PMIC A15",
+    "category": "PMIC (Power Management)",
+    "deviceFamily": "Apple iPhone 13 / 13 Pro / 13 Pro Max",
+    "function": "آيسي إدارة الطاقة الرئيسي",
+    "compatibles": ["338S00550", "338S00551"],
+    "commonSymptoms": "لا يشتغل، سحب 0.00A، سخونة على PMIC.",
+    "diodeReadings": "فحص خطوط V_BATT و V_USB، الممانعة المتوقعة 0.350V-0.450V."
+  },
+  {
+    "partNumber": "PMIC A16",
+    "category": "PMIC (Power Management)",
+    "deviceFamily": "Apple iPhone 14 / 14 Pro / 14 Pro Max",
+    "function": "آيسي إدارة الطاقة الرئيسي",
+    "compatibles": ["338S00775", "338S00776"],
+    "commonSymptoms": "لا يشتغل، سحب 0.00A، سخونة على PMIC.",
+    "diodeReadings": "فحص خطوط V_BATT و V_USB، الممانعة المتوقعة 0.350V-0.450V."
+  },
+  {
+    "partNumber": "T2210",
+    "category": "Charging / USB Tristar",
+    "deviceFamily": "Apple iPhone 14 / 14 Pro / 14 Pro Max",
+    "function": "متحكم الشحن والـ USB (Tristar IC)",
+    "compatibles": ["T2211", "T2212"],
+    "commonSymptoms": "شحن وهمي، لا يشعر بالشاحن، تفريغ سريع للبطارية.",
+    "diodeReadings": "مسار PP5V0_USB ممانعة 0.550V تقريباً، مسار PP_TRISTAR_PIN ممانعة 0.650V."
+  },
+  {
+    "partNumber": "T3120",
+    "category": "Charging / USB Tristar",
+    "deviceFamily": "Apple iPhone 15 / 15 Pro / 15 Pro Max",
+    "function": "متحكم الشحن والـ USB (Tristar IC)",
+    "compatibles": ["T3121", "T3122"],
+    "commonSymptoms": "شحن وهمي، لا يشعر بالشاحن.",
+    "diodeReadings": "مسار PP5V0_USB ممانعة 0.550V تقريباً."
+  },
+  {
+    "partNumber": "FPC Connector",
+    "category": "Connector",
+    "deviceFamily": "iPhone / Android Smartphones",
+    "function": "موصل الفليكس كابل",
+    "compatibles": ["FPC Connector (same type only)"],
+    "commonSymptoms": "لا تعمل المكونات المتصلة، تآكل الموصل.",
+    "diodeReadings": "فحص الأرجل، الممانعة المتوقعة 0.600V-0.800V."
+  },
+  {
+    "partNumber": "ZIF Connector",
+    "category": "Connector",
+    "deviceFamily": "Laptop Motherboards",
+    "function": "موصل الصفر (Zero Insertion Force)",
+    "compatibles": ["ZIF Connector (same type only)"],
+    "commonSymptoms": "لا تعمل المكونات المتصلة، تآكل الموصل.",
+    "diodeReadings": "فحص الأرجل، الممانعة المتوقعة 0.600V-0.800V."
+  },
+  {
+    "partNumber": "BGA Reballing",
+    "category": "Repair Process",
+    "deviceFamily": "All Devices",
+    "function": "عملية إعادة كرة الآيسي",
+    "compatibles": ["BGA Reballing (standard process)"],
+    "commonSymptoms": "آيسي مفصول أو تالف يحتاج إعادة الكرة",
+    "diodeReadings": "بعد إعادة الكرة، تأكد من عدم وجود شورت على الأرجل."
+  },
+  {
+    "partNumber": "U41",
+    "category": "Power IC",
+    "deviceFamily": "iPhone 11-14",
+    "function": "آيسي الباور الثانوي",
+    "compatibles": ["U41 (different batch)"],
+    "commonSymptoms": "لا يشتغل، سحب 0.00A، سخونة على الآيسي.",
+    "diodeReadings": "فحص خطوط PP3V3 و PP5V، الممانعة المتوقعة 0.300V-0.500V."
+  },
+  {
+    "partNumber": "U42",
+    "category": "Power IC",
+    "deviceFamily": "iPhone 11-14",
+    "function": "آيسي الباور الثانوي",
+    "compatibles": ["U42 (different batch)"],
+    "commonSymptoms": "لا يشتغل، سحب 0.00A، سخونة على الآيسي.",
+    "diodeReadings": "فحص خطوط PP3V3 و PP5V، الممانعة المتوقعة 0.300V-0.500V."
   }
 ]
