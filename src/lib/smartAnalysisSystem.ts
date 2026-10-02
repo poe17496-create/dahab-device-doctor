@@ -371,7 +371,7 @@ export async function performDeepAnalysis(
   
   // Calculate confidence based on pattern matches
   if (analysis.matchedPatterns.length > 0) {
-    const avgConfidence = analysis.matchedPatterns.reduce((sum, p) => sum + p.confidence, 0) / analysis.matchedPatterns.length;
+    const avgConfidence = analysis.matchedPatterns.reduce((sum: number, p: any) => sum + p.confidence, 0) / analysis.matchedPatterns.length;
     analysis.confidence = avgConfidence;
   }
   

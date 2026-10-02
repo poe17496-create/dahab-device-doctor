@@ -127,6 +127,7 @@ export async function getCacheStats(): Promise<{
   activeEntries: number;
   expiredEntries: number;
   totalHits: number;
+  avgHitCount: number;
 }> {
   try {
     const [totalResult, activeResult, expiredResult] = await Promise.all([
@@ -139,13 +140,15 @@ export async function getCacheStats(): Promise<{
       .from('cache_entries')
       .select('hit_count');
 
-    const totalHits = hitsData?.reduce((sum, entry) => sum + (entry.hit_count || 0), 0) || 0;
+    const totalHits = hitsData?.reduce((sum: number, entry: any) => sum + (entry.hit_count || 0), 0) || 0;
+    const avgHitCount = hitsData?.length > 0 ? totalHits / hitsData.length : 0;
 
     return {
       totalEntries: totalResult.count || 0,
       activeEntries: activeResult.count || 0,
       expiredEntries: expiredResult.count || 0,
       totalHits,
+      avgHitCount,
     };
   } catch (error) {
     console.error('Error getting cache stats:', error);
@@ -154,6 +157,7 @@ export async function getCacheStats(): Promise<{
       activeEntries: 0,
       expiredEntries: 0,
       totalHits: 0,
+      avgHitCount: 0,
     };
   }
 }
