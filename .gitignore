@@ -32,5 +32,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-.vercel
-.env*
+# Project specific files
+*.rar
+*.pdf
+*.md
+!README.md
+!SETUP_GUIDE.md

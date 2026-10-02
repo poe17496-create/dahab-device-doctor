@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { callAIEngine } from '@/lib/aiEngines';
 import { buildExpertPromptContext } from '@/lib/expertKnowledge';
 import { checkRateLimit, sanitizeAndCheckTokenDrain } from '@/lib/securityRateLimiter';
+import { withErrorHandling, ErrorCode, withTimeout } from '@/lib/apiErrorHandler';
+import { chatRequestSchema } from '@/lib/apiSchemas';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,95 +20,98 @@ function cleanAIResponse(text: string): string {
   return cleaned;
 }
 
-export async function POST(req: NextRequest) {
-  try {
-    // 🛡️ فحص حماية DDoS ومعدل الطلبات
-    const rateCheck = checkRateLimit(req, 25, 60 * 1000);
-    if (!rateCheck.allowed) {
-      return NextResponse.json(
-        { error: `🛡️ تم تجاوز الحد المسموح للطلبات (${rateCheck.resetInSec} ثانية متبقية). يرجى التمهل.` },
-        { status: 429 }
-      );
+async function chatHandler(req: NextRequest) {
+  // 🛡️ فحص حماية DDoS ومعدل الطلبات
+  const rateCheck = checkRateLimit(req, 25, 60 * 1000);
+  if (!rateCheck.allowed) {
+    return NextResponse.json(
+      { error: `🛡️ تم تجاوز الحد المسموح للطلبات (${rateCheck.resetInSec} ثانية متبقية). يرجى التمهل.` },
+      { status: 429 }
+    );
+  }
+
+  const body = await req.json();
+  
+  // التحقق من صحة البيانات باستخدام Zod
+  const validatedData = chatRequestSchema.parse(body);
+  const { message, imageBase64, chatHistory, customKeys, stream = false, diagnosticContext } = validatedData;
+
+  // 🛡️ فحص حماية استنزاف التوكن (Token Drain Protection)
+  const tokenCheck = sanitizeAndCheckTokenDrain(message || '');
+  if (!tokenCheck.valid) {
+    return NextResponse.json({ error: tokenCheck.error }, { status: 400 });
+  }
+
+  if (!message && !imageBase64) {
+    return NextResponse.json({ error: 'الرسالة فارغة' }, { status: 400 });
+  }
+
+  console.log('=== Chat API Request ===');
+  console.log('Message:', message);
+  console.log('Has Image:', !!imageBase64);
+  console.log('Chat History Length:', chatHistory?.length || 0);
+  console.log('Stream Mode:', stream);
+
+  // بناء سياق تاريخ المحادثة
+  let contextPrompt = '';
+  if (chatHistory && chatHistory.length > 0) {
+    const recentHistory = chatHistory.slice(-6);
+    contextPrompt = '\nسجل المحادثة السابق مع الفني:\n';
+    recentHistory.forEach((msg: any) => {
+      if (msg.role === 'user') {
+        contextPrompt += `الفني: ${msg.content}\n`;
+      } else if (msg.role === 'assistant') {
+        contextPrompt += `المساعد: ${msg.content}\n`;
+      }
+    });
+    contextPrompt += '--- نهاية السجل السابق ---\n\n';
+  }
+
+  // استخراج بيانات المخططات والبوردات وقاعدة الخبرات المضغوطة للمساعد
+  const expertContext = buildExpertPromptContext(message || '');
+
+  // إضافة سياق التشخيص والبوردفيو للنظام
+  let contextInfo = '';
+  if (diagnosticContext) {
+    contextInfo = '\n\n--- سياق الجهاز الحالي ---\n';
+    if (diagnosticContext.deviceModel) {
+      contextInfo += `الموديل: ${diagnosticContext.deviceModel}\n`;
     }
-
-    const { message, imageBase64, chatHistory, customKeys, stream = false, diagnosticContext } = await req.json();
-
-    // 🛡️ فحص حماية استنزاف التوكن (Token Drain Protection)
-    const tokenCheck = sanitizeAndCheckTokenDrain(message || '');
-    if (!tokenCheck.valid) {
-      return NextResponse.json({ error: tokenCheck.error }, { status: 400 });
+    if (diagnosticContext.specialty) {
+      contextInfo += `التصنيف: ${diagnosticContext.specialty}\n`;
     }
-
-    if (!message && !imageBase64) {
-      return NextResponse.json({ error: 'الرسالة فارغة' }, { status: 400 });
+    if (diagnosticContext.readings && Object.keys(diagnosticContext.readings).length > 0) {
+      contextInfo += `قراءات الباور: ${JSON.stringify(diagnosticContext.readings)}\n`;
     }
-
-    console.log('=== Chat API Request ===');
-    console.log('Message:', message);
-    console.log('Has Image:', !!imageBase64);
-    console.log('Chat History Length:', chatHistory?.length || 0);
-    console.log('Stream Mode:', stream);
-
-    // بناء سياق تاريخ المحادثة
-    let contextPrompt = '';
-    if (chatHistory && chatHistory.length > 0) {
-      const recentHistory = chatHistory.slice(-6);
-      contextPrompt = '\nسجل المحادثة السابق مع الفني:\n';
-      recentHistory.forEach((msg: any) => {
-        if (msg.role === 'user') {
-          contextPrompt += `الفني: ${msg.content}\n`;
-        } else if (msg.role === 'assistant') {
-          contextPrompt += `المساعد: ${msg.content}\n`;
+    if (diagnosticContext.metrics) {
+      contextInfo += `نتائج التشخيص: ${JSON.stringify(diagnosticContext.metrics)}\n`;
+    }
+    if (diagnosticContext.boardData) {
+      contextInfo += `بيانات البوردفيو: ${diagnosticContext.boardData.title} (${diagnosticContext.boardData.deviceModel})\n`;
+    }
+    if (diagnosticContext.calculatorContext) {
+      contextInfo += `حاسبة حقن الفولت:\n`;
+      contextInfo += `- المسار المختار: ${diagnosticContext.calculatorContext.selectedRail}\n`;
+      contextInfo += `- الفولت المقترح: ${diagnosticContext.calculatorContext.recommendedVoltage}V\n`;
+      contextInfo += `- أقصى فولت مسموح: ${diagnosticContext.calculatorContext.maxSafeVoltage}V\n`;
+      contextInfo += `- حد الأمبير: ${diagnosticContext.calculatorContext.maxSafeCurrent}A\n`;
+    }
+    if (diagnosticContext.checklistProgress) {
+      contextInfo += `قائمة الفحص:\n`;
+      contextInfo += `- الإجمالي: ${diagnosticContext.checklistProgress.total}\n`;
+      contextInfo += `- المكتمل: ${diagnosticContext.checklistProgress.completed}\n`;
+      if (diagnosticContext.checklistProgress.items && diagnosticContext.checklistProgress.items.length > 0) {
+        const pendingItems = diagnosticContext.checklistProgress.items.filter((i: any) => !i.checked);
+        if (pendingItems.length > 0) {
+          contextInfo += `- النقاط المتبقية: ${pendingItems.map((i: any) => i.label).join(', ')}\n`;
         }
-      });
-      contextPrompt += '--- نهاية السجل السابق ---\n\n';
+      }
     }
+    contextInfo += '--- نهاية سياق الجهاز ---\n';
+  }
 
-    // استخراج بيانات المخططات والبوردات وقاعدة الخبرات المضغوطة للمساعد
-    const expertContext = buildExpertPromptContext(message || '');
-
-    // إضافة سياق التشخيص والبوردفيو للنظام
-    let contextInfo = '';
-    if (diagnosticContext) {
-      contextInfo = '\n\n--- سياق الجهاز الحالي ---\n';
-      if (diagnosticContext.deviceModel) {
-        contextInfo += `الموديل: ${diagnosticContext.deviceModel}\n`;
-      }
-      if (diagnosticContext.specialty) {
-        contextInfo += `التصنيف: ${diagnosticContext.specialty}\n`;
-      }
-      if (diagnosticContext.readings && Object.keys(diagnosticContext.readings).length > 0) {
-        contextInfo += `قراءات الباور: ${JSON.stringify(diagnosticContext.readings)}\n`;
-      }
-      if (diagnosticContext.metrics) {
-        contextInfo += `نتائج التشخيص: ${JSON.stringify(diagnosticContext.metrics)}\n`;
-      }
-      if (diagnosticContext.boardData) {
-        contextInfo += `بيانات البوردفيو: ${diagnosticContext.boardData.title} (${diagnosticContext.boardData.deviceModel})\n`;
-      }
-      if (diagnosticContext.calculatorContext) {
-        contextInfo += `حاسبة حقن الفولت:\n`;
-        contextInfo += `- المسار المختار: ${diagnosticContext.calculatorContext.selectedRail}\n`;
-        contextInfo += `- الفولت المقترح: ${diagnosticContext.calculatorContext.recommendedVoltage}V\n`;
-        contextInfo += `- أقصى فولت مسموح: ${diagnosticContext.calculatorContext.maxSafeVoltage}V\n`;
-        contextInfo += `- حد الأمبير: ${diagnosticContext.calculatorContext.maxSafeCurrent}A\n`;
-      }
-      if (diagnosticContext.checklistProgress) {
-        contextInfo += `قائمة الفحص:\n`;
-        contextInfo += `- الإجمالي: ${diagnosticContext.checklistProgress.total}\n`;
-        contextInfo += `- المكتمل: ${diagnosticContext.checklistProgress.completed}\n`;
-        if (diagnosticContext.checklistProgress.items && diagnosticContext.checklistProgress.items.length > 0) {
-          const pendingItems = diagnosticContext.checklistProgress.items.filter((i: any) => !i.checked);
-          if (pendingItems.length > 0) {
-            contextInfo += `- النقاط المتبقية: ${pendingItems.map((i: any) => i.label).join(', ')}\n`;
-          }
-        }
-      }
-      contextInfo += '--- نهاية سياق الجهاز ---\n';
-    }
-
-    // System prompt للمساعد الذكي
-    const systemPrompt = `أنت كبير مهندسي وفنيي الإلكترونيات ومستشار الصيانة الذكي في منظومة "دهب دكتور" (Dahab Device Doctor).
+  // System prompt للمساعد الذكي
+  const systemPrompt = `أنت كبير مهندسي وفنيي الإلكترونيات ومستشار الصيانة الذكي في منظومة "دهب دكتور" (Dahab Device Doctor).
 مهمتك مساعدة فنيي الصيانة ومهندسي الإلكترونيات في تشخيص أعطال الموبايل، واللابتوب، والماك بوك، وكروت الباور بدقة واحترافية وبأسلوب محادثة عملي وتفاعلي.
 
 قواعدك الأساسية:
@@ -119,10 +124,11 @@ export async function POST(req: NextRequest) {
 7. لديك وصول لقاعدة بيانات خبراء الصيانة المتخصصين. عند وجود بيانات مرجعية من قاعدة الخبرات في الرسالة، استخدمها كمرجع أول وادمج أكواد المكونات (مثل PQ301, PU201) في إجابتك.
 8. استخدم سياق الجهاز الحالي (الموديل، القراءات، نتائج التشخيص) لتقديم إجابات أكثر دقة وملاءمة للحالة المحددة.`;
 
-    // استدعاء محرك الذكاء الاصطناعي مع التدوير التلقائي لكافة المفاتيح والمفاتيح الممررة من العميل
-    const aiResponse = await callAIEngine({
+  // استدعاء محرك الذكاء الاصطناعي مع timeout safeguard
+  const aiResponse = await withTimeout(
+    callAIEngine({
       prompt: contextPrompt + contextInfo + message + expertContext,
-      specialty: diagnosticContext?.specialty || 'mobile-repair',
+      specialty: (diagnosticContext?.specialty as any) || 'mobile-repair',
       deviceModel: diagnosticContext?.deviceModel || 'General',
       readings: diagnosticContext?.readings || {},
       imageBase64: imageBase64 || undefined,
@@ -131,69 +137,67 @@ export async function POST(req: NextRequest) {
       skipEnhancement: true,
       stream,
       customKeys,
-    });
+    }),
+    120000, // 2 minutes timeout
+    'انتهت مهلة طلب الذكاء الاصطناعي'
+  );
 
-    // Streaming mode - return SSE stream
-    if (stream && aiResponse.stream) {
-      const encoder = new TextEncoder();
-      const stream = new ReadableStream({
-        async start(controller) {
-          try {
-            const reader = aiResponse.stream!.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
+  // Streaming mode - return SSE stream
+  if (stream && aiResponse.stream) {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          const reader = aiResponse.stream!.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
 
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-              buffer += decoder.decode(value, { stream: true });
+            buffer += decoder.decode(value, { stream: true });
 
-              // Send chunks as SSE events
-              if (buffer.length > 0) {
-                const chunk = JSON.stringify({ chunk: buffer });
-                controller.enqueue(encoder.encode(`data: ${chunk}\n\n`));
-                buffer = '';
-              }
+            // Send chunks as SSE events
+            if (buffer.length > 0) {
+              const chunk = JSON.stringify({ chunk: buffer });
+              controller.enqueue(encoder.encode(`data: ${chunk}\n\n`));
+              buffer = '';
             }
-
-            // Send completion event
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true, engine: aiResponse.engine, modelUsed: aiResponse.modelUsed })}\n\n`));
-            controller.close();
-          } catch (err) {
-            controller.error(err);
           }
-        },
-      });
 
-      return new Response(stream, {
-        headers: {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
-        },
-      });
-    }
-
-    // Non-streaming mode (original)
-    const cleanedMessage = cleanAIResponse(aiResponse.text);
-
-    return NextResponse.json({
-      message: cleanedMessage || aiResponse.text,
-      engine: aiResponse.engine,
-      modelUsed: aiResponse.modelUsed || 'default',
-      errorLog: aiResponse.errorLog,
-      debug: {
-        geminiKeysCount: (process.env.GEMINI_API_KEY || '').split(/[\n,;]+/).filter(Boolean).length,
-        openaiKeysCount: (process.env.OPENAI_API_KEY || '').split(/[\n,;]+/).filter(Boolean).length,
-        openrouterKeysCount: (process.env.OPENROUTER_API_KEY || '').split(/[\n,;]+/).filter(Boolean).length,
+          // Send completion event
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true, engine: aiResponse.engine, modelUsed: aiResponse.modelUsed })}\n\n`));
+          controller.close();
+        } catch (err) {
+          controller.error(err);
+        }
       },
     });
-  } catch (error: any) {
-    console.error('Chat API Error:', error);
-    return NextResponse.json(
-      { error: error?.message || 'فشل في معالجة طلب المحادثة' },
-      { status: 500 }
-    );
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    });
   }
+
+  // Non-streaming mode (original)
+  const cleanedMessage = cleanAIResponse(aiResponse.text);
+
+  return NextResponse.json({
+    message: cleanedMessage || aiResponse.text,
+    engine: aiResponse.engine,
+    modelUsed: aiResponse.modelUsed || 'default',
+    errorLog: aiResponse.errorLog,
+    debug: {
+      geminiKeysCount: (process.env.GEMINI_API_KEY || '').split(/[\n,;]+/).filter(Boolean).length,
+      openaiKeysCount: (process.env.OPENAI_API_KEY || '').split(/[\n,;]+/).filter(Boolean).length,
+      openrouterKeysCount: (process.env.OPENROUTER_API_KEY || '').split(/[\n,;]+/).filter(Boolean).length,
+    },
+  });
 }
+
+export const POST = withErrorHandling(chatHandler, chatRequestSchema);

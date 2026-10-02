@@ -1,10 +1,13 @@
 'use client';
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { AlertTriangle, RefreshCw, Home, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Home, ShieldAlert, AlertCircle } from 'lucide-react';
 
 interface Props {
   children: ReactNode;
+  fallback?: ReactNode;
+  component?: string;
+  onError?: (error: Error, errorInfo: ErrorInfo) => void;
 }
 
 interface State {
@@ -24,6 +27,7 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('ErrorBoundary caught an unhandled error:', error, errorInfo);
+    this.props.onError?.(error, errorInfo);
   }
 
   private handleReload = () => {
@@ -40,8 +44,20 @@ export default class ErrorBoundary extends Component<Props, State> {
     }
   };
 
+  private handleRetry = () => {
+    this.setState({ hasError: false, error: null });
+  };
+
   public render() {
     if (this.state.hasError) {
+      // إذا كان هناك fallback مخصص، استخدمه
+      if (this.props.fallback) {
+        return this.props.fallback;
+      }
+
+      // عرض UI احترافي للمكون المحدد
+      const componentName = this.props.component || 'المكون';
+      
       return (
         <div
           dir="rtl"
@@ -57,7 +73,7 @@ export default class ErrorBoundary extends Component<Props, State> {
                 درع التعافي الذكي لمنظومة دهب 🛡️
               </h2>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
-                تم احتواء استثناء غير متوقع بنجاح لمنع إغلاق التطبيق. بياناتك وجلساتك محفوظة بأمان.
+                تم احتواء استثناء غير متوقع في {componentName} بنجاح لمنع إغلاق التطبيق. بياناتك وجلساتك محفوظة بأمان.
               </p>
             </div>
 
@@ -70,11 +86,11 @@ export default class ErrorBoundary extends Component<Props, State> {
             <div className="flex items-center gap-3 pt-2">
               <button
                 type="button"
-                onClick={this.handleReload}
+                onClick={this.handleRetry}
                 className="flex-1 py-2.5 rounded-xl bg-dahab-500 hover:bg-amber-600 text-slate-950 font-bold text-xs transition flex items-center justify-center gap-2 shadow-md"
               >
                 <RefreshCw className="w-4 h-4" />
-                <span>إعادة تحميل الشاشة</span>
+                <span>المحاولة مرة أخرى</span>
               </button>
               <button
                 type="button"
@@ -92,4 +108,21 @@ export default class ErrorBoundary extends Component<Props, State> {
 
     return this.props.children;
   }
+}
+
+// Error Boundary مخصص للمكونات الصغيرة (Non-blocking)
+export function ComponentErrorBoundary({ 
+  children, 
+  component = "المكون",
+  fallback 
+}: { 
+  children: ReactNode; 
+  component?: string;
+  fallback?: ReactNode;
+}) {
+  return (
+    <ErrorBoundary component={component} fallback={fallback}>
+      {children}
+    </ErrorBoundary>
+  );
 }
