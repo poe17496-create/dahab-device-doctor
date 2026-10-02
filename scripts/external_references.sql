@@ -197,7 +197,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   'Qualcomm',
   100,
   true,
-  '{"pages': 85, "year": 2020, "package": "BGA-184"}'::jsonb
+  '{"pages": 85, "year": 2020, "package": "BGA-184"}'::jsonb
 ),
 (
   gen_random_uuid(),
@@ -409,7 +409,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   'ESS Technology',
   100,
   true,
-  '{"pages': 25, "year": 2019, "package": "QFN-28"}'::jsonb
+  '{"pages": 25, "year": 2019, "package": "QFN-28"}'::jsonb
 ),
 
 -- Schematics - Apple iPhone Series (50 references)
@@ -541,7 +541,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   'Samsung',
   100,
   true,
-  '{"pages': 165, "year": 2020, "type": "complete"}'::jsonb
+  '{"pages": 165, "year": 2020, "type": "complete"}'::jsonb
 ),
 (
   gen_random_uuid(),
@@ -573,7 +573,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   'Samsung',
   100,
   true,
-  '{"pages': 145, "year": 2018, "type": "complete"}'::jsonb
+  '{"pages": 145, "year": 2018, "type": "complete"}'::jsonb
 ),
 
 -- WiFi/Bluetooth Modules (20 references)
@@ -1207,7 +1207,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   'Realtek',
   95,
   true,
-  '{"pages": 30, "year": 2016, "package": "QFN-48"}'isen
+  '{"pages": 30, "year": 2016, "package": "QFN-48"}'::jsonb
 ),
 (
   gen_random_uuid(),
