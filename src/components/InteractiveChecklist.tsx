@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CheckSquare, Square, ShieldCheck, HelpCircle } from 'lucide-react';
+import { useDiagnosticContext } from '@/contexts/DiagnosticContext';
 
 interface ChecklistItem {
   id: string;
@@ -50,6 +51,7 @@ const DEFAULT_ITEMS: ChecklistItem[] = [
 ];
 
 export default function InteractiveChecklist() {
+  const { setChecklistProgress } = useDiagnosticContext();
   const [items, setItems] = useState<ChecklistItem[]>(DEFAULT_ITEMS);
 
   const toggleCheck = (id: string) => {
@@ -59,6 +61,15 @@ export default function InteractiveChecklist() {
   };
 
   const completedCount = items.filter((i) => i.checked).length;
+
+  // تحديث الـ Context عند تغيير الحالة
+  useEffect(() => {
+    setChecklistProgress({
+      total: items.length,
+      completed: completedCount,
+      items: items,
+    });
+  }, [items, completedCount, setChecklistProgress]);
 
   return (
     <div className="bg-workshop-card border border-workshop-border rounded-2xl p-4 shadow-xl space-y-3">

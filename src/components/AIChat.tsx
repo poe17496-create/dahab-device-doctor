@@ -22,6 +22,7 @@ import {
   ChevronLeft,
 } from 'lucide-react';
 import { consumeGuestTrial } from '@/lib/guestUsage';
+import { useDiagnosticContext } from '@/contexts/DiagnosticContext';
 
 interface ChatMessage {
   id: string;
@@ -55,6 +56,8 @@ const INITIAL_MESSAGE: ChatMessage = {
 };
 
 export default function AIChat() {
+  const { deviceModel, specialty, readings, metrics, boardData, calculatorContext, checklistProgress } = useDiagnosticContext();
+
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('dahab-chat-history');
@@ -82,6 +85,7 @@ export default function AIChat() {
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [savedSessions, setSavedSessions] = useState<SavedChatSession[]>([]);
+  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
 
   // حالة التسجيل الصوتي البديل (MediaRecorder للـ PWA والمتصفحات التي لا تدعم Web Speech)
   const [isRecordingAudio, setIsRecordingAudio] = useState(false);
@@ -96,6 +100,7 @@ export default function AIChat() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
+  const sendTimeoutRef = useRef<any>(null);
 
   // تحميل جلسات المحادثات المحفوظة
   const loadSavedSessions = () => {
@@ -256,6 +261,14 @@ export default function AIChat() {
     const textToSend = (overrideText || input).trim();
     if ((!textToSend && !imageBase64) || isLoading) return;
 
+    // منع الإرسال المتكرر (debouncing)
+    if (sendTimeoutRef.current) {
+      clearTimeout(sendTimeoutRef.current);
+    }
+
+    // تأخير بسيط لمنع double-click
+    await new Promise(resolve => setTimeout(resolve, 200));
+
     // فحص رصيد التجارب الموحد للزائر
     const trial = consumeGuestTrial('ai-chat');
     if (!trial.success) {
@@ -282,6 +295,19 @@ export default function AIChat() {
     setInput('');
     setIsLoading(true);
 
+    // إنشاء رسالة مساعد فارغة للـ streaming
+    const assistantId = (Date.now() + 1).toString();
+    setStreamingMessageId(assistantId);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: assistantId,
+        role: 'assistant',
+        content: '',
+        timestamp: new Date(),
+      },
+    ]);
+
     try {
       let customKeys: any = undefined;
       try {
@@ -294,6 +320,22 @@ export default function AIChat() {
         content: m.content,
       }));
 
+      // إضافة سياق التشخيص والبوردفيو
+      const diagnosticContext = {
+        deviceModel: deviceModel || 'غير محدد',
+        specialty,
+        readings,
+        metrics,
+        boardData: boardData ? {
+          title: boardData.title,
+          deviceModel: boardData.deviceModel,
+          partsCount: boardData.parts?.length || 0,
+        } : null,
+        calculatorContext: calculatorContext || null,
+        checklistProgress: checklistProgress || null,
+      };
+
+      // استخدام streaming mode
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -302,6 +344,8 @@ export default function AIChat() {
           imageBase64,
           chatHistory: historyPayload,
           customKeys,
+          stream: true,
+          diagnosticContext,
         }),
       });
 
@@ -310,29 +354,61 @@ export default function AIChat() {
         throw new Error(errData.error || `خطأ في الخادم (${res.status})`);
       }
 
-      const data = await res.json();
-      // السيرفر يرجع { message: "..." } — لا { response: "..." }
-      const aiReply = data.message || data.response || data.text || 'عذراً، لم يتوفر رد من المحرك. تأكد من مفاتيح AI في الإعدادات.';
+      // قراءة الـ stream
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      let fullText = '';
 
-      const assistantMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: aiReply,
-        timestamp: new Date(),
-      };
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-      setMessages((prev) => [...prev, assistantMessage]);
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                if (data.chunk) {
+                  fullText += data.chunk;
+                  // تحديث الرسالة بشكل تدريجي
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === assistantId ? { ...msg, content: fullText } : msg
+                    )
+                  );
+                }
+                if (data.done) {
+                  // انتهى الـ streaming
+                  setStreamingMessageId(null);
+                }
+              } catch (e) {
+                console.error('Error parsing SSE data:', e);
+              }
+            }
+          }
+        }
+      }
+
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === assistantId ? { ...msg, content: fullText || 'عذراً، لم يتوفر رد من المحرك.' } : msg
+        )
+      );
     } catch (err: any) {
       console.error('Chat error:', err);
       const errorMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
+        id: assistantId,
         role: 'assistant',
         content: `⚠️ تعذر إكمال الرد: ${err?.message || 'تأكد من اتصال الإنترنت أو صلاحية مفاتيح الذكاء الاصطناعي في لوحة المفاتيح'}.`,
         timestamp: new Date(),
       };
-      setMessages((prev) => [...prev, errorMessage]);
+      setMessages((prev) => prev.map((msg) => (msg.id === assistantId ? errorMessage : msg)));
     } finally {
       setIsLoading(false);
+      setStreamingMessageId(null);
       setImageBase64(null);
     }
   };
@@ -679,7 +755,7 @@ export default function AIChat() {
                 <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping delay-300" />
               </div>
               <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                جاري تحليل المخطط وفحص الأعطال عبر الذكاء الاصطناعي...
+                {streamingMessageId ? 'جاري كتابة الرد...' : 'جاري تحليل المخطط وفحص الأعطال عبر الذكاء الاصطناعي...'}
               </span>
             </div>
           </div>

@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Zap, AlertTriangle, ShieldCheck, Flame, Info, CheckCircle2 } from 'lucide-react';
+import { useDiagnosticContext } from '@/contexts/DiagnosticContext';
 
 interface RailInfo {
   name: string;
@@ -88,8 +89,19 @@ const COMMON_RAILS: RailInfo[] = [
 ];
 
 export default function SafeInjectionCalculator() {
+  const { setCalculatorContext } = useDiagnosticContext();
   const [selectedIdx, setSelectedIdx] = useState(0);
   const rail = COMMON_RAILS[selectedIdx];
+
+  // تحديث الـ Context عند تغيير المسار المختار
+  useEffect(() => {
+    setCalculatorContext({
+      selectedRail: rail.name,
+      recommendedVoltage: rail.recommendedVoltage,
+      maxSafeVoltage: rail.maxSafeVoltage,
+      maxSafeCurrent: rail.maxSafeCurrent,
+    });
+  }, [selectedIdx, rail, setCalculatorContext]);
 
   return (
     <div className="bg-workshop-card border border-workshop-border rounded-2xl p-5 shadow-2xl space-y-5 animate-fadeIn">

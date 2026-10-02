@@ -26,10 +26,12 @@ import {
   Info,
   Check,
   Globe,
+  X,
 } from 'lucide-react';
 import {
   BOARD_CATEGORIES,
   buildIphone14ProMaxBoard,
+  buildIphone15ProBoard,
   buildIphone13ProBoard,
   buildIphone12ProBoard,
   buildIphone11ProMaxBoard,
@@ -46,6 +48,7 @@ import {
   buildRtx3060GpuBoard,
 } from '@/lib/boardviewPresets';
 import { consumeGuestTrial } from '@/lib/guestUsage';
+import { useDiagnosticContext } from '@/contexts/DiagnosticContext';
 
 // ==========================================
 // 1. تعريف واجهات ونماذج بيانات البوردفيو
@@ -594,11 +597,20 @@ const MACBOOK_M_SERIES_BOARD: BoardData = (() => {
 // ==========================================
 
 export default function InteractiveBoardviewSimulator() {
+  const { setBoardData: ctxSetBoardData } = useDiagnosticContext();
+
   // الحالات الأساسية
   const [boardData, setBoardData] = useState<BoardData>(IPHONE_15_PRO_MAX_BOARD);
   const [selectedSide, setSelectedSide] = useState<BoardSide>('TOP');
   const [selectedNetId, setSelectedNetId] = useState<string>('net_vdd_main');
   const [selectedPartId, setSelectedPartId] = useState<string>('U1000_SOC');
+
+  // Wrapper function to update both local state and context
+  const updateBoardData = (newData: BoardData) => {
+    setBoardData(newData);
+    ctxSetBoardData(newData);
+  };
+
   const [hoveredPin, setHoveredPin] = useState<{ pin: BoardPin; part: BoardPart } | null>(null);
 
   // إعدادات العرض
@@ -615,6 +627,13 @@ export default function InteractiveBoardviewSimulator() {
   const [onlineQuery, setOnlineQuery] = useState('');
   const [onlineNotice, setOnlineNotice] = useState('');
   const [showOnlineSearchBox, setShowOnlineSearchBox] = useState(false);
+  const [showUrlUploadBox, setShowUrlUploadBox] = useState(false);
+  const [urlUploadUrl, setUrlUploadUrl] = useState('');
+  const [isUploadingFromUrl, setIsUploadingFromUrl] = useState(false);
+  const [modelSearchQuery, setModelSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [isMobileView, setIsMobileView] = useState(false);
+  const [showMobileControls, setShowMobileControls] = useState(false);
 
   // جلب البوردات السحابية عند بدء التشغيل
   const fetchCloudBoards = useCallback(async () => {
@@ -634,6 +653,17 @@ export default function InteractiveBoardviewSimulator() {
   useEffect(() => {
     fetchCloudBoards();
   }, [fetchCloudBoards]);
+
+  // كشف الموبايل تلقائياً
+  useEffect(() => {
+    const checkMobile = () => {
+      const isMobile = window.innerWidth < 1024;
+      setIsMobileView(isMobile);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // البحث
   const [searchQuery, setSearchQuery] = useState('');
@@ -1209,7 +1239,7 @@ export default function InteractiveBoardviewSimulator() {
         if (file.name.endsWith('.json')) {
           const parsed = JSON.parse(content);
           if (parsed.parts && parsed.nets) {
-            setBoardData(parsed);
+            updateBoardData(parsed);
             alert(`✅ تم تحميل بوردفيو ${parsed.title || file.name} بنجاح!`);
             handleResetView();
             return;
@@ -1297,7 +1327,7 @@ export default function InteractiveBoardviewSimulator() {
             nets: customNets,
             parts: customParts,
           };
-          setBoardData(newBoard);
+          updateBoardData(newBoard);
 
           // حفظ تلقائي مباشر في السحابة لتبقى محفوظة دائماً للجميع
           fetch('/api/boardviews', {
@@ -1428,7 +1458,7 @@ export default function InteractiveBoardviewSimulator() {
           }),
         });
 
-        setBoardData(newCloudBoard);
+        updateBoardData(newCloudBoard);
         setCloudBoards((prev) => [newCloudBoard, ...prev.filter((b) => b.id !== newCloudBoard.id)]);
         setOnlineNotice(`✅ تم بنجاح سحب بوردة ومخطط ${newCloudBoard.deviceModel} وحفظها في السحابة!`);
         setShowOnlineSearchBox(false);
@@ -1444,6 +1474,36 @@ export default function InteractiveBoardviewSimulator() {
       setOnlineNotice('');
     } finally {
       setIsSearchingOnline(false);
+    }
+  };
+
+  // رفع ملف Boardview من رابط URL مباشر
+  const handleUploadFromUrl = async () => {
+    if (!urlUploadUrl.trim()) return;
+    setIsUploadingFromUrl(true);
+    try {
+      // استخدام API endpoint لتحميل الملف من URL
+      const res = await fetch('/api/boardviews/fetch-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: urlUploadUrl.trim() }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.boardData) {
+        updateBoardData(data.boardData);
+        setCloudBoards((prev) => [data.boardData, ...prev.filter((b) => b.id !== data.boardData.id)]);
+        alert(`✅ تم تحميل الملف من الرابط بنجاح!\n\nالجهاز: ${data.boardData.deviceModel}`);
+        setShowUrlUploadBox(false);
+        setUrlUploadUrl('');
+        handleResetView();
+      } else {
+        alert(data.error || 'تعذر تحميل الملف من الرابط المحدد');
+      }
+    } catch (e: any) {
+      alert('خطأ أثناء التحميل: ' + e?.message);
+    } finally {
+      setIsUploadingFromUrl(false);
     }
   };
 
@@ -1519,7 +1579,7 @@ export default function InteractiveBoardviewSimulator() {
     }
 
     if (nextBoard) {
-      setBoardData(nextBoard);
+      updateBoardData(nextBoard);
       setSelectedSide('TOP');
       const firstNetKey = Object.keys(nextBoard.nets)[1] || Object.keys(nextBoard.nets)[0] || 'net_gnd';
       setSelectedNetId(firstNetKey);
@@ -1578,15 +1638,33 @@ export default function InteractiveBoardviewSimulator() {
                 ))}
               </optgroup>
             )}
-            {BOARD_CATEGORIES.map((cat) => (
-              <optgroup key={cat.name} label={cat.name} className="font-black text-dahab-600 dark:text-dahab-400 bg-gray-100 dark:bg-gray-900">
-                {cat.boards.map((b) => (
-                  <option key={b.id} value={b.id} className="text-gray-800 dark:text-gray-200 font-normal bg-white dark:bg-gray-800">
-                    {b.title}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
+            {BOARD_CATEGORIES
+              .filter((cat) => {
+                if (selectedCategory === 'all') return true;
+                if (selectedCategory === 'iphone' && cat.name.includes('آبل')) return true;
+                if (selectedCategory === 'samsung' && cat.name.includes('سامسونج')) return true;
+                if (selectedCategory === 'xiaomi' && cat.name.includes('شاومي')) return true;
+                if (selectedCategory === 'macbook' && cat.name.includes('ماك بوك')) return true;
+                if (selectedCategory === 'laptop' && cat.name.includes('لابتوب')) return true;
+                if (selectedCategory === 'desktop' && cat.name.includes('كمبيوتر')) return true;
+                if (selectedCategory === 'gpu' && cat.name.includes('كروت')) return true;
+                return false;
+              })
+              .map((cat) => (
+                <optgroup key={cat.name} label={cat.name} className="font-black text-dahab-600 dark:text-dahab-400 bg-gray-100 dark:bg-gray-900">
+                  {cat.boards
+                    .filter((b) => {
+                      if (!modelSearchQuery) return true;
+                      const query = modelSearchQuery.toLowerCase();
+                      return b.title.toLowerCase().includes(query) || b.id.toLowerCase().includes(query);
+                    })
+                    .map((b) => (
+                      <option key={b.id} value={b.id} className="text-gray-800 dark:text-gray-200 font-normal bg-white dark:bg-gray-800">
+                        {b.title}
+                      </option>
+                    ))}
+                </optgroup>
+              ))}
           </select>
 
           {/* رفع وحفظ ملف بوردفيو في السحابة */}
@@ -1614,6 +1692,16 @@ export default function InteractiveBoardviewSimulator() {
           >
             <Search className="w-4 h-4 text-dahab-500" />
             <span>سحب موديل من الإنترنت 🌐</span>
+          </button>
+
+          {/* زر رفع ملف من URL */}
+          <button
+            onClick={() => setShowUrlUploadBox((prev) => !prev)}
+            className="px-3 py-2 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border border-blue-500/30"
+            title="رفع ملف Boardview من رابط URL مباشر"
+          >
+            <Globe className="w-4 h-4 text-blue-500" />
+            <span>رفع من رابط 🔗</span>
           </button>
 
           {/* زر حفظ البوردة الحالية في السحابة */}
@@ -1711,6 +1799,37 @@ export default function InteractiveBoardviewSimulator() {
         </div>
       )}
 
+      {/* شريط رفع الملف من URL */}
+      {showUrlUploadBox && (
+        <div className="p-3 bg-blue-50 dark:bg-blue-950/40 border-b border-blue-200 dark:border-blue-800/50 flex flex-wrap items-center gap-2 animate-fadeIn">
+          <Globe className="w-5 h-5 text-blue-500 shrink-0" />
+          <div className="flex-1 min-w-[240px]">
+            <input
+              type="text"
+              value={urlUploadUrl}
+              onChange={(e) => setUrlUploadUrl(e.target.value)}
+              placeholder="أدخل رابط URL للملف (.brd, .bvr, .cad, .json)..."
+              className="w-full px-3 py-1.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl text-xs text-gray-800 dark:text-gray-100 outline-none focus:border-blue-500"
+              onKeyDown={(e) => e.key === 'Enter' && handleUploadFromUrl()}
+            />
+          </div>
+          <button
+            onClick={handleUploadFromUrl}
+            disabled={isUploadingFromUrl || !urlUploadUrl.trim()}
+            className="px-4 py-1.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-black text-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+          >
+            {isUploadingFromUrl ? <RotateCw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+            <span>{isUploadingFromUrl ? 'جاري التحميل...' : 'تحميل الملف 🔗'}</span>
+          </button>
+          <button
+            onClick={() => setShowUrlUploadBox(false)}
+            className="px-2.5 py-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 text-xs"
+          >
+            إلغاء
+          </button>
+        </div>
+      )}
+
       {onlineNotice && (
         <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 border-b border-emerald-200 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-300 text-xs font-bold text-center flex items-center justify-center gap-2 animate-fadeIn">
           <CheckCircle2 className="w-4 h-4 text-emerald-500" />
@@ -1754,6 +1873,32 @@ export default function InteractiveBoardviewSimulator() {
               ))}
             </div>
           )}
+        </div>
+
+        {/* فلتر الموديلات */}
+        <div className="flex items-center gap-2">
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="px-3 py-1.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-xs text-gray-800 dark:text-gray-200 outline-none focus:border-dahab-500"
+          >
+            <option value="all">📱 جميع الأجهزة</option>
+            <option value="iphone">🍎 iPhone</option>
+            <option value="samsung">📱 Samsung</option>
+            <option value="xiaomi">📱 Xiaomi</option>
+            <option value="macbook">💻 MacBook</option>
+            <option value="laptop">💻 لابتوبات أخرى</option>
+            <option value="desktop">🖥️ كمبيوتر</option>
+            <option value="gpu">🎮 كروت شاشة</option>
+          </select>
+
+          <input
+            type="text"
+            value={modelSearchQuery}
+            onChange={(e) => setModelSearchQuery(e.target.value)}
+            placeholder="ابحث عن موديل..."
+            className="px-3 py-1.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-xs text-gray-800 dark:text-gray-200 outline-none focus:border-dahab-500 w-40"
+          />
         </div>
 
         {/* أزرار تشغيل/إيقاف الطبقات (Toggles) */}
@@ -1873,6 +2018,17 @@ export default function InteractiveBoardviewSimulator() {
               {Math.round(zoom * 100)}%
             </span>
           </div>
+
+          {/* زر فتح اللوحة الجانبية للموبايل */}
+          {isMobileView && (
+            <button
+              onClick={() => setShowMobileControls(true)}
+              className="absolute bottom-4 right-4 p-3 rounded-2xl bg-dahab-500/20 border border-dahab-500/40 text-dahab-400 shadow-2xl backdrop-blur-md transition hover:bg-dahab-500/30"
+              title="إعدادات وتفاصيل"
+            >
+              <Sliders className="w-5 h-5" />
+            </button>
+          )}
 
           {/* تلميح التحويم السريع على البن Hover Card */}
           {hoveredPin && (
@@ -2012,6 +2168,119 @@ export default function InteractiveBoardviewSimulator() {
           </div>
         </div>
       </div>
+
+      {/* مودال التحكمات للموبايل */}
+      {isMobileView && showMobileControls && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-900 w-full max-w-lg max-h-[85vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between bg-gray-50 dark:bg-gray-800">
+              <h3 className="font-bold text-sm text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                <Sliders className="w-4 h-4 text-dahab-500" />
+                <span>إعدادات وتفاصيل البوردفيو</span>
+              </h3>
+              <button
+                onClick={() => setShowMobileControls(false)}
+                className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto space-y-4">
+              {/* بطاقة المكون المختار */}
+              <div className="p-4 rounded-2xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-dahab-500/15 text-dahab-600 dark:text-dahab-400">
+                    {selectedPart.packageType}
+                  </span>
+                  <span className="text-[10px] text-gray-500">{selectedPart.side}</span>
+                </div>
+                <h3 className="text-sm font-black text-gray-900 dark:text-gray-100">{selectedPart.name}</h3>
+                <p className="text-xs text-gray-600 dark:text-gray-400">{selectedPart.role}</p>
+                {selectedPart.commonFault && (
+                  <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold">
+                    ⚠️ {selectedPart.commonFault}
+                  </p>
+                )}
+              </div>
+
+              {/* المسارات المتصلة */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-gray-700 dark:text-gray-300">المسارات المتصلة:</h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedPart.pins.slice(0, 8).map((pin) => {
+                    const net = boardData.nets[pin.netId];
+                    const isCurrent = pin.netId === selectedNetId;
+                    return (
+                      <button
+                        key={pin.id}
+                        onClick={() => setSelectedNetId(pin.netId)}
+                        className={`px-2 py-1 rounded-lg text-[10px] font-bold transition border ${
+                          isCurrent
+                            ? 'shadow-sm text-slate-950 font-black'
+                            : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700'
+                        }`}
+                        style={isCurrent ? { backgroundColor: net?.color, borderColor: net?.color } : {}}
+                      >
+                        {net?.name.split('/')[0] || pin.netId}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* جميع المسارات */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-gray-700 dark:text-gray-300">جميع المسارات:</h4>
+                <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                  {Object.values(boardData.nets).map((net) => {
+                    const isCurrent = net.id === selectedNetId;
+                    return (
+                      <button
+                        key={net.id}
+                        onClick={() => setSelectedNetId(net.id)}
+                        className={`w-full p-2 rounded-xl text-right text-xs transition border flex items-center justify-between ${
+                          isCurrent
+                            ? 'shadow-md font-bold'
+                            : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300'
+                        }`}
+                        style={
+                          isCurrent
+                            ? {
+                                backgroundColor: `${net.color}20`,
+                                borderColor: net.color,
+                                color: net.color,
+                              }
+                            : {}
+                        }
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: net.color }} />
+                          <span>{net.name}</span>
+                        </div>
+                        <span className="font-mono text-[10px] opacity-80">{net.diodeMode.split(' ')[0]}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* زر AI */}
+              <button
+                onClick={() => {
+                  const query = `أفحص لي المكون (${selectedPart.name}) المتصل بمسار (${activeNet.name}) ذو الجهد (${activeNet.voltage}) وممانعة الدايود مود (${activeNet.diodeMode}) على جهاز ${boardData.deviceModel}`;
+                  navigator.clipboard?.writeText(query);
+                  setShowMobileControls(false);
+                  alert(`✅ تم نسخ طلب الفحص الهندسي للمكون (${selectedPart.name}) إلى الحافظة!`);
+                }}
+                className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-dahab-500 to-amber-600 hover:from-dahab-600 hover:to-amber-700 text-slate-950 font-black text-xs transition shadow-lg shadow-dahab-500/20 flex items-center justify-center gap-1.5"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>فحص المكون بالذكاء الاصطناعي</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

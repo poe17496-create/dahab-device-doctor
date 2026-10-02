@@ -99,6 +99,195 @@
     "diodeReadings": "فحص خطوط VDD_CPU و VDD_GPU، الممانعة الطبيعية 0.020V-0.070V."
   },
   {
+    "partNumber": "338S00427",
+    "category": "PMIC (Power Management)",
+    "deviceFamily": "Apple iPhone 11 / 11 Pro / 11 Pro Max",
+    "function": "آيسي إدارة الطاقة الرئيسي PMIC",
+    "compatibles": ["338S00428", "338S00429"],
+    "commonSymptoms": "لا يشتغل، سحب 0.00A، سخونة على PMIC، غياب فولتات الباور.",
+    "diodeReadings": "فحص خطوط V_BATT و V_USB، الممانعة المتوقعة 0.350V-0.450V."
+  },
+  {
+    "partNumber": "338S00453",
+    "category": "PMIC (Power Management)",
+    "deviceFamily": "Apple iPhone 12 / 12 Pro / 12 Pro Max",
+    "function": "آيسي إدارة الطاقة الرئيسي PMIC",
+    "compatibles": ["338S00454", "338S00455"],
+    "commonSymptoms": "موت كامل، سحب 0.00A، سخونة على PMIC.",
+    "diodeReadings": "فحص خطوط V_BATT و V_USB، الممانعة المتوقعة 0.350V-0.450V."
+  },
+  {
+    "partNumber": "338S00550",
+    "category": "PMIC (Power Management)",
+    "deviceFamily": "Apple iPhone 13 / 13 Pro / 13 Pro Max",
+    "function": "آيسي إدارة الطاقة الرئيسي PMIC",
+    "compatibles": ["338S00551", "338S00552"],
+    "commonSymptoms": "لا يشتغل، سحب 0.00A، سخونة على PMIC.",
+    "diodeReadings": "فحص خطوط V_BATT و V_USB، الممانعة المتوقعة 0.350V-0.450V."
+  },
+  {
+    "partNumber": "338S00775",
+    "category": "PMIC (Power Management)",
+    "deviceFamily": "Apple iPhone 14 / 14 Pro / 14 Pro Max",
+    "function": "آيسي إدارة الطاقة الرئيسي PMIC",
+    "compatibles": ["338S00776", "338S00777"],
+    "commonSymptoms": "لا يشتغل، سحب 0.00A، سخونة على PMIC.",
+    "diodeReadings": "فحص خطوط V_BATT و V_USB، الممانعة المتوقعة 0.350V-0.450V."
+  },
+  {
+    "partNumber": "338S00884",
+    "category": "PMIC (Power Management)",
+    "deviceFamily": "Apple iPhone 15 / 15 Pro / 15 Pro Max",
+    "function": "آيسي إدارة الطاقة الرئيسي PMIC",
+    "compatibles": ["338S00885", "338S00886"],
+    "commonSymptoms": "لا يشتغل، سحب 0.00A، سخونة على PMIC.",
+    "diodeReadings": "فحص خطوط V_BATT و V_USB، الممانعة المتوقعة 0.350V-0.450V."
+  },
+  {
+    "partNumber": "T2105",
+    "category": "Charging / USB Tristar",
+    "deviceFamily": "Apple iPhone 12 / 12 Pro / 12 Pro Max",
+    "function": "متحكم الشحن والـ USB (Tristar IC)",
+    "compatibles": ["T2106", "T2107"],
+    "commonSymptoms": "شحن وهمي، لا يشعر بالشاحن، تفريغ سريع للبطارية.",
+    "diodeReadings": "مسار PP5V0_USB ممانعة 0.550V تقريباً، مسار PP_TRISTAR_PIN ممانعة 0.650V."
+  },
+  {
+    "partNumber": "T2106",
+    "category": "Charging / USB Tristar",
+    "deviceFamily": "Apple iPhone 13 / 13 Pro / 13 Pro Max",
+    "function": "متحكم الشحن والـ USB (Tristar IC)",
+    "compatibles": ["T2105", "T2107"],
+    "commonSymptoms": "شحن وهمي، لا يشعر بالشاحن.",
+    "diodeReadings": "مسار PP5V0_USB ممانعة 0.550V تقريباً."
+  },
+  {
+    "partNumber": "BQ25895",
+    "category": "Battery Charger / Power Path",
+    "deviceFamily": "Samsung Galaxy S8 / S9 / S10 / Note 8 / Note 9",
+    "function": "آيسي الشحن ومسار التغذية VBUS إلى VPH_PWR",
+    "compatibles": ["BQ25896", "BQ25897"],
+    "commonSymptoms": "الجهاز لا يشعر بالشاحن نهائياً، سخونة على الآيسي.",
+    "diodeReadings": "رجل الـ PMID ممانعة 0.500V، رجل الـ SW يجب أن تقيس ممانعة الملف 0.380V-0.450V."
+  },
+  {
+    "partNumber": "SMB1355",
+    "category": "Battery Charger / Power Path",
+    "deviceFamily": "Samsung Galaxy S20 / S20+ / S20 Ultra",
+    "function": "آيسي الشحن السريع (Fast Charger)",
+    "compatibles": ["SMB1356", "SMB1357"],
+    "commonSymptoms": "شحن بطيء جداً، لا يشحن بالشاحن السريع.",
+    "diodeReadings": "فحص مسارات VBUS و VPH_PWR."
+  },
+  {
+    "partNumber": "ISL9241",
+    "category": "Battery Charger / Power Path",
+    "deviceFamily": "MacBook Pro / Air (Intel)",
+    "function": "آيسي الشحن وإدارة الباور للابتوبات",
+    "compatibles": ["ISL9241A", "ISL9241B"],
+    "commonSymptoms": "الابتوب لا يشحن، LED ضوء الشحن لا يعمل.",
+    "diodeReadings": "فحص مسارات DC-IN و 19V الجهد."
+  },
+  {
+    "partNumber": "ISL9237",
+    "category": "Battery Charger / Power Path",
+    "deviceFamily": "MacBook Pro 2015-2017",
+    "function": "آيسي الشحن وإدارة الباور",
+    "compatibles": ["ISL9237A", "ISL9237B"],
+    "commonSymptoms": "الابتوب لا يشحن، LED ضوء الشحن لا يعمل.",
+    "diodeReadings": "فحص مسارات DC-IN و 19V الجهد."
+  },
+  {
+    "partNumber": "CD3217",
+    "category": "USB-C Controller",
+    "deviceFamily": "MacBook Pro 2016-2019",
+    "function": "متحكم USB-C وشحن",
+    "compatibles": ["CD3217B00", "CD3217B10"],
+    "commonSymptoms": "الابتوب لا يشحن، لا يتعرف على الأجهزة الخارجية.",
+    "diodeReadings": "فحص مسارات USB-C CC1 و CC2."
+  },
+  {
+    "partNumber": "CPC2N640",
+    "category": "USB-C Controller",
+    "deviceFamily": "MacBook Pro 2020-2021 (M1)",
+    "function": "متحكم USB-C وشحن",
+    "compatibles": ["CPC2N641", "CPC2N642"],
+    "commonSymptoms": "الابتوب لا يشحن، لا يتعرف على الأجهزة الخارجية.",
+    "diodeReadings": "فحص مسارات USB-C CC1 و CC2."
+  },
+  {
+    "partNumber": "BD92001",
+    "category": "CPU VCORE PWM Controller",
+    "deviceFamily": "Laptop Motherboards (Intel 6th/7th Gen)",
+    "function": "متحكم دائرة فولتية المعالج",
+    "compatibles": ["BD92002", "BD92003"],
+    "commonSymptoms": "اللابتوب يضيء لمبة الباور لثوانٍ ثم ينطفئ، غياب فولتية الـ VCORE.",
+    "diodeReadings": "فحص رجل الـ VDD_5V ورجل الـ VR_ON."
+  },
+  {
+    "partNumber": "RT8204",
+    "category": "CPU VCORE PWM Controller",
+    "deviceFamily": "Laptop Motherboards (Intel)",
+    "function": "متحكم دائرة فولتية المعالج",
+    "compatibles": ["RT8204A", "RT8204B"],
+    "commonSymptoms": "غياب فولتية الـ VCORE.",
+    "diodeReadings": "فحص رجل الـ VDD_5V ورجل الـ VR_ON."
+  },
+  {
+    "partNumber": "TPS65982",
+    "category": "USB-C PD Controller",
+    "deviceFamily": "Laptop Motherboards (USB-C PD)",
+    "function": "متحكم USB-C Power Delivery",
+    "compatibles": ["TPS65983", "TPS65984"],
+    "commonSymptoms": "الابتوب لا يشحن عبر USB-C.",
+    "diodeReadings": "فحص مسارات CC1 و CC2 و VBUS."
+  },
+  {
+    "partNumber": "SM8150",
+    "category": "Main SoC",
+    "deviceFamily": "Samsung Galaxy S10 / Note 10",
+    "function": "معالج كوالكوم الرئيسي",
+    "compatibles": ["SM8150+", "SM8150P"],
+    "commonSymptoms": "سخونة شديدة، ريستارت، توقف عند لوجو.",
+    "diodeReadings": "فحص خطوط VDD_CPU و VDD_GPU."
+  },
+  {
+    "partNumber": "SM8250",
+    "category": "Main SoC",
+    "deviceFamily": "Samsung Galaxy S20 / Note 20",
+    "function": "معالج كوالكوم الرئيسي",
+    "compatibles": ["SM8250+", "SM8250P"],
+    "commonSymptoms": "سخونة شديدة، ريستارت، توقف عند لوجو.",
+    "diodeReadings": "فحص خطوط VDD_CPU و VDD_GPU."
+  },
+  {
+    "partNumber": "Exynos 990",
+    "category": "Main SoC",
+    "deviceFamily": "Samsung Galaxy S20 (Exynos Version)",
+    "function": "معالج Exynos الرئيسي",
+    "compatibles": ["Exynos 9825", "Exynos 991"],
+    "commonSymptoms": "سخونة شديدة، ريستارت، توقف عند لوجو.",
+    "diodeReadings": "فحص خطوط VDD_CPU و VDD_GPU."
+  },
+  {
+    "partNumber": "U15",
+    "category": "Audio Codec",
+    "deviceFamily": "iPhone 11 / 12 / 13",
+    "function": "آيسي الصوت والميكروفون",
+    "compatibles": ["U15 (different batch)", "U15A"],
+    "commonSymptoms": "لا يوجد صوت، المايك لا يعمل.",
+    "diodeReadings": "فحص مسارات الصوت والميكروفون."
+  },
+  {
+    "partNumber": "Wi-Fi/BT Module",
+    "category": "Wireless Module",
+    "deviceFamily": "iPhone / iPad / MacBook",
+    "function": "وحدة الواي فاي والبلوتوث",
+    "compatibles": ["Wi-Fi/BT Module (different model)"],
+    "commonSymptoms": "لا يوجد واي فاي، لا يوجد بلوتوث.",
+    "diodeReadings": "فحص مسارات الواي فاي والبلوتوث."
+  },
+  {
     "partNumber": "MT6765",
     "category": "Main SoC",
     "deviceFamily": "Oppo / Vivo / Realme Mid-range",
