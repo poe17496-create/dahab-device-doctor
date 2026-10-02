@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllUsers } from '@/lib/auth';
+import { getAllUsers, addUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 
 const isSupabaseConfigured = Boolean(
@@ -94,7 +94,6 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. الحفظ التزامني في الذاكرة المحلية لضمان استمرارية العمل فوراً
-    const { addUser } = await import('@/lib/auth');
     try {
       addUser({
         name: name || cleanUsername,
