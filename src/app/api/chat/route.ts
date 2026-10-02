@@ -6,6 +6,7 @@ import { buildEnhancedPrompt, buildSchematicContext } from '@/lib/smartAnalysisS
 import { checkRateLimit, sanitizeAndCheckTokenDrain } from '@/lib/securityRateLimiter';
 import { withErrorHandling, ErrorCode, withTimeout } from '@/lib/apiErrorHandler';
 import { chatRequestSchema } from '@/lib/apiSchemas';
+import { getCachedResponse, setCachedResponse, generateCacheKey } from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -231,6 +232,35 @@ async function chatHandler(req: NextRequest) {
 - اختم بتوجيه الفني للخطوة التالية المنطقية
 - كن دقيقاً في استخدام المكونات المذكورة في المراجع الخارجية`;
 
+  // إنشاء مفتاح Cache للطلب
+  const cacheKey = generateCacheKey(
+    message + expertContext + contextInfo + expertSystemContext,
+    {
+      specialty: diagnosticContext?.specialty,
+      deviceModel: diagnosticContext?.deviceModel,
+      hasImage: !!imageBase64,
+      readings: diagnosticContext?.readings,
+    }
+  );
+
+  // التحقق من Cache قبل استدعاء AI
+  const cachedResponse = await getCachedResponse(cacheKey);
+  if (cachedResponse && !stream) {
+    console.log('Cache HIT - Returning cached response');
+    return NextResponse.json({
+      message: cachedResponse.message,
+      engine: cachedResponse.engine || 'cache',
+      modelUsed: cachedResponse.modelUsed || 'cached',
+      fromCache: true,
+      debug: {
+        cacheHit: true,
+        geminiKeysCount: (process.env.GEMINI_API_KEY || '').split(/[\n,;]+/).filter(Boolean).length,
+        openaiKeysCount: (process.env.OPENAI_API_KEY || '').split(/[\n,;]+/).filter(Boolean).length,
+        openrouterKeysCount: (process.env.OPENROUTER_API_KEY || '').split(/[\n,;]+/).filter(Boolean).length,
+      },
+    });
+  }
+
   // استدعاء محرك الذكاء الاصطناعي مع timeout safeguard
   const aiResponse = await withTimeout(
     callAIEngine({
@@ -298,12 +328,24 @@ async function chatHandler(req: NextRequest) {
   // Non-streaming mode (original)
   const cleanedMessage = cleanAIResponse(aiResponse.text);
 
+  // حفظ الإجابة في الـ Cache للاستخدامات القادمة
+  if (!stream && cleanedMessage) {
+    await setCachedResponse(cacheKey, {
+      message: cleanedMessage,
+      engine: aiResponse.engine,
+      modelUsed: aiResponse.modelUsed || 'default',
+      timestamp: new Date().toISOString(),
+    }, 24); // Cache لمدة 24 ساعة
+  }
+
   return NextResponse.json({
     message: cleanedMessage || aiResponse.text,
     engine: aiResponse.engine,
     modelUsed: aiResponse.modelUsed || 'default',
     errorLog: aiResponse.errorLog,
+    fromCache: false,
     debug: {
+      cacheHit: false,
       geminiKeysCount: (process.env.GEMINI_API_KEY || '').split(/[\n,;]+/).filter(Boolean).length,
       openaiKeysCount: (process.env.OPENAI_API_KEY || '').split(/[\n,;]+/).filter(Boolean).length,
       openrouterKeysCount: (process.env.OPENROUTER_API_KEY || '').split(/[\n,;]+/).filter(Boolean).length,

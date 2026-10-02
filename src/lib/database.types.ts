@@ -949,6 +949,35 @@ export interface Database {
           created_by?: string
         }
       }
+      cache_entries: {
+        Row: {
+          id: string
+          cache_key: string
+          cache_value: Json
+          expires_at: string
+          created_at: string
+          hit_count: number
+          metadata?: Json
+        }
+        Insert: {
+          id?: string
+          cache_key: string
+          cache_value: Json
+          expires_at: string
+          created_at?: string
+          hit_count?: number
+          metadata?: Json
+        }
+        Update: {
+          id?: string
+          cache_key?: string
+          cache_value?: Json
+          expires_at?: string
+          created_at?: string
+          hit_count?: number
+          metadata?: Json
+        }
+      }
     }
     Views: {
       [_ in never]: never
