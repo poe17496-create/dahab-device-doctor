@@ -514,7 +514,7 @@ export default function DahabFixAiConsole() {
   }
 
   return (
-    <div className={`min-h-screen flex flex-col font-sans bg-gradient-to-br from-dahab-50 via-amber-50 to-orange-50 dark:bg-workshop-bg text-gray-900 dark:text-gray-100 transition-colors duration-300 ${isDesktopMode ? 'w-[1200px] max-w-[1200px] mx-auto overflow-x-visible' : 'w-full overflow-x-hidden'}`}>
+    <div className={`min-h-screen flex flex-col font-sans bg-gradient-to-br from-dahab-50 via-amber-50 to-orange-50 dark:from-[#0B0F17] dark:via-[#111827] dark:to-[#0B0F17] text-gray-900 dark:text-gray-100 transition-colors duration-300 ${isDesktopMode ? 'w-[1200px] max-w-[1200px] mx-auto overflow-x-visible' : 'w-full overflow-x-hidden'}`}>
       {/* شريط الزائر المؤقت - مدمج ومختصر */}
       {currentUser?.isGuest && (
         <div className="bg-gradient-to-r from-dahab-500 to-amber-600 text-white text-center py-1.5 px-3 text-xs font-bold flex items-center justify-between gap-2 z-[60] relative">

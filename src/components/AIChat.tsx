@@ -298,7 +298,12 @@ export default function AIChat() {
   // إرسال الرسالة
   const handleSend = async (overrideText?: string) => {
     const textToSend = (overrideText || input).trim();
-    if ((!textToSend && !imageBase64) || isLoading) return;
+    if ((!textToSend && !imageBase64) || isLoading) {
+      if (!textToSend && !imageBase64) {
+        setToastMsg('⚠️ يرجى كتابة رسالة أو رفع صورة');
+      }
+      return;
+    }
 
     // منع الإرسال المتكرر (debouncing)
     if (sendTimeoutRef.current) {
@@ -375,17 +380,23 @@ export default function AIChat() {
       };
 
       // استخدام streaming mode
+      const requestBody: any = {
+        imageBase64,
+        chatHistory: historyPayload,
+        customKeys,
+        stream: true,
+        diagnosticContext,
+      };
+
+      // إضافة الرسالة فقط إذا كانت موجودة
+      if (textToSend) {
+        requestBody.message = textToSend;
+      }
+
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: textToSend,
-          imageBase64,
-          chatHistory: historyPayload,
-          customKeys,
-          stream: true,
-          diagnosticContext,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!res.ok) {
