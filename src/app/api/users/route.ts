@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
+
+const isSupabaseConfigured = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_URL &&
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 import {
   getAllUsers,
   saveAllUsers,
@@ -22,9 +28,9 @@ export async function GET() {
     let localUsers: UserAccount[] = getAllUsers();
 
     // إذا كانت Supabase مفعلة، نجلب المستخدمين منها وندمجهم
-    if (isSupabaseConfigured && supabase) {
+    if (isSupabaseConfigured && supabaseAdmin) {
       try {
-        const { data: sbUsers, error } = await supabase.from('users').select('*');
+        const { data: sbUsers, error } = await supabaseAdmin.from('users').select('*');
         if (!error && sbUsers && sbUsers.length > 0) {
           const localMap = new Map(localUsers.map((u) => [u.username.toLowerCase(), u]));
 
@@ -104,9 +110,9 @@ export async function POST(req: NextRequest) {
       }
 
       // فحص Supabase أولاً إن كانت مفعلة مع ميزة قفل الجهاز الوحيد
-      if (isSupabaseConfigured && supabase) {
+      if (isSupabaseConfigured && supabaseAdmin) {
         try {
-          const { data: user, error } = await supabase
+          const { data: user, error } = await supabaseAdmin
             .from('users')
             .select('*')
             .eq('username', cleanUsername)
@@ -128,7 +134,7 @@ export async function POST(req: NextRequest) {
 
             // قفل الجهاز الوحيد والتحديث الفوري لطرد أي جهاز قديم
             if (user.device_id !== currentDeviceId) {
-              await supabase
+              await supabaseAdmin
                 .from('users')
                 .update({ device_id: currentDeviceId, updated_at: new Date().toISOString() })
                 .eq('id', user.id);
@@ -173,9 +179,9 @@ export async function POST(req: NextRequest) {
       }
 
       // فحص Supabase إذا كانت مفعلة للتأكد من مطابقة device_id
-      if (isSupabaseConfigured && supabase) {
+      if (isSupabaseConfigured && supabaseAdmin) {
         try {
-          const { data: user, error } = await supabase
+          const { data: user, error } = await supabaseAdmin
             .from('users')
             .select('device_id, is_active')
             .eq('username', username.trim())
@@ -229,7 +235,7 @@ export async function POST(req: NextRequest) {
     }
 
     // حفظ في Supabase إن كانت متصلة
-    if (isSupabaseConfigured && supabase) {
+    if (isSupabaseConfigured && supabaseAdmin) {
       try {
         const payload: any = {
           username: cleanUsername,
@@ -242,10 +248,10 @@ export async function POST(req: NextRequest) {
         if (specialty) payload.specialty = specialty;
         if (price !== undefined) payload.price = Number(price);
 
-        const { error } = await supabase.from('users').insert([payload]);
+        const { error } = await supabaseAdmin.from('users').insert([payload]);
         if (error) {
           // محاولة ثانية بالحقول الأساسية فقط
-          await supabase.from('users').insert([{
+          await supabaseAdmin.from('users').insert([{
             username: cleanUsername,
             password: cleanPassword,
             expires_at: computedExpiresAt || null,
@@ -291,9 +297,9 @@ export async function PUT(req: NextRequest) {
     // تبديل حالة التفعيل / التعطيل
     if (action === 'toggleStatus') {
       const updated = toggleUserStatus(id);
-      if (isSupabaseConfigured && supabase && updated) {
+      if (isSupabaseConfigured && supabaseAdmin && updated) {
         try {
-          await supabase.from('users').update({ is_active: updated.active }).eq('username', updated.username);
+          await supabaseAdmin.from('users').update({ is_active: updated.active }).eq('username', updated.username);
         } catch (e) {}
       }
       if (!updated) return NextResponse.json({ error: 'المستخدم غير موجود' }, { status: 404 });
@@ -304,9 +310,9 @@ export async function PUT(req: NextRequest) {
     if (action === 'extendSubscription') {
       const daysToAdd = days !== undefined ? Number(days) : 30;
       const updated = extendSubscription(id, daysToAdd);
-      if (isSupabaseConfigured && supabase && updated) {
+      if (isSupabaseConfigured && supabaseAdmin && updated) {
         try {
-          await supabase.from('users').update({ expires_at: updated.expiresAt }).eq('username', updated.username);
+          await supabaseAdmin.from('users').update({ expires_at: updated.expiresAt }).eq('username', updated.username);
         } catch (e) {}
       }
       if (!updated) return NextResponse.json({ error: 'تعذر تمديد الاشتراك' }, { status: 404 });
@@ -320,9 +326,9 @@ export async function PUT(req: NextRequest) {
     if (action === 'terminateSession') {
       const success = terminateUserSession(id);
       const user = getAllUsers().find((u) => u.id === id);
-      if (isSupabaseConfigured && supabase && user) {
+      if (isSupabaseConfigured && supabaseAdmin && user) {
         try {
-          await supabase.from('users').update({ device_id: null }).eq('username', user.username);
+          await supabaseAdmin.from('users').update({ device_id: null }).eq('username', user.username);
         } catch (e) {}
       }
       if (!success) return NextResponse.json({ error: 'تعذر إنهاء الجلسة' }, { status: 404 });
@@ -360,7 +366,7 @@ export async function PUT(req: NextRequest) {
 
       saveAllUsers(users);
 
-      if (isSupabaseConfigured && supabase) {
+      if (isSupabaseConfigured && supabaseAdmin) {
         try {
           const updatePayload: any = {
             expires_at: user.expiresAt || null,
@@ -368,7 +374,7 @@ export async function PUT(req: NextRequest) {
           if (body.name) updatePayload.name = body.name;
           if (body.password && body.password.trim()) updatePayload.password = body.password.trim();
           if (body.price !== undefined) updatePayload.price = Number(body.price);
-          await supabase.from('users').update(updatePayload).eq('username', user.username);
+          await supabaseAdmin.from('users').update(updatePayload).eq('username', user.username);
         } catch (e) {}
       }
 
@@ -395,16 +401,16 @@ export async function DELETE(req: NextRequest) {
       deleteUser(user.username);
     }
 
-    if (isSupabaseConfigured && supabase) {
+    if (isSupabaseConfigured && supabaseAdmin) {
       try {
         const usernameToDelete = user?.username || id;
         // بدلاً من الحذف الفعلي نضع علامة __DELETED__ حتى لا يرجع عند cold start
-        await supabase.from('users').update({
+        await supabaseAdmin.from('users').update({
           is_active: false,
           device_id: '__DELETED__',
         }).eq('username', usernameToDelete);
         // أيضاً نحاول الحذف الفعلي
-        await supabase.from('users').delete().eq('username', usernameToDelete);
+        await supabaseAdmin.from('users').delete().eq('username', usernameToDelete);
       } catch (e) {
         console.warn('Supabase delete error:', e);
       }

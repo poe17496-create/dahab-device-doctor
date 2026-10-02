@@ -13,7 +13,6 @@ import {
   CheckCircle,
 } from 'lucide-react';
 import { CommonFault } from '@/lib/types';
-import commonFaultsData from '@/data/commonFaults.json';
 
 interface CommonFaultsLibraryProps {
   onApplyFault?: (fault: CommonFault) => void;
@@ -22,28 +21,28 @@ interface CommonFaultsLibraryProps {
 export default function CommonFaultsLibrary({ onApplyFault }: CommonFaultsLibraryProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBrand, setSelectedBrand] = useState<string>('all');
-  const [filteredFaults, setFilteredFaults] = useState<CommonFault[]>(commonFaultsData);
+  const [filteredFaults, setFilteredFaults] = useState<CommonFault[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    let filtered = commonFaultsData;
+    const fetchFaults = async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams();
+        if (searchTerm) params.append('q', searchTerm);
+        if (selectedBrand && selectedBrand !== 'all') params.append('brand', selectedBrand);
 
-    // Filter by brand
-    if (selectedBrand !== 'all') {
-      filtered = filtered.filter((fault) => fault.brand === selectedBrand);
-    }
+        const response = await fetch(`/api/common-faults?${params.toString()}`);
+        const data = await response.json();
+        setFilteredFaults(data.results || []);
+      } catch (error) {
+        console.error('Error fetching common faults:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    // Filter by search term
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (fault) =>
-          fault.model.toLowerCase().includes(term) ||
-          fault.faultName.toLowerCase().includes(term) ||
-          fault.symptoms.some((s) => s.toLowerCase().includes(term))
-      );
-    }
-
-    setFilteredFaults(filtered);
+    fetchFaults();
   }, [searchTerm, selectedBrand]);
 
   const handleApplyFault = (fault: CommonFault) => {

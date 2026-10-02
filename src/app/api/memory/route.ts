@@ -7,7 +7,13 @@ import {
   appendMessageToSession,
 } from '@/lib/jsonMemory';
 import { RepairSession } from '@/lib/types';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
+
+const isSupabaseConfigured = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_URL &&
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 export const dynamic = 'force-dynamic';
 
@@ -18,9 +24,9 @@ export async function GET(req: NextRequest) {
 
     if (id) {
       let session = getSessionById(id);
-      if (!session && isSupabaseConfigured && supabase) {
+      if (!session && isSupabaseConfigured && supabaseAdmin) {
         try {
-          const { data } = await supabase
+          const { data } = await supabaseAdmin
             .from('diagnostic_logs')
             .select('*')
             .eq('id', id)
@@ -41,9 +47,9 @@ export async function GET(req: NextRequest) {
     let mergedSessions = [...localSessions];
 
     // جلب ومزامنة الجلسات السحابية من Supabase لضمان عدم ضياع أي سجل عند مسح الكاش
-    if (isSupabaseConfigured && supabase) {
+    if (isSupabaseConfigured && supabaseAdmin) {
       try {
-        const { data: cloudLogs, error } = await supabase
+        const { data: cloudLogs, error } = await supabaseAdmin
           .from('diagnostic_logs')
           .select('*')
           .order('updated_at', { ascending: false })
@@ -96,9 +102,9 @@ export async function POST(req: NextRequest) {
     const saved = saveSession(session);
 
     // مزامنة فورية مع قاعدة بيانات Supabase لضمان الأرشفة السحابية الدائمة
-    if (isSupabaseConfigured && supabase) {
+    if (isSupabaseConfigured && supabaseAdmin) {
       try {
-        await supabase.from('diagnostic_logs').upsert({
+        await supabaseAdmin.from('diagnostic_logs').upsert({
           id: session.id,
           title: session.title || 'جلسة تشخيص هندسي',
           device_model: session.deviceModel || 'غير محدد',
@@ -130,9 +136,9 @@ export async function DELETE(req: NextRequest) {
     const success = deleteSession(id);
 
     // حذف من Supabase أيضاً
-    if (isSupabaseConfigured && supabase) {
+    if (isSupabaseConfigured && supabaseAdmin) {
       try {
-        await supabase.from('diagnostic_logs').delete().eq('id', id);
+        await supabaseAdmin.from('diagnostic_logs').delete().eq('id', id);
       } catch (sbErr) {
         console.warn('Supabase delete session notice:', sbErr);
       }

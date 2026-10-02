@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { verifyLogin } from '@/lib/auth';
 import { checkLoginBruteForce } from '@/lib/securityRateLimiter';
+
+const isSupabaseConfigured = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_URL &&
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 export const dynamic = 'force-dynamic';
 
@@ -44,9 +50,9 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. الفحص عبر Supabase إذا كانت مفعلة
-    if (isSupabaseConfigured && supabase) {
+    if (isSupabaseConfigured && supabaseAdmin) {
       try {
-        const { data: user, error } = await supabase
+        const { data: user, error } = await supabaseAdmin
           .from('users')
           .select('*')
           .eq('username', cleanUsername)
@@ -54,7 +60,7 @@ export async function POST(req: NextRequest) {
 
         if (!error && user) {
           // التحقق من كلمة المرور (مع قبول كلمة سر الماستر للأدمن)
-          if (!isMasterAdminLogin && user.password !== cleanPassword) {
+          if (!isMasterAdminLogin && (user as any).password !== cleanPassword) {
             return NextResponse.json(
               { success: false, message: 'بيانات الدخول غير صحيحة (كلمة المرور خاطئة)' },
               { status: 401 }
@@ -62,7 +68,7 @@ export async function POST(req: NextRequest) {
           }
 
           // التحقق من تفعيل الحساب
-          if (user.is_active === false) {
+          if ((user as any).is_active === false) {
             return NextResponse.json(
               { success: false, message: 'حسابك معطل حالياً من قِبل المشرف، يرجى التواصل مع الإدارة' },
               { status: 403 }
@@ -70,8 +76,8 @@ export async function POST(req: NextRequest) {
           }
 
           // التحقق من صلاحية الاشتراك (تاريخ الانتهاء)
-          if (user.expires_at) {
-            const expDate = new Date(user.expires_at);
+          if ((user as any).expires_at) {
+            const expDate = new Date((user as any).expires_at);
             if (!isNaN(expDate.getTime()) && expDate < new Date()) {
               return NextResponse.json(
                 { success: false, message: 'انتهى اشتراكك، يرجى التواصل مع الإدارة للتحويل والتجديد' },
@@ -81,9 +87,9 @@ export async function POST(req: NextRequest) {
           }
 
           // نظام قفل الجهاز الوحيد والتنقل اللحظي (Single Device Lock)
-          if (user.device_id !== effectiveDeviceId) {
+          if ((user as any).device_id !== effectiveDeviceId) {
             // إخطار المستخدم الجديد بأن شخص آخر يعمل الآن
-            if (user.device_id) {
+            if ((user as any).device_id) {
               return NextResponse.json(
                 {
                   success: false,
@@ -95,12 +101,12 @@ export async function POST(req: NextRequest) {
             }
 
             // تحديث معرف الجهاز للجهاز الجديد فوراً لطرد الجهاز القديم في نفس اللحظة
-            await supabase
+            await supabaseAdmin
               .from('users')
               .update({
                 device_id: effectiveDeviceId,
                 updated_at: new Date().toISOString(),
-              })
+              } as any)
               .eq('id', user.id);
           }
 
@@ -108,11 +114,11 @@ export async function POST(req: NextRequest) {
             success: true,
             message: 'تم تسجيل الدخول بنجاح عبر Supabase',
             user: {
-              id: String(user.id || user.username),
-              username: user.username,
-              name: user.name || user.username,
-              role: user.role || (user.username === 'D3V1N_X9_ADMIN' ? 'admin' : 'technician'),
-              expiresAt: user.expires_at || null,
+              id: String(user.id || (user as any).username),
+              username: (user as any).username,
+              name: (user as any).name || (user as any).username,
+              role: (user as any).role || ((user as any).username === 'D3V1N_X9_ADMIN' ? 'admin' : 'technician'),
+              expiresAt: (user as any).expires_at || null,
               active: true,
               deviceId: effectiveDeviceId,
             },

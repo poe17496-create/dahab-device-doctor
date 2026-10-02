@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllUsers } from '@/lib/auth';
+import { supabaseAdmin } from '@/lib/supabase';
+
+const isSupabaseConfigured = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_URL &&
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 export const dynamic = 'force-dynamic';
 
@@ -45,8 +52,7 @@ export async function POST(req: NextRequest) {
     let supabaseSaved = false;
 
     // 1. الحفظ في جدول users بـ Supabase
-    const { supabase, isSupabaseConfigured } = await import('@/lib/supabase');
-    if (isSupabaseConfigured && supabase) {
+    if (isSupabaseConfigured && supabaseAdmin) {
       try {
         const payload: any = {
           username: cleanUsername,
@@ -61,9 +67,9 @@ export async function POST(req: NextRequest) {
         if (specialty) payload.specialty = specialty;
         if (price !== undefined) payload.price = Number(price);
 
-        const { data, error } = await supabase
+        const { data, error } = await supabaseAdmin
           .from('users')
-          .insert([payload])
+          .insert([payload] as any)
           .select();
 
         if (error) {
@@ -76,7 +82,7 @@ export async function POST(req: NextRequest) {
             is_active: true,
             device_id: null,
           };
-          const { error: coreErr } = await supabase.from('users').insert([corePayload]);
+          const { error: coreErr } = await supabaseAdmin.from('users').insert([corePayload] as any);
           if (coreErr) throw coreErr;
         }
 

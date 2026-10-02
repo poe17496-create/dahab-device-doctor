@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { BoardData } from '@/components/InteractiveBoardviewSimulator';
+
+const isSupabaseConfigured = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_URL &&
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 export const dynamic = 'force-dynamic';
 
@@ -51,9 +57,9 @@ export async function GET() {
     let boards: BoardData[] = getLocalBoards();
 
     // جلب من Supabase إذا كانت مفعلة
-    if (isSupabaseConfigured && supabase) {
+    if (isSupabaseConfigured && supabaseAdmin) {
       try {
-        const { data, error } = await supabase.from('boardviews').select('*').order('created_at', { ascending: false });
+        const { data, error } = await supabaseAdmin.from('boardviews').select('*').order('created_at', { ascending: false });
         if (!error && data && data.length > 0) {
           const map = new Map<string, BoardData>();
           // وضع المحلي أولاً
@@ -205,9 +211,9 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. الحفظ في Supabase إذا كانت مفعلة
-    if (isSupabaseConfigured && supabase) {
+    if (isSupabaseConfigured && supabaseAdmin) {
       try {
-        await supabase.from('boardviews').insert([
+        await supabaseAdmin.from('boardviews').insert([
           {
             id: finalBoardData.id,
             title: finalBoardData.title,
@@ -247,9 +253,9 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'معرف البوردة مطلوب' }, { status: 400 });
     }
 
-    if (isSupabaseConfigured && supabase) {
+    if (isSupabaseConfigured && supabaseAdmin) {
       try {
-        await supabase.from('boardviews').delete().eq('id', id);
+        await supabaseAdmin.from('boardviews').delete().eq('id', id);
       } catch (e) {}
     }
 
