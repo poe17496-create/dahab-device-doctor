@@ -249,50 +249,11 @@ export default function AIChat() {
     }
   }, []);
 
-  // 🎙️ محرك النطق الصوتي الفوري المباشر
+  // 🎙️ محرك النطق الصوتي الفوري المباشر (مؤقتاً معطل للصيانة)
   const speakText = (text: string, msgId?: string) => {
-    if (typeof window === 'undefined' || !window.speechSynthesis) {
-      setToastMsg('⚠️ متصفحك لا يدعم النطق الصوتي');
-      return;
-    }
-
-    // إيقاف أي نطق سابق
-    window.speechSynthesis.cancel();
-
-    // تنظيف النص من الرموز الزائدة
-    const cleanText = text
-      .replace(/[⚠️🛠️⚡🔌📊]/g, '')
-      .replace(/\n{3,}/g, '\n\n')
-      .trim();
-
-    if (!cleanText) return;
-
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = 'ar-SA';
-    utterance.rate = 0.9; // سرعة أبطأ قليلاً للوضوح
-    utterance.pitch = 1;
-
-    // محاولة اختيار صوت عربي
-    const voices = window.speechSynthesis.getVoices();
-    const arabicVoice = voices.find(v => v.lang.startsWith('ar'));
-    if (arabicVoice) {
-      utterance.voice = arabicVoice;
-    }
-
-    utterance.onstart = () => {
-      setToastMsg('🔊 جاري النطق...');
-    };
-
-    utterance.onend = () => {
-      setToastMsg(null);
-    };
-
-    utterance.onerror = (e) => {
-      console.error('Speech synthesis error:', e);
-      setToastMsg('⚠️ حدث خطأ في النطق الصوتي');
-    };
-
-    window.speechSynthesis.speak(utterance);
+    // مؤقتاً: إظهار رسالة أن النطق الصوتي تحت الصيانة
+    setToastMsg('⚠️ النطق الصوتي تحت الصيانة - سنقوم بتفعيله قريباً');
+    return;
   };
 
   // إرسال الرسالة
