@@ -108,7 +108,8 @@ export function withErrorHandling<T extends any[]>(
       // التحقق من صحة البيانات باستخدام Zod إذا كان schema موجود
       if (schema) {
         try {
-          const body = await req.json();
+          const clonedReq = req.clone();
+          const body = await clonedReq.json();
           schema.parse(body);
         } catch (error) {
           if (error instanceof ZodError) {

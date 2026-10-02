@@ -252,4 +252,4 @@ async function chatHandler(req: NextRequest) {
   });
 }
 
-export const POST = withErrorHandling(chatHandler, chatRequestSchema);
+export const POST = withErrorHandling(chatHandler);

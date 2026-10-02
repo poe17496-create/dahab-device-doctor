@@ -4,21 +4,17 @@ import { z } from 'zod';
  * Schema للتحقق من طلبات الشات
  */
 export const chatRequestSchema = z.object({
-  message: z.string().max(10000, 'الرسالة طويلة جداً').optional(),
-  imageBase64: z.string().optional(),
-  chatHistory: z.array(z.object({
-    role: z.enum(['user', 'assistant']),
-    content: z.string(),
-  })).optional(),
-  customKeys: z.record(z.string(), z.string()).optional(),
+  message: z.string().max(20000, 'الرسالة طويلة جداً').optional().nullable(),
+  imageBase64: z.string().optional().nullable(),
+  chatHistory: z.array(z.any()).optional().nullable(),
+  customKeys: z.any().optional().nullable(),
   stream: z.boolean().optional().default(false),
-  diagnosticContext: z.any().optional(),
+  diagnosticContext: z.any().optional().nullable(),
 }).refine((data) => {
   // يجب أن يكون هناك إما رسالة نصية أو صورة
-  if (!data.message && !data.imageBase64) {
-    return false;
-  }
-  return true;
+  const hasMessage = typeof data.message === 'string' && data.message.trim().length > 0;
+  const hasImage = typeof data.imageBase64 === 'string' && data.imageBase64.trim().length > 0;
+  return hasMessage || hasImage;
 }, { message: 'يجب إرسال رسالة نصية أو صورة' }).passthrough();
 
 export type ChatRequest = z.infer<typeof chatRequestSchema>;
