@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { DiagnosticProvider } from '@/contexts/DiagnosticContext';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://dahabsoftware.site'),
@@ -105,7 +106,9 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-[#0B0F17] dark:via-[#111827] dark:to-[#0B0F17] text-gray-900 dark:text-gray-100 antialiased selection:bg-dahab-500/30 selection:text-white transition-colors duration-300">
-        <ErrorBoundary>{children}</ErrorBoundary>
+        <DiagnosticProvider>
+          <ErrorBoundary>{children}</ErrorBoundary>
+        </DiagnosticProvider>
       </body>
     </html>
   );
