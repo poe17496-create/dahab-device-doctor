@@ -375,10 +375,11 @@ export default function AIChat() {
         throw new Error(errData.error || `خطأ في الخادم (${res.status})`);
       }
 
-      // قراءة الـ stream
+      // قراءة الـ stream مع fallback للـ JSON
       const reader = res.body?.getReader();
       const decoder = new TextDecoder();
       let fullText = '';
+      let rawBuffer = '';
 
       if (reader) {
         while (true) {
@@ -386,6 +387,7 @@ export default function AIChat() {
           if (done) break;
 
           const chunk = decoder.decode(value, { stream: true });
+          rawBuffer += chunk;
           const lines = chunk.split('\n');
 
           for (const line of lines) {
@@ -410,6 +412,28 @@ export default function AIChat() {
               }
             }
           }
+        }
+      }
+
+      // Fallback: إذا لم يتم استلام أي نص من الـ stream، حاول قراءة كـ JSON
+      if (!fullText && rawBuffer.trim()) {
+        try {
+          const parsed = JSON.parse(rawBuffer.trim());
+          fullText = parsed.message || parsed.text || parsed.response || '';
+          console.log('Fallback JSON response:', fullText);
+        } catch (e) {
+          console.warn('Failed to parse fallback JSON:', e);
+        }
+      }
+
+      // Fallback آخر: حاول قراءة الرد كـ JSON مباشرة من الـ response
+      if (!fullText) {
+        try {
+          const jsonData = await res.clone().json();
+          fullText = jsonData.message || jsonData.text || jsonData.response || '';
+          console.log('Direct JSON response:', fullText);
+        } catch (e) {
+          console.warn('Failed to parse direct JSON:', e);
         }
       }
 
