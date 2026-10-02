@@ -141,50 +141,6 @@ export interface Database {
           reference_links?: string[]
         }
       }
-      ic_database: {
-        Row: {
-          id: string
-          part_number: string
-          manufacturer: string
-          description: string
-          package_type: string
-          category: string
-          datasheet_url?: string
-          pinout?: Json
-          specifications?: Json
-          created_at: string
-          updated_at: string
-          alternates?: string[]
-        }
-        Insert: {
-          id?: string
-          part_number: string
-          manufacturer: string
-          description: string
-          package_type: string
-          category: string
-          datasheet_url?: string
-          pinout?: Json
-          specifications?: Json
-          created_at?: string
-          updated_at?: string
-          alternates?: string[]
-        }
-        Update: {
-          id?: string
-          part_number?: string
-          manufacturer?: string
-          description?: string
-          package_type?: string
-          category?: string
-          datasheet_url?: string
-          pinout?: Json
-          specifications?: Json
-          created_at?: string
-          updated_at?: string
-          alternates?: string[]
-        }
-      }
       ratings: {
         Row: {
           id: string
