@@ -37,9 +37,11 @@ async function chatHandler(req: NextRequest) {
   const { message, imageBase64, chatHistory, customKeys, stream = false, diagnosticContext } = validatedData;
 
   // 🛡️ فحص حماية استنزاف التوكن (Token Drain Protection)
-  const tokenCheck = sanitizeAndCheckTokenDrain(message || '');
-  if (!tokenCheck.valid) {
-    return NextResponse.json({ error: tokenCheck.error }, { status: 400 });
+  if (message && message.length > 0) {
+    const tokenCheck = sanitizeAndCheckTokenDrain(message);
+    if (!tokenCheck.valid) {
+      return NextResponse.json({ error: tokenCheck.error }, { status: 400 });
+    }
   }
 
   if (!message && !imageBase64) {

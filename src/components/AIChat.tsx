@@ -381,17 +381,27 @@ export default function AIChat() {
 
       // استخدام streaming mode
       const requestBody: any = {
-        imageBase64,
         chatHistory: historyPayload,
         customKeys,
         stream: true,
         diagnosticContext,
       };
 
-      // إضافة الرسالة فقط إذا كانت موجودة
-      if (textToSend) {
+      // إضافة الرسالة فقط إذا كانت موجودة وغير فارغة
+      if (textToSend && textToSend.trim().length > 0) {
         requestBody.message = textToSend;
       }
+
+      // إضافة الصورة فقط إذا كانت موجودة
+      if (imageBase64) {
+        requestBody.imageBase64 = imageBase64;
+      }
+
+      console.log('Sending request body:', {
+        hasMessage: !!requestBody.message,
+        hasImage: !!requestBody.imageBase64,
+        hasHistory: !!requestBody.chatHistory?.length,
+      });
 
       const res = await fetch('/api/chat', {
         method: 'POST',
