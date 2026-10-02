@@ -6,7 +6,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
 
 -- Texas Instruments Power Management ICs (50 references)
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'BQ25601 3A Single-Cell Switching Charger',
   '3A synchronous switching charger with power path management for single-cell Li-Ion batteries',
   'datasheet',
@@ -22,7 +22,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 25, "year": 2020, "package": "WQFN-20"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'BQ25618 4A Multi-Chemistry Charger',
   '4A multi-chemistry charger with power path for 2-4 cell Li-Ion batteries',
   'datasheet',
@@ -38,7 +38,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 30, "year": 2021, "package": "VQFN-28"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'BQ24780S Notebook Power System Selector',
   'Power path management IC for notebook computers with battery charging',
   'datasheet',
@@ -54,7 +54,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 35, "year": 2019, "package": "QFN-28"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'ISL9239 4-Cell Synchronous Buck Battery Charger',
   '4-cell synchronous buck battery charger with power path management',
   'datasheet',
@@ -70,7 +70,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 40, "year": 2020, "package": "QFN-28"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'ISL9237 4-Cell Battery Charger',
   '4-cell battery charger with system power selector',
   'datasheet',
@@ -86,7 +86,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 38, "year": 2019, "package": "QFN-28"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'TPS51225 Dual Step-Down DC/DC Converter',
   'Dual synchronous step-down DC/DC converter with 5A output per channel',
   'datasheet',
@@ -102,7 +102,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 28, "year": 2018, "package": "QFN-24"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'TPS51980 Multi-Phase Controller',
   'Multi-phase synchronous buck controller for VRM applications',
   'datasheet',
@@ -118,7 +118,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 45, "year": 2019, "package": "QFN-28"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'LM34936 6-Channel LED Driver',
   '6-channel LED driver with backlight WLED control',
   'datasheet',
@@ -134,7 +134,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 22, "year": 2020, "package": "WQFN-24"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'TPS65981 PMIC for Applications Processors',
   'Power management IC for ARM Cortex-A processors',
   'datasheet',
@@ -150,7 +150,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 55, "year": 2019, "package": "BGA-256"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'BQ25895 5A Battery Charger',
   '5A battery charger with integrated FETs and power path',
   'datasheet',
@@ -168,7 +168,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
 
 -- Qualcomm PMIC Series (30 references)
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'PM8150 Power Management IC',
   'PMIC for Snapdragon 855 platforms with multi-rail power management',
   'datasheet',
@@ -184,7 +184,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 80, "year": 2019, "package": "BGA-184"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'PM8150B Power Management IC',
   'Enhanced PMIC for Snapdragon 855+ with improved efficiency',
   'datasheet',
@@ -200,7 +200,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 85, "year": 2020, "package": "BGA-184"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'PM8350 Power Management IC',
   'PMIC for Snapdragon 888 platforms with advanced power management',
   'datasheet',
@@ -216,7 +216,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 90, "year": 2021, "package": "BGA-200"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'PM8005 Power Management IC',
   'PMIC for mid-range Snapdragon platforms',
   'datasheet',
@@ -232,7 +232,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 75, "year": 2020, "package": "BGA-180"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'SMB1391 PMIC',
   'PMIC for Snapdragon 7 series platforms',
   'datasheet',
@@ -250,7 +250,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
 
 -- Apple Tristar/T2 Series (20 references)
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   '1610A1 Tristar IC',
   'USB/Charging controller for iPhone 5s and earlier',
   'datasheet',
@@ -266,7 +266,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 15, "year": 2013, "package": "BGA-64"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   '1610A2 Tristar IC',
   'USB/Charging controller for iPhone 6 series',
   'datasheet',
@@ -282,7 +282,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 15, "year": 2014, "package": "BGA-64"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   '1610A3 Tristar IC',
   'USB/Charging controller for iPhone 6s/SE series',
   'datasheet',
@@ -298,7 +298,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 15, "year": 2015, "package": "BGA-64"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   '610A3B Tristar IC',
   'USB/Charging controller for iPhone 7 series',
   'datasheet',
@@ -314,7 +314,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 15, "year": 2016, "package": "BGA-64"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   '1612A1 Tristar IC',
   'USB/Charging controller for iPhone 8 series',
   'datasheet',
@@ -332,7 +332,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
 
 -- Audio Codecs (30 references)
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'ALC3227 Audio Codec',
   'High-definition audio codec for laptops and tablets',
   'datasheet',
@@ -348,7 +348,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 45, "year": 2019, "package": "QFN-48"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'ALC233 Audio Codec',
   'Integrated audio codec for embedded systems',
   'datasheet',
@@ -364,7 +364,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 40, "year": 2018, "package": "QFN-48"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'ALC269 Audio Codec',
   'High-performance audio codec for desktop motherboards',
   'datasheet',
@@ -380,7 +380,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 50, "year": 2017, "package": "QFN-64"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Cirrus Logic CS42L42 Audio Codec',
   'Low-power audio codec for mobile devices',
   'datasheet',
@@ -396,7 +396,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 35, "year": 2020, "package": "WLCSP-30"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'ESS Sabre ES9038Q2M DAC',
   'High-end digital-to-analog converter',
   'datasheet',
@@ -414,7 +414,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
 
 -- Schematics - Apple iPhone Series (50 references)
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'iPhone 13 Pro Max Complete Schematic',
   'Full schematic diagram including all power rails and components',
   'technical_manual',
@@ -430,7 +430,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 150, "year": 2021, "type": "complete"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'iPhone 12 Pro Complete Schematic',
   'Full schematic diagram with component locations',
   'technical_manual',
@@ -446,7 +446,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 145, "year": 2020, "type": "complete"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'iPhone 11 Pro Max Complete Schematic',
   'Complete schematic with boardview overlay',
   'technical_manual',
@@ -462,7 +462,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 140, "year": 2019, "type": "complete"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'iPhone XS Max Complete Schematic',
   'Full schematic with power distribution',
   'technical_manual',
@@ -478,7 +478,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 135, "year": 2018, "type": "complete"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'iPhone X Complete Schematic',
   'Complete schematic with component mapping',
   'technical_manual',
@@ -496,7 +496,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
 
 -- Schematics - Samsung Galaxy Series (50 references)
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Samsung Galaxy S21 Ultra Complete Schematic',
   'Full schematic with Exynos 2100 CPU',
   'technical_manual',
@@ -512,7 +512,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 160, "year": 2021, "type": "complete"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Samsung Galaxy S20 Ultra Complete Schematic',
   'Full schematic with Exynos 990 CPU',
   'technical_manual',
@@ -528,7 +528,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 155, "year": 2020, "type": "complete"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Samsung Galaxy Note 20 Ultra Complete Schematic',
   'Complete schematic with S-Pen controller',
   'technical_manual',
@@ -544,7 +544,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 165, "year": 2020, "type": "complete"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Samsung Galaxy S10+ Complete Schematic',
   'Full schematic with Exynos 9820 CPU',
   'technical_manual',
@@ -560,7 +560,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 150, "year": 2019, "type": "complete"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Samsung Galaxy S9+ Complete Schematic',
   'Complete schematic with Exynos 9810 CPU',
   'technical_manual',
@@ -578,7 +578,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
 
 -- WiFi/Bluetooth Modules (20 references)
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Intel AX200 WiFi 6 Module',
   'WiFi 6 and Bluetooth 5.0 module',
   'datasheet',
@@ -594,7 +594,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 30, "year": 2020, "package": "M.2-2230"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Intel AX201 WiFi 5 Module',
   'WiFi 5 and Bluetooth 4.2 module',
   'datasheet',
@@ -610,7 +610,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 28, "year": 2019, "package": "M.2-2230"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Intel Killer AX1650 WiFi 6E',
   'High-performance WiFi 6E module',
   'datasheet',
@@ -626,7 +626,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 32, "year": 2021, "package": "M.2-2230"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Realtek RTL8822CE WiFi Module',
   'WiFi 5 and Bluetooth 4.2 module',
   'datasheet',
@@ -642,7 +642,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 25, "year": 2020, "package": "M.2-2230"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Broadcom BCM94360Z2 WiFi Module',
   'WiFi 4 and Bluetooth 4.0 module',
   'datasheet',
@@ -660,7 +660,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
 
 -- Additional Power Management ICs (40 references)
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'BQ25896 3A Battery Charger',
   '3A battery charger with integrated FETs and power path',
   'datasheet',
@@ -676,7 +676,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 30, "year": 2021, "package": "VQFN-32"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'BQ24295 2.5A Battery Charger',
   '2.5A battery charger with power path management',
   'datasheet',
@@ -692,7 +692,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 28, "year": 2019, "package": "VQFN-24"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'TPS63070 Buck-Boost Converter',
   'High efficiency buck-boost converter with 4A output',
   'datasheet',
@@ -708,7 +708,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 32, "year": 2020, "package": "VQFN-20"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'TPS63802 Buck-Boost Converter',
   'Ultra-low quiescent current buck-boost converter',
   'datasheet',
@@ -724,7 +724,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 26, "year": 2021, "package": "WSON-12"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'LM2596 Buck Converter',
   'Simple step-down DC-DC converter',
   'datasheet',
@@ -740,7 +740,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 22, "year": 2018, "package": "TO-263"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'LM2596HV High Voltage Buck Converter',
   'High voltage step-down DC-DC converter',
   'datasheet',
@@ -756,7 +756,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 24, "year": 2019, "package": "TO-263"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'TPS5430 Buck Converter',
   '3A synchronous step-down DC-DC converter',
   'datasheet',
@@ -772,7 +772,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 20, "year": 2018, "package": "SOIC-8"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'TPS54335 Buck Converter',
   '3.5A synchronous step-down DC-DC converter',
   'datasheet',
@@ -788,7 +788,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 22, "year": 2019, "package": "SOIC-8"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'TPS54620 Buck Converter',
   '6A synchronous step-down DC-DC converter',
   'datasheet',
@@ -804,7 +804,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 24, "year": 2020, "package": "QFN-28"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'TPS54821 Buck Converter',
   '8A synchronous step-down DC-DC converter',
   'datasheet',
@@ -822,7 +822,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
 
 -- Qualcomm PMIC Series Extended (30 references)
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'PM8350B Power Management IC',
   'Enhanced PMIC for Snapdragon 888+ platforms',
   'datasheet',
@@ -838,7 +838,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 92, "year": 2022, "package": "BGA-200"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'PM8350C Power Management IC',
   'PMIC for Snapdragon 8 Gen 1 platforms',
   'datasheet',
@@ -854,7 +854,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 95, "year": 2022, "package": "BGA-200"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'PM6600 Power Management IC',
   'PMIC for Snapdragon 778G platforms',
   'datasheet',
@@ -870,7 +870,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 78, "year": 2021, "package": "BGA-176"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'PM660L Power Management IC',
   'PMIC for Snapdragon 765G platforms',
   'datasheet',
@@ -886,7 +886,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 72, "year": 2020, "package": "BGA-168"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'PM8150L Power Management IC',
   'PMIC for Snapdragon 855+ platforms',
   'datasheet',
@@ -902,7 +902,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 82, "year": 2020, "package": "BGA-184"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'PM81550 Power Management IC',
   'PMIC for Snapdragon 865 platforms',
   'datasheet',
@@ -918,7 +918,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 88, "year": 2020, "package": "BGA-192"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'PM8008 Power Management IC',
   'PMIC for entry-level Snapdragon platforms',
   'datasheet',
@@ -934,7 +934,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 65, "year": 2021, "package": "BGA-160"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'PM7250 Power Management IC',
   'PMIC for Snapdragon 4 series platforms',
   'datasheet',
@@ -950,7 +950,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 60, "year": 2022, "package": "BGA-152"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'SMB1380 PMIC',
   'PMIC for Snapdragon 6 series platforms',
   'datasheet',
@@ -966,7 +966,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 68, "year": 2020, "package": "BGA-164"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'SMB1381 PMIC',
   'PMIC for Snapdragon 6 series enhanced platforms',
   'datasheet',
@@ -984,7 +984,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
 
 -- Apple Tristar/T2 Series Extended (25 references)
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   '610A3 Tristar IC',
   'USB/Charging controller for iPhone 7 Plus',
   'datasheet',
@@ -1000,7 +1000,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 15, "year": 2016, "package": "BGA-64"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   '1612A2 Tristar IC',
   'USB/Charging controller for iPhone 8 Plus',
   'datasheet',
@@ -1016,7 +1016,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 15, "year": 2017, "package": "BGA-64"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   '1613A1 Tristar IC',
   'USB/Charging controller for iPhone X',
   'datasheet',
@@ -1032,7 +1032,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 15, "year": 2017, "package": "BGA-64"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   '1613A2 Tristar IC',
   'USB/Charging controller for iPhone XS',
   'datasheet',
@@ -1048,7 +1048,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 15, "year": 2018, "package": "BGA-64"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   '1613A3 Tristar IC',
   'USB/Charging controller for iPhone 11',
   'datasheet',
@@ -1064,7 +1064,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 15, "year": 2019, "package": "BGA-64"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   '1614A1 Tristar IC',
   'USB/Charging controller for iPhone 12',
   'datasheet',
@@ -1080,7 +1080,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 15, "year": 2020, "package": "BGA-64"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   '1614A2 Tristar IC',
   'USB/Charging controller for iPhone 13',
   'datasheet',
@@ -1096,7 +1096,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 15, "year": 2021, "package": "BGA-64"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   '1614A3 Tristar IC',
   'USB/Charging controller for iPhone 14',
   'datasheet',
@@ -1112,7 +1112,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 15, "year": 2022, "package": "BGA-64"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'T2 Chip Security Controller',
   'Security and controller chip for Mac computers',
   'datasheet',
@@ -1128,7 +1128,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 50, "year": 2018, "package": "BGA-256"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'W1 Wireless Chip',
   'Wireless connectivity chip for AirPods',
   'datasheet',
@@ -1146,7 +1146,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
 
 -- Audio Codecs Extended (30 references)
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'ALC295 Audio Codec',
   'High-definition audio codec for ultrabooks',
   'datasheet',
@@ -1162,7 +1162,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 42, "year": 2019, "package": "QFN-48"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'ALC289 Audio Codec',
   'Integrated audio codec for thin laptops',
   'datasheet',
@@ -1178,7 +1178,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 38, "year": 2018, "package": "QFN-48"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'ALC285 Audio Codec',
   'Low-power audio codec for mobile devices',
   'datasheet',
@@ -1194,7 +1194,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 35, "year": 2017, "package": "QFN-48"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'ALC255 Audio Codec',
   'Budget audio codec for entry-level laptops',
   'datasheet',
@@ -1210,7 +1210,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 30, "year": 2016, "package": "QFN-48"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'ALC892 Audio Codec',
   'Classic audio codec for desktop motherboards',
   'datasheet',
@@ -1226,7 +1226,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 45, "year": 2015, "package": "QFN-64"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'ALC898 Audio Codec',
   'High-performance audio codec for gaming PCs',
   'datasheet',
@@ -1242,7 +1242,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 48, "year": 2014, "package": "QFN-64"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'ALC1220 Audio Codec',
   'Premium audio codec for high-end motherboards',
   'datasheet',
@@ -1258,7 +1258,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 52, "year": 2017, "package": "QFN-64"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'ALC4080 Audio Codec',
   'USB audio codec for modern motherboards',
   'datasheet',
@@ -1274,7 +1274,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 40, "year": 2020, "package": "QFN-48"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Cirrus Logic CS42L83 Audio Codec',
   'Low-power audio codec for smartphones',
   'datasheet',
@@ -1290,7 +1290,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 32, "year": 2021, "package": "WLCSP-30"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Cirrus Logic CS43131 DAC',
   'High-performance DAC for audiophile equipment',
   'datasheet',
@@ -1308,7 +1308,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
 
 -- Schematics - Apple iPhone Series Extended (40 references)
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'iPhone 14 Pro Max Complete Schematic',
   'Full schematic diagram with A16 Bionic CPU',
   'technical_manual',
@@ -1324,7 +1324,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 155, "year": 2022, "type": "complete"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'iPhone 14 Pro Complete Schematic',
   'Full schematic with component locations',
   'technical_manual',
@@ -1340,7 +1340,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 150, "year": 2022, "type": "complete"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'iPhone 14 Complete Schematic',
   'Complete schematic with boardview overlay',
   'technical_manual',
@@ -1356,7 +1356,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 145, "year": 2022, "type": "complete"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'iPhone 13 Pro Complete Schematic',
   'Full schematic with A15 Bionic CPU',
   'technical_manual',
@@ -1372,7 +1372,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 148, "year": 2021, "type": "complete"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'iPhone 13 Complete Schematic',
   'Complete schematic with component mapping',
   'technical_manual',
@@ -1388,7 +1388,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 142, "year": 2021, "type": "complete"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'iPhone 12 Pro Max Complete Schematic',
   'Full schematic with A14 Bionic CPU',
   'technical_manual',
@@ -1404,7 +1404,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 140, "year": 2020, "type": "complete"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'iPhone 12 Complete Schematic',
   'Complete schematic with boardview overlay',
   'technical_manual',
@@ -1420,7 +1420,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 138, "year": 2020, "type": "complete"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'iPhone SE 2022 Complete Schematic',
   'Complete schematic with A15 Bionic CPU',
   'technical_manual',
@@ -1436,7 +1436,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 125, "year": 2022, "type": "complete"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'iPhone XR Complete Schematic',
   'Full schematic with A12 Bionic CPU',
   'technical_manual',
@@ -1452,7 +1452,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 132, "year": 2018, "type": "complete"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'iPhone 8 Plus Complete Schematic',
   'Complete schematic with A11 Bionic CPU',
   'technical_manual',
@@ -1470,7 +1470,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
 
 -- Schematics - Samsung Galaxy Series Extended (40 references)
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Samsung Galaxy S22 Ultra Complete Schematic',
   'Full schematic with Exynos 2200 CPU',
   'technical_manual',
@@ -1486,7 +1486,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 165, "year": 2022, "type": "complete"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Samsung Galaxy S22+ Complete Schematic',
   'Full schematic with Exynos 2200 CPU',
   'technical_manual',
@@ -1502,7 +1502,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 160, "year": 2022, "type": "complete"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Samsung Galaxy S22 Complete Schematic',
   'Complete schematic with component locations',
   'technical_manual',
@@ -1518,7 +1518,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 155, "year": 2022, "type": "complete"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Samsung Galaxy S21 FE Complete Schematic',
   'Full schematic with Exynos 2100 CPU',
   'technical_manual',
@@ -1534,7 +1534,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 158, "year": 2022, "type": "complete"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Samsung Galaxy Note 10+ Complete Schematic',
   'Full schematic with Exynos 9825 CPU',
   'technical_manual',
@@ -1550,7 +1550,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 148, "year": 2019, "type": "complete"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Samsung Galaxy Note 9 Complete Schematic',
   'Complete schematic with Exynos 9815 CPU',
   'technical_manual',
@@ -1566,7 +1566,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 142, "year": 2018, "type": "complete"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Samsung Galaxy S8+ Complete Schematic',
   'Full schematic with Exynos 8895 CPU',
   'technical_manual',
@@ -1582,7 +1582,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 138, "year": 2017, "type": "complete"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Samsung Galaxy S7 Edge Complete Schematic',
   'Complete schematic with Exynos 8890 CPU',
   'technical_manual',
@@ -1598,7 +1598,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 135, "year": 2016, "type": "complete"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Samsung Galaxy A52 Complete Schematic',
   'Full schematic with Snapdragon 720G CPU',
   'technical_manual',
@@ -1614,7 +1614,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 130, "year": 2021, "type": "complete"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Samsung Galaxy A72 Complete Schematic',
   'Complete schematic with Snapdragon 720G CPU',
   'technical_manual',
@@ -1632,7 +1632,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
 
 -- WiFi/Bluetooth Modules Extended (25 references)
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Intel AX210 WiFi 6E Module',
   'WiFi 6E and Bluetooth 5.2 module',
   'datasheet',
@@ -1648,7 +1648,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 35, "year": 2022, "package": "M.2-2230"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Intel AX211 WiFi 6E Module',
   'Integrated WiFi 6E and Bluetooth 5.2',
   'datasheet',
@@ -1664,7 +1664,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 33, "year": 2022, "package": "M.2-2230"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Intel AX201 NGFF WiFi Module',
   'WiFi 5 and Bluetooth 4.2 NGFF module',
   'datasheet',
@@ -1680,7 +1680,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 28, "year": 2020, "package": "NGFF-2230"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Intel Killer 1675 WiFi 6E',
   'High-performance WiFi 6E gaming module',
   'datasheet',
@@ -1696,7 +1696,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 34, "year": 2022, "package": "M.2-2230"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Realtek RTL8852BE WiFi 6E Module',
   'WiFi 6E and Bluetooth 5.2 module',
   'datasheet',
@@ -1712,7 +1712,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 30, "year": 2022, "package": "M.2-2230"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Realtek RTL8852AE WiFi 6 Module',
   'WiFi 6 and Bluetooth 5.0 module',
   'datasheet',
@@ -1728,7 +1728,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 28, "year": 2021, "package": "M.2-2230"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Broadcom BCM4375 WiFi 6 Module',
   'WiFi 6 and Bluetooth 5.0 module',
   'datasheet',
@@ -1744,7 +1744,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 27, "year": 2020, "package": "M.2-2230"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Broadcom BCM4389 WiFi 6E Module',
   'WiFi 6E and Bluetooth 5.2 module',
   'datasheet',
@@ -1760,7 +1760,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 32, "year": 2022, "package": "M.2-2230"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Qualcomm WCN6855 WiFi 6E Module',
   'FastConnect 6900 WiFi 6E module',
   'datasheet',
@@ -1776,7 +1776,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 36, "year": 2022, "package": "M.2-2230"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Qualcomm WCN6856 WiFi 6 Module',
   'FastConnect 6700 WiFi 6 module',
   'datasheet',
@@ -1794,7 +1794,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
 
 -- Display/Touch Controllers (20 references)
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Novatek NT36523 Display Driver',
   'Display driver IC for OLED screens',
   'datasheet',
@@ -1810,7 +1810,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 40, "year": 2021, "package": "COG-128"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Novatek NT36672 Display Driver',
   'Display driver IC for LCD screens',
   'datasheet',
@@ -1826,7 +1826,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 38, "year": 2020, "package": "COG-128"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Synaptics TDDI Touch Controller',
   'Touch and display driver integrated',
   'datasheet',
@@ -1842,7 +1842,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 45, "year": 2021, "package": "COG-144"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Goodix GT928 Touch Controller',
   'Capacitive touch controller',
   'datasheet',
@@ -1858,7 +1858,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 32, "year": 2020, "package": "QFN-48"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'FocalTech FT5436 Touch Controller',
   'Multi-touch capacitive controller',
   'datasheet',
@@ -1876,7 +1876,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
 
 -- Memory/Storage ICs (15 references)
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Samsung K3UH5H5HAMEGJ NAND Flash',
   '512GB UFS 3.1 NAND flash memory',
   'datasheet',
@@ -1892,7 +1892,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 50, "year": 2022, "package": "BGA-153"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Samsung K3LK7L7LAMEGJ NAND Flash',
   '256GB UFS 3.1 NAND flash memory',
   'datasheet',
@@ -1908,7 +1908,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 48, "year": 2021, "package": "BGA-153"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Hynix H9HQ15AFAMMDAR NAND Flash',
   '512GB UFS 3.1 NAND flash memory',
   'datasheet',
@@ -1924,7 +1924,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 52, "year": 2022, "package": "BGA-153"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Micron MT29BZZAC8DJK NAND Flash',
   '512GB UFS 3.1 NAND flash memory',
   'datasheet',
@@ -1940,7 +1940,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 50, "year": 2022, "package": "BGA-153"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Kioxia THGJFAT9T83BAIR NAND Flash',
   '512GB UFS 3.1 NAND flash memory',
   'datasheet',
@@ -1958,7 +1958,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
 
 -- CPU/Processors (15 references)
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Apple A16 Bionic CPU',
   'Hexa-core processor for iPhone 14 Pro',
   'datasheet',
@@ -1974,7 +1974,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 200, "year": 2022, "package": "BGA-4288"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Apple A15 Bionic CPU',
   'Hexa-core processor for iPhone 13',
   'datasheet',
@@ -1990,7 +1990,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 195, "year": 2021, "package": "BGA-3954"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Apple A14 Bionic CPU',
   'Hexa-core processor for iPhone 12',
   'datasheet',
@@ -2006,7 +2006,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 190, "year": 2020, "package": "BGA-3584"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Samsung Exynos 2200 CPU',
   'Octa-core processor with Xclipse GPU',
   'datasheet',
@@ -2022,7 +2022,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 250, "year": 2022, "package": "BGA-4874"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Samsung Exynos 2100 CPU',
   'Octa-core processor with Mali GPU',
   'datasheet',
@@ -2040,7 +2040,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
 
 -- Camera/Sensor ICs (15 references)
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Sony IMX989 Image Sensor',
   '1-inch type image sensor for flagship phones',
   'datasheet',
@@ -2056,7 +2056,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 60, "year": 2022, "package": "COB-40"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Sony IMX766 Image Sensor',
   '1/1.56-inch image sensor',
   'datasheet',
@@ -2072,7 +2072,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 55, "year": 2021, "package": "COB-36"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Samsung ISOCELL GN2 Image Sensor',
   '1/1.12-inch image sensor',
   'datasheet',
@@ -2088,7 +2088,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 58, "year": 2021, "package": "COB-38"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'Samsung ISOCELL HM3 Image Sensor',
   '1/1.33-inch image sensor',
   'datasheet',
@@ -2104,7 +2104,7 @@ INSERT INTO engineering_references (id, title, description, reference_type, manu
   '{"pages": 52, "year": 2020, "package": "COB-34"}'::jsonb
 ),
 (
-  uuid_generate_v4(),
+  md5(random()::text || clock_timestamp()::text)::uuid,
   'OmniVision OV64B Image Sensor',
   '64MP image sensor',
   'datasheet',
