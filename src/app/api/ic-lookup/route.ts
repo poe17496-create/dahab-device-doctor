@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     const { data: icData, error } = await supabaseAdmin
       .from('ic_database')
       .select('*')
-      .or(`ic_number.ilike.%${query}%,ic_name.ilike.%${query}%,category.ilike.%${query}%`)
+      .or(`part_number.ilike.%${query}%,description.ilike.%${query}%,category.ilike.%${query}%`)
       .limit(20);
 
     if (error) {
@@ -29,16 +29,16 @@ export async function GET(req: NextRequest) {
 
     // تحويل البيانات من Supabase إلى الشكل المتوقع
     const results = (icData || []).map((ic: any) => ({
-      partNumber: ic.ic_number,
+      partNumber: ic.part_number,
       category: ic.category,
-      deviceFamily: ic.ic_name,
-      function: ic.ic_name,
-      compatibles: ic.compatibilities || [],
-      commonSymptoms: 'انظر datasheet',
-      diodeReadings: 'انظر datasheet',
+      deviceFamily: ic.specifications?.deviceFamily || 'غير محدد',
+      function: ic.description,
+      compatibles: ic.alternates || [],
+      commonSymptoms: ic.pinout?.commonSymptoms || 'غير محدد',
+      diodeReadings: ic.pinout?.diodeReadings || 'غير محدد',
       donorBoards: [],
       datasheetUrl: ic.datasheet_url,
-      pinout: ic.pinout_data,
+      pinout: ic.pinout,
     }));
 
     return NextResponse.json({ results, source: 'supabase' });
