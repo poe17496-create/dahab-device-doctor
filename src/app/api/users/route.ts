@@ -153,12 +153,12 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      const hb = await updateUserHeartbeat(username, sessionToken, deviceInfo);
-      if (!hb.valid) {
-        if (hb.error?.includes('غير متاح')) {
+      const hbResult = await updateUserHeartbeat(username, sessionToken, deviceInfo) as { valid: boolean; user?: UserAccount; error?: string };
+      if (!hbResult.valid) {
+        if (hbResult.error?.includes('غير متاح')) {
           return NextResponse.json({ success: true, rebuilt: true });
         }
-        return NextResponse.json({ error: hb.error, kicked: true }, { status: 403 });
+        return NextResponse.json({ error: hbResult.error, kicked: true }, { status: 403 });
       }
       return NextResponse.json({ success: true });
     }
@@ -216,7 +216,7 @@ export async function POST(req: NextRequest) {
     }
 
     // حفظ محلي
-    const newUser = await addUser({
+    const newUserResult = await addUser({
       name,
       username: cleanUsername,
       email: email || `${cleanUsername}@doctor.com`,
@@ -227,9 +227,9 @@ export async function POST(req: NextRequest) {
       subscriptionDays: isUnlimited ? undefined : Number(subscriptionDays),
       expiresAt: computedExpiresAt,
       price: price !== undefined ? Number(price) : 50,
-    });
+    }) as UserAccount;
 
-    const { password: _, ...safeUser } = newUser;
+    const { password: _, ...safeUser } = newUserResult;
     return NextResponse.json({ user: safeUser, message: 'تم إصدار الحساب وتفعيله بنجاح' });
   } catch (err: any) {
     return NextResponse.json({ error: err?.message || 'فشل في تنفيذ العملية' }, { status: 500 });
@@ -247,7 +247,7 @@ export async function PUT(req: NextRequest) {
 
     // تبديل حالة التفعيل / التعطيل
     if (action === 'toggleStatus') {
-      const updated = await toggleUserStatus(id);
+      const updated = await toggleUserStatus(id) as UserAccount | null;
       if (isSupabaseConfigured && supabaseAdmin && updated) {
         try {
           await supabaseAdmin.from('users').update({ is_active: updated.active }).eq('username', updated.username);
@@ -260,7 +260,7 @@ export async function PUT(req: NextRequest) {
     // تمديد فترة الاشتراك بالأيام
     if (action === 'extendSubscription') {
       const daysToAdd = days !== undefined ? Number(days) : 30;
-      const updated = await extendSubscription(id, daysToAdd);
+      const updated = await extendSubscription(id, daysToAdd) as UserAccount | null;
       if (isSupabaseConfigured && supabaseAdmin && updated) {
         try {
           await supabaseAdmin.from('users').update({ expires_at: updated.expiresAt }).eq('username', updated.username);
@@ -276,7 +276,8 @@ export async function PUT(req: NextRequest) {
     // إنهاء الجلسة وطرد المستخدم فوراً
     if (action === 'terminateSession') {
       const success = await terminateUserSession(id);
-      const user = (await getAllUsers()).find((u) => u.id === id);
+      const allUsers = await getAllUsers() as UserAccount[];
+      const user = allUsers.find((u: UserAccount) => u.id === id);
       if (isSupabaseConfigured && supabaseAdmin && user) {
         try {
           await supabaseAdmin.from('users').update({ device_id: null }).eq('username', user.username);
@@ -288,8 +289,8 @@ export async function PUT(req: NextRequest) {
 
     // تعديل بيانات المستخدم
     if (action === 'updateUser') {
-      const users = await getAllUsers();
-      const user = users.find((u: any) => u.id === id);
+      const users = await getAllUsers() as UserAccount[];
+      const user = users.find((u: UserAccount) => u.id === id);
       if (!user) return NextResponse.json({ error: 'المستخدم غير موجود' }, { status: 404 });
 
       if (body.name) user.name = body.name;
