@@ -364,10 +364,19 @@ export default function AIChat() {
         hasHistory: !!requestBody.chatHistory?.length,
       });
 
-      const res = await fetch('/api/chat', {
+      // إضافة timestamp لمنع الـ caching على الموبايل
+      const timestamp = Date.now();
+      const url = `/api/chat?_t=${timestamp}`;
+
+      const res = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+        },
         body: JSON.stringify(requestBody),
+        cache: 'no-store',
       });
 
       if (!res.ok) {
@@ -388,7 +397,10 @@ export default function AIChat() {
 
           const chunk = decoder.decode(value, { stream: true });
           rawBuffer += chunk;
-          const lines = chunk.split('\n');
+
+          // تقسيم السطور بشكل أفضل للموبايل
+          const lines = rawBuffer.split('\n');
+          rawBuffer = lines.pop() || ''; // الاحتفاظ بالسطر الأخير غير المكتمل
 
           for (const line of lines) {
             if (line.startsWith('data: ')) {
@@ -409,6 +421,31 @@ export default function AIChat() {
                 }
               } catch (e) {
                 console.error('Error parsing SSE data:', e);
+              }
+            }
+          }
+        }
+
+        // معالجة أي بيانات متبقية في الـ buffer
+        if (rawBuffer.trim()) {
+          const lines = rawBuffer.split('\n');
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                if (data.chunk) {
+                  fullText += data.chunk;
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === assistantId ? { ...msg, content: fullText } : msg
+                    )
+                  );
+                }
+                if (data.done) {
+                  setStreamingMessageId(null);
+                }
+              } catch (e) {
+                console.error('Error parsing remaining SSE data:', e);
               }
             }
           }

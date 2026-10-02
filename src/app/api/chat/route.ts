@@ -6,6 +6,7 @@ import { withErrorHandling, ErrorCode, withTimeout } from '@/lib/apiErrorHandler
 import { chatRequestSchema } from '@/lib/apiSchemas';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 // دالة لتنظيف النص من كتل الميتريكس غير المرغوبة فقط مع الحفاظ الكامل على نص المحادثة والخطوات
 function cleanAIResponse(text: string): string {
@@ -202,13 +203,13 @@ async function chatHandler(req: NextRequest) {
             const { done, value } = await reader.read();
             if (done) break;
 
-            buffer += decoder.decode(value, { stream: true });
+            const chunk = decoder.decode(value, { stream: true });
+            buffer += chunk;
 
-            // Send chunks as SSE events (بدون تقسيم إضافي)
-            if (buffer.length > 0) {
-              const chunk = JSON.stringify({ chunk: buffer });
-              controller.enqueue(encoder.encode(`data: ${chunk}\n\n`));
-              buffer = '';
+            // إرسال الـ chunk فوراً كما هو للموبايل (بدون تجميع)
+            if (chunk.length > 0) {
+              const sseChunk = JSON.stringify({ chunk });
+              controller.enqueue(encoder.encode(`data: ${sseChunk}\n\n`));
             }
           }
 
@@ -224,8 +225,9 @@ async function chatHandler(req: NextRequest) {
     return new Response(stream, {
       headers: {
         'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
+        'Cache-Control': 'no-cache, no-transform',
         'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no', // تعطيل buffering في nginx
       },
     });
   }
