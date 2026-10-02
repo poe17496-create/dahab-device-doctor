@@ -38,10 +38,10 @@ export async function getAllICDatabase(): Promise<any[]> {
       if (!error && data && data.length > 0) {
         // Transform Supabase data to match local format
         const transformed = data.map((ic: any) => ({
-          partNumber: ic.part_number,
-          category: ic.category,
+          partNumber: ic.part_number || '',
+          category: ic.category || 'غير محدد',
           deviceFamily: ic.specifications?.deviceFamily || 'غير محدد',
-          function: ic.description,
+          function: ic.description || 'غير محدد',
           compatibles: ic.alternates || [],
           commonSymptoms: ic.pinout?.commonSymptoms || 'غير محدد',
           diodeReadings: ic.pinout?.diodeReadings || 'غير محدد',
@@ -121,12 +121,19 @@ export async function searchICDatabase(query: string): Promise<any[]> {
   const allIC = await getAllICDatabase();
   const lowerQuery = query.toLowerCase();
 
-  return allIC.filter((ic) =>
-    ic.partNumber.toLowerCase().includes(lowerQuery) ||
-    ic.category.toLowerCase().includes(lowerQuery) ||
-    ic.deviceFamily.toLowerCase().includes(lowerQuery) ||
-    ic.function.toLowerCase().includes(lowerQuery)
-  );
+  return allIC.filter((ic) => {
+    const partNumber = ic.partNumber || '';
+    const category = ic.category || '';
+    const deviceFamily = ic.deviceFamily || '';
+    const function_ = ic.function || '';
+
+    return (
+      partNumber.toLowerCase().includes(lowerQuery) ||
+      category.toLowerCase().includes(lowerQuery) ||
+      deviceFamily.toLowerCase().includes(lowerQuery) ||
+      function_.toLowerCase().includes(lowerQuery)
+    );
+  });
 }
 
 /**
