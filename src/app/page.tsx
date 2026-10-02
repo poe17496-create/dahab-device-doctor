@@ -180,6 +180,7 @@ export default function DahabFixAiConsole() {
       isGuest: true,
     };
     localStorage.setItem('dahab_current_user', JSON.stringify(guestUser));
+    localStorage.setItem('dahab_guest_id', guestId); // حفظ guestId بشكل منفصل
     setGuestTrialsRemaining(remaining);
     setCurrentUser(guestUser);
 
