@@ -395,6 +395,70 @@ export interface Database {
           notes?: string
         }
       }
+      database_backups: {
+        Row: {
+          id: string
+          backup_data: Json
+          description?: string
+          tables_count?: number
+          total_records?: number
+          size_estimate?: string
+          created_by?: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          backup_data: Json
+          description?: string
+          tables_count?: number
+          total_records?: number
+          size_estimate?: string
+          created_by?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          backup_data?: Json
+          description?: string
+          tables_count?: number
+          total_records?: number
+          size_estimate?: string
+          created_by?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      restore_logs: {
+        Row: {
+          id: string
+          backup_id: string
+          restored_by?: string
+          tables_restored?: string[]
+          results: Json
+          success?: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          backup_id: string
+          restored_by?: string
+          tables_restored?: string[]
+          results: Json
+          success?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          backup_id?: string
+          restored_by?: string
+          tables_restored?: string[]
+          results?: Json
+          success?: boolean
+          created_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never

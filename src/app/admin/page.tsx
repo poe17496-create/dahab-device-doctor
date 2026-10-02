@@ -37,6 +37,9 @@ import {
   RefreshCw,
   RotateCw,
   Wifi,
+  DatabaseBackup,
+  UploadCloud,
+  Trash2 as TrashIcon,
 } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import { UserAccount } from '@/lib/auth';
@@ -49,7 +52,7 @@ export default function AdminDashboardPage() {
   const [authError, setAuthError] = useState('');
   const [checkingAuth, setCheckingAuth] = useState(true);
 
-  const [activeTab, setActiveTab] = useState<'technicians' | 'guests' | 'keys' | 'schematics'>('technicians');
+  const [activeTab, setActiveTab] = useState<'technicians' | 'guests' | 'keys' | 'schematics' | 'backup'>('technicians');
   const [users, setUsers] = useState<any[]>([]);
   const [sessionsCount, setSessionsCount] = useState(0);
   const [hwCount, setHwCount] = useState(0);
@@ -97,6 +100,12 @@ export default function AdminDashboardPage() {
   const [onlineQuery, setOnlineQuery] = useState('');
   const [isSearchingOnline, setIsSearchingOnline] = useState(false);
   const [onlineResults, setOnlineResults] = useState<any[]>([]);
+
+  // حالة النسخ الاحتياطي
+  const [backups, setBackups] = useState<any[]>([]);
+  const [backupLoading, setBackupLoading] = useState(false);
+  const [restoreLoading, setRestoreLoading] = useState(false);
+  const [backupDescription, setBackupDescription] = useState('');
 
   useEffect(() => {
     if (successMsg) {
@@ -177,6 +186,12 @@ export default function AdminDashboardPage() {
       return () => clearInterval(interval);
     }
   }, [isAdminAuthenticated]);
+
+  useEffect(() => {
+    if (isAdminAuthenticated && activeTab === 'backup') {
+      fetchBackups();
+    }
+  }, [isAdminAuthenticated, activeTab]);
 
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -394,6 +409,103 @@ export default function AdminDashboardPage() {
       setSuccessMsg(`✅ تم سحب وإضافة المخطط "${sch.name}" للمنظومة بنجاح!`);
     } catch (err) {
       alert('تم إضافة المخطط إلى المنظومة.');
+    }
+  };
+
+  // دوال النسخ الاحتياطي
+  const fetchBackups = async () => {
+    try {
+      const res = await fetch('/api/admin/backup');
+      const data = await res.json();
+      setBackups(data.backups || []);
+    } catch (err) {
+      console.error('Error fetching backups:', err);
+    }
+  };
+
+  const handleCreateBackup = async () => {
+    setBackupLoading(true);
+    try {
+      const res = await fetch('/api/admin/backup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          description: backupDescription || 'نسخة احتياطية يدوية',
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSuccessMsg('✅ تم إنشاء النسخة الاحتياطية بنجاح!');
+        setBackupDescription('');
+        fetchBackups();
+      } else {
+        setAddError(data.error || 'فشل إنشاء النسخة الاحتياطية');
+      }
+    } catch (err) {
+      setAddError('فشل إنشاء النسخة الاحتياطية');
+    } finally {
+      setBackupLoading(false);
+    }
+  };
+
+  const handleRestoreBackup = async (backupId: string) => {
+    if (!confirm('هل تريد بالتأكيد استعادة البيانات من هذه النسخة؟ سيتم الكتابة فوق البيانات الحالية.')) return;
+    setRestoreLoading(true);
+    try {
+      const res = await fetch('/api/admin/backup/restore', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ backupId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSuccessMsg('✅ تم استعادة النسخة الاحتياطية بنجاح!');
+        fetchData();
+      } else {
+        setAddError(data.error || 'فشل استعادة النسخة الاحتياطية');
+      }
+    } catch (err) {
+      setAddError('فشل استعادة النسخة الاحتياطية');
+    } finally {
+      setRestoreLoading(false);
+    }
+  };
+
+  const handleDeleteBackup = async (backupId: string) => {
+    if (!confirm('هل تريد حذف هذه النسخة الاحتياطية نهائياً؟')) return;
+    try {
+      const res = await fetch(`/api/admin/backup/${backupId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        setSuccessMsg('تم حذف النسخة الاحتياطية');
+        fetchBackups();
+      } else {
+        setAddError(data.error || 'فشل حذف النسخة الاحتياطية');
+      }
+    } catch (err) {
+      setAddError('فشل حذف النسخة الاحتياطية');
+    }
+  };
+
+  const handleDownloadBackup = async (backupId: string) => {
+    try {
+      const res = await fetch(`/api/admin/backup/${backupId}`);
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `dahab_backup_${backupId}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        setSuccessMsg('تم تحميل النسخة الاحتياطية بنجاح');
+      } else {
+        setAddError('فشل تحميل النسخة الاحتياطية');
+      }
+    } catch (err) {
+      setAddError('فشل تحميل النسخة الاحتياطية');
     }
   };
 
@@ -707,6 +819,18 @@ export default function AdminDashboardPage() {
           >
             <FileArchive className="w-4 h-4 text-dahab-500" />
             <span>المخططات والدوائر 📐</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('backup')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition ${
+              activeTab === 'backup'
+                ? 'bg-white dark:bg-workshop-card text-dahab-600 dark:text-dahab-400 shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+            }`}
+          >
+            <DatabaseBackup className="w-4 h-4 text-rose-500" />
+            <span>النسخ الاحتياطي 💾</span>
           </button>
         </div>
 
@@ -1701,6 +1825,210 @@ export default function AdminDashboardPage() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* تبويب النسخ الاحتياطي */}
+        {activeTab === 'backup' && (
+          <div className="space-y-5 animate-fadeIn">
+            {/* كروت إحصائيات النسخ الاحتياطي */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="p-4 rounded-2xl bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border shadow-lg space-y-1">
+                <div className="text-xs font-bold text-dahab-600 dark:text-dahab-400 flex items-center justify-between">
+                  <span>إجمالي النسخ الاحتياطية</span>
+                  <DatabaseBackup className="w-4 h-4 text-dahab-500" />
+                </div>
+                <div className="text-3xl font-black font-mono text-dahab-600 dark:text-dahab-400">
+                  {backups.length}
+                </div>
+                <div className="text-[10px] text-gray-400">نسخة محفوظة في قاعدة البيانات</div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border shadow-lg space-y-1">
+                <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center justify-between">
+                  <span>آخر نسخة احتياطية</span>
+                  <Clock className="w-4 h-4 text-emerald-500" />
+                </div>
+                <div className="text-sm font-black font-mono text-emerald-600 dark:text-emerald-400">
+                  {backups.length > 0 ? new Date(backups[0].created_at).toLocaleDateString('ar-EG') : 'لا يوجد'}
+                </div>
+                <div className="text-[10px] text-gray-400">تاريخ آخر نسخة</div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border shadow-lg space-y-1">
+                <div className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center justify-between">
+                  <span>إجمالي السجلات المحفوظة</span>
+                  <Activity className="w-4 h-4 text-amber-500" />
+                </div>
+                <div className="text-3xl font-black font-mono text-amber-600 dark:text-amber-400">
+                  {backups.reduce((sum, b) => sum + (b.total_records || 0), 0)}
+                </div>
+                <div className="text-[10px] text-gray-400">سجل في جميع النسخ</div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border shadow-lg space-y-1">
+                <div className="text-xs font-bold text-sky-600 dark:text-sky-400 flex items-center justify-between">
+                  <span>الحجم الإجمالي</span>
+                  <UploadCloud className="w-4 h-4 text-sky-500" />
+                </div>
+                <div className="text-3xl font-black font-mono text-sky-600 dark:text-sky-400">
+                  {backups.reduce((sum, b) => {
+                    const size = parseFloat(b.size_estimate) || 0;
+                    return sum + size;
+                  }, 0).toFixed(2)} KB
+                </div>
+                <div className="text-[10px] text-gray-400">حجم جميع النسخ</div>
+              </div>
+            </div>
+
+            {/* إنشاء نسخة احتياطية جديدة */}
+            <div className="p-5 rounded-3xl bg-gradient-to-br from-dahab-500/10 via-white dark:via-workshop-card to-rose-500/5 border border-dahab-500/40 shadow-xl space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-dahab-500/20 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-dahab-500/20 text-dahab-500 flex items-center justify-center font-bold">
+                    <DatabaseBackup className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-black text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                      <span>إنشاء نسخة احتياطية جديدة 💾</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-dahab-500/20 text-dahab-600 dark:text-dahab-400">
+                        يدوي (Manual)
+                      </span>
+                    </h2>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                      قم بإنشاء نسخة احتياطية فورية لجميع البيانات في قاعدة البيانات
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={backupDescription}
+                    onChange={(e) => setBackupDescription(e.target.value)}
+                    placeholder="وصف النسخة الاحتياطية (اختياري)..."
+                    className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-xs outline-none focus:border-dahab-500 font-sans"
+                  />
+                </div>
+                <button
+                  onClick={handleCreateBackup}
+                  disabled={backupLoading}
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-dahab-500 to-amber-600 hover:from-dahab-600 hover:to-amber-700 text-slate-950 font-black text-xs transition shadow-md shadow-dahab-500/20 disabled:opacity-50 flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+                >
+                  {backupLoading ? (
+                    <>
+                      <RotateCw className="w-4 h-4 animate-spin" />
+                      <span>جاري إنشاء النسخة...</span>
+                    </>
+                  ) : (
+                    <>
+                      <UploadCloud className="w-4 h-4" />
+                      <span>إنشاء نسخة احتياطية 📥</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* قائمة النسخ الاحتياطية */}
+            <div className="p-5 rounded-3xl bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border shadow-xl space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 dark:border-gray-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <DatabaseBackup className="w-5 h-5 text-dahab-500" />
+                  <div>
+                    <h2 className="text-base font-black text-gray-900 dark:text-gray-100">
+                      النسخ الاحتياطية المحفوظة ({backups.length})
+                    </h2>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                      يمكنك استعادة أو تحميل أو حذف أي نسخة احتياطية
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={fetchBackups}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-xs font-bold transition"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>تحديث</span>
+                </button>
+              </div>
+
+              {backups.length === 0 ? (
+                <div className="text-center py-10 text-gray-400 space-y-2">
+                  <DatabaseBackup className="w-12 h-12 mx-auto opacity-30" />
+                  <p className="text-sm font-bold">لا توجد نسخ احتياطية حالياً</p>
+                  <p className="text-xs">قم بإنشاء نسخة احتياطية جديدة من الأعلى</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-right text-xs">
+                    <thead className="bg-gray-100 dark:bg-gray-900/80 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-200 dark:border-gray-800">
+                      <tr>
+                        <th className="p-3">معرف النسخة</th>
+                        <th className="p-3">الوصف</th>
+                        <th className="p-3">تاريخ الإنشاء</th>
+                        <th className="p-3">عدد الجداول</th>
+                        <th className="p-3">عدد السجلات</th>
+                        <th className="p-3">الحجم</th>
+                        <th className="p-3 text-center">الإجراءات</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                      {backups.map((backup) => (
+                        <tr key={backup.id} className="hover:bg-gray-50 dark:hover:bg-gray-850/50 transition">
+                          <td className="p-3 font-mono font-bold text-gray-900 dark:text-gray-100">
+                            {backup.id}
+                          </td>
+                          <td className="p-3 text-gray-600 dark:text-gray-300">
+                            {backup.description || 'بدون وصف'}
+                          </td>
+                          <td className="p-3 text-gray-500 font-mono text-[11px]">
+                            {new Date(backup.created_at).toLocaleString('ar-EG')}
+                          </td>
+                          <td className="p-3 font-mono font-bold text-dahab-600 dark:text-dahab-400">
+                            {backup.tables_count || 0}
+                          </td>
+                          <td className="p-3 font-mono font-bold text-dahab-600 dark:text-dahab-400">
+                            {backup.total_records || 0}
+                          </td>
+                          <td className="p-3 font-mono text-gray-500">
+                            {backup.size_estimate || '0 KB'}
+                          </td>
+                          <td className="p-3 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => handleRestoreBackup(backup.id)}
+                                disabled={restoreLoading}
+                                className="p-1.5 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition disabled:opacity-50"
+                                title="استعادة هذه النسخة"
+                              >
+                                <UploadCloud className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleDownloadBackup(backup.id)}
+                                className="p-1.5 text-sky-500 hover:bg-sky-500/10 rounded-lg transition"
+                                title="تحميل النسخة"
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteBackup(backup.id)}
+                                className="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-lg transition"
+                                title="حذف النسخة"
+                              >
+                                <TrashIcon className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         )}
