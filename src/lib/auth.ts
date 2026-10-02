@@ -286,6 +286,22 @@ export function verifyLogin(
     return { user: null, error: 'انتهت فترة اشتراك الحساب، يرجى التواصل مع المشرف العام لتجديد الاشتراك.' };
   }
 
+  // نظام قفل الجهاز الوحيد - منع الدخول المتعدد لنفس الحساب
+  if (user.deviceInfo && user.deviceInfo !== deviceInfo && user.isOnline) {
+    // إذا كان المستخدم متصل بالفعل من جهاز آخر
+    const timeSinceLastSeen = user.lastSeenAt
+      ? Date.now() - new Date(user.lastSeenAt).getTime()
+      : Infinity;
+
+    // إذا كان النشاط خلال آخر 5 دقائق، اعتباره متصل حالياً
+    if (timeSinceLastSeen < 5 * 60 * 1000) {
+      return {
+        user: null,
+        error: '⚠️ هذا الحساب مسجل الدخول حالياً من جهاز آخر. يرجى التأكد من أنك قمت بتسجيل الخروج من الجهاز الآخر أولاً، أو انتظر حتى يخرج المستخدم الآخر.',
+      };
+    }
+  }
+
   // توليد رمز جلسة جديد فريد وطرد أي جهاز سابق فوراً
   const newSessionToken = `token_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
   user.activeSessionToken = newSessionToken;

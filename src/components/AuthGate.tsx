@@ -90,7 +90,12 @@ export default function AuthGate({ onAuthenticated, onGuestAccess }: AuthGatePro
           onAuthenticated(u);
           return;
         }
-        setError(data.error || 'اسم المستخدم أو كلمة المرور غير صحيحة، أو انتهت صلاحية الحساب.');
+        // معالجة خاصة لحالة تسجيل الدخول من جهاز آخر
+        if (res.status === 409) {
+          setError(data.message || '⚠️ هذا الحساب مسجل الدخول حالياً من جهاز آخر');
+        } else {
+          setError(data.error || 'اسم المستخدم أو كلمة المرور غير صحيحة، أو انتهت صلاحية الحساب.');
+        }
         return;
       }
 

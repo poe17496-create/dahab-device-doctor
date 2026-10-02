@@ -36,7 +36,12 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || 'فشل تسجيل الدخول، تأكد من بيانات الحساب');
+        // معالجة خاصة لحالة تسجيل الدخول من جهاز آخر
+        if (res.status === 409) {
+          setError(data.message || '⚠️ هذا الحساب مسجل الدخول حالياً من جهاز آخر');
+        } else {
+          setError(data.error || 'فشل تسجيل الدخول، تأكد من بيانات الحساب');
+        }
         setLoading(false);
         return;
       }

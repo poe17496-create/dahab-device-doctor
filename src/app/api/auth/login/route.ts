@@ -74,6 +74,18 @@ export async function POST(req: NextRequest) {
 
           // نظام قفل الجهاز الوحيد والتنقل اللحظي (Single Device Lock)
           if (user.device_id !== effectiveDeviceId) {
+            // إخطار المستخدم الجديد بأن شخص آخر يعمل الآن
+            if (user.device_id) {
+              return NextResponse.json(
+                {
+                  success: false,
+                  message: '⚠️ هذا الحساب مسجل الدخول حالياً من جهاز آخر. يرجى التأكد من أنك قمت بتسجيل الخروج من الجهاز الآخر أولاً، أو انتظر حتى يخرج المستخدم الآخر.',
+                  requireLogout: true,
+                },
+                { status: 409 }
+              );
+            }
+
             // تحديث معرف الجهاز للجهاز الجديد فوراً لطرد الجهاز القديم في نفس اللحظة
             await supabase
               .from('users')
