@@ -36,6 +36,7 @@ import {
   Check,
   RefreshCw,
   RotateCw,
+  Wifi,
 } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import { UserAccount } from '@/lib/auth';
@@ -607,6 +608,15 @@ export default function AdminDashboardPage() {
 
           <div className="flex items-center gap-2 flex-wrap">
             <ThemeToggle />
+
+            <Link
+              href="/admin/online-users"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-xs font-bold text-emerald-700 dark:text-emerald-300 transition"
+              title="عرض المستخدمين المتصلين حالياً"
+            >
+              <Wifi className="w-4 h-4 text-emerald-500" />
+              <span>المتصلين ({onlineUsersCount})</span>
+            </Link>
 
             <Link
               href="/ecosystem"
