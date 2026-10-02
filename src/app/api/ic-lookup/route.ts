@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { searchICDatabase } from '@/lib/dataServices';
+import { searchICDatabase } from '@/lib/icDatabase';
+import { isSupabaseConfigured } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +15,11 @@ export async function GET(req: NextRequest) {
 
     const results = await searchICDatabase(query);
 
-    return NextResponse.json({ results, source: 'supabase-or-fallback' });
+    return NextResponse.json({
+      results,
+      source: isSupabaseConfigured ? 'supabase' : 'local-json',
+      count: results.length,
+    });
   } catch (error) {
     console.error('IC Lookup API error:', error);
     return NextResponse.json({ error: 'فشل في البحث عن بدائل الآيسي' }, { status: 500 });

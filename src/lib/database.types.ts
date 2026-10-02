@@ -978,6 +978,147 @@ export interface Database {
           metadata?: Json
         }
       }
+      ic_database: {
+        Row: {
+          id: string
+          part_number: string
+          category: string
+          device_family: string
+          function: string
+          compatibles: string[]
+          common_symptoms?: string
+          diode_readings?: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          part_number: string
+          category: string
+          device_family: string
+          function: string
+          compatibles?: string[]
+          common_symptoms?: string
+          diode_readings?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          part_number?: string
+          category?: string
+          device_family?: string
+          function?: string
+          compatibles?: string[]
+          common_symptoms?: string
+          diode_readings?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      hardware_schematics_matrix: {
+        Row: {
+          id: string
+          brand: string
+          model: string
+          board_code: string
+          category: string
+          year?: number
+          main_chips: Json
+          power_rails: Json
+          key_components: Json
+          cpu?: string
+          gpu?: string
+          pmic?: string
+          audio_codec?: string
+          wifi_module?: string
+          bluetooth_module?: string
+          display_driver?: string
+          touch_controller?: string
+          storage_controller?: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          brand: string
+          model: string
+          board_code: string
+          category: string
+          year?: number
+          main_chips?: Json
+          power_rails?: Json
+          key_components?: Json
+          cpu?: string
+          gpu?: string
+          pmic?: string
+          audio_codec?: string
+          wifi_module?: string
+          bluetooth_module?: string
+          display_driver?: string
+          touch_controller?: string
+          storage_controller?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          brand?: string
+          model?: string
+          board_code?: string
+          category?: string
+          year?: number
+          main_chips?: Json
+          power_rails?: Json
+          key_components?: Json
+          cpu?: string
+          gpu?: string
+          pmic?: string
+          audio_codec?: string
+          wifi_module?: string
+          bluetooth_module?: string
+          display_driver?: string
+          touch_controller?: string
+          storage_controller?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      donor_boards: {
+        Row: {
+          id: string
+          board_id: string
+          brand: string
+          model: string
+          board_code: string
+          category: string
+          role_on_board: string
+          chip_name: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          board_id: string
+          brand: string
+          model: string
+          board_code: string
+          category: string
+          role_on_board: string
+          chip_name: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          board_id?: string
+          brand?: string
+          model?: string
+          board_code?: string
+          category?: string
+          role_on_board?: string
+          chip_name?: string
+          created_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never

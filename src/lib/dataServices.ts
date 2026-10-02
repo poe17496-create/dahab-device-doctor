@@ -8,6 +8,7 @@ import {
   buildIphone12ProBoard,
   buildIphone11ProMaxBoard,
 } from './boardviewPresets';
+import { searchICDatabase as searchICDatabaseNew } from './icDatabase';
 
 // Cache for IC database
 let icCache: any[] | null = null;
@@ -40,11 +41,11 @@ export async function getAllICDatabase(): Promise<any[]> {
         const transformed = data.map((ic: any) => ({
           partNumber: ic.part_number || '',
           category: ic.category || 'غير محدد',
-          deviceFamily: ic.specifications?.deviceFamily || 'غير محدد',
-          function: ic.description || 'غير محدد',
-          compatibles: ic.alternates || [],
-          commonSymptoms: ic.pinout?.commonSymptoms || 'غير محدد',
-          diodeReadings: ic.pinout?.diodeReadings || 'غير محدد',
+          deviceFamily: ic.device_family || 'غير محدد',
+          function: ic.function || 'غير محدد',
+          compatibles: ic.compatibles || [],
+          commonSymptoms: ic.common_symptoms || 'غير محدد',
+          diodeReadings: ic.diode_readings || 'غير محدد',
         }));
 
         icCache = transformed;
@@ -115,25 +116,11 @@ export async function getAllBoardviews(): Promise<any[]> {
 }
 
 /**
- * Search IC database
+ * Search IC database (delegates to icDatabase.ts for better functionality)
  */
 export async function searchICDatabase(query: string): Promise<any[]> {
-  const allIC = await getAllICDatabase();
-  const lowerQuery = query.toLowerCase();
-
-  return allIC.filter((ic) => {
-    const partNumber = ic.partNumber || '';
-    const category = ic.category || '';
-    const deviceFamily = ic.deviceFamily || '';
-    const function_ = ic.function || '';
-
-    return (
-      partNumber.toLowerCase().includes(lowerQuery) ||
-      category.toLowerCase().includes(lowerQuery) ||
-      deviceFamily.toLowerCase().includes(lowerQuery) ||
-      function_.toLowerCase().includes(lowerQuery)
-    );
-  });
+  // Use the new enhanced function from icDatabase.ts
+  return await searchICDatabaseNew(query);
 }
 
 /**
