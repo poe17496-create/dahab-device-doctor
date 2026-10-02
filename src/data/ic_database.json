@@ -898,5 +898,230 @@
     "compatibles": ["U42 (different batch)"],
     "commonSymptoms": "لا يشتغل، سحب 0.00A، سخونة على الآيسي.",
     "diodeReadings": "فحص خطوط PP3V3 و PP5V، الممانعة المتوقعة 0.300V-0.500V."
+  },
+  {
+    "partNumber": "Snapdragon 8 Gen 2",
+    "category": "Main SoC",
+    "deviceFamily": "Samsung Galaxy S23 / Xiaomi 13 / OnePlus 11",
+    "function": "معالج كوالكوم الجيل الثاني مع مودم مدمج",
+    "compatibles": ["Snapdragon 8+ Gen 1", "Snapdragon 8 Gen 3 (with board modification)"],
+    "commonSymptoms": "سخونة شديدة، ريستارت، توقف عند لوجو، سحب 0.90A-1.5A.",
+    "diodeReadings": "فحص خطوط VDD_CPU و VDD_GPU، الممانعة الطبيعية 0.018V-0.065V."
+  },
+  {
+    "partNumber": "Snapdragon 8 Gen 3",
+    "category": "Main SoC",
+    "deviceFamily": "Samsung Galaxy S24 / Xiaomi 14 / OnePlus 12",
+    "function": "معالج كوالكوم الجيل الثالث مع مودم مدمج",
+    "compatibles": ["Snapdragon 8 Gen 2", "Snapdragon 8+ Gen 3"],
+    "commonSymptoms": "سخونة شديدة، ريستارت، توقف عند لوجو، سحب 1.0A-1.8A.",
+    "diodeReadings": "فحص خطوط VDD_CPU و VDD_GPU، الممانعة الطبيعية 0.015V-0.060V."
+  },
+  {
+    "partNumber": "Dimensity 9300",
+    "category": "Main SoC",
+    "deviceFamily": "Vivo X100 / Oppo Find X7 / iQOO 12",
+    "function": "معالج MediaTek الرئيسي مع مودم مدمج",
+    "compatibles": ["Dimensity 9200", "Dimensity 8300"],
+    "commonSymptoms": "سخونة شديدة، ريستارت، توقف عند لوجو.",
+    "diodeReadings": "فحص خطوط VDD_CPU و VDD_GPU، الممانعة الطبيعية 0.020V-0.070V."
+  },
+  {
+    "partNumber": "A14",
+    "category": "Main CPU",
+    "deviceFamily": "Apple iPhone 12 / 12 Pro / 12 Pro Max",
+    "function": "المعالج الرئيسي (Bionic)",
+    "compatibles": ["A14 Bionic (different batch)"],
+    "commonSymptoms": "موت كامل، سحب 0.00A، سخونة على المعالج.",
+    "diodeReadings": "فحص خطوط VDD_CPU و VDD_GPU، الممانعة الطبيعية 0.022V-0.075V."
+  },
+  {
+    "partNumber": "A15",
+    "category": "Main CPU",
+    "deviceFamily": "Apple iPhone 13 / 13 Pro / 13 Pro Max",
+    "function": "المعالج الرئيسي (Bionic)",
+    "compatibles": ["A15 Bionic (different batch)"],
+    "commonSymptoms": "موت كامل، سحب 0.00A، سخونة على المعالج.",
+    "diodeReadings": "فحص خطوط VDD_CPU و VDD_GPU، الممانعة الطبيعية 0.020V-0.070V."
+  },
+  {
+    "partNumber": "A16",
+    "category": "Main CPU",
+    "deviceFamily": "Apple iPhone 14 / 14 Pro / 14 Pro Max",
+    "function": "المعالج الرئيسي (Bionic)",
+    "compatibles": ["A16 Bionic (different batch)"],
+    "commonSymptoms": "موت كامل، سحب 0.00A، سخونة على المعالج.",
+    "diodeReadings": "فحص خطوط VDD_CPU و VDD_GPU، الممانعة الطبيعية 0.018V-0.065V."
+  },
+  {
+    "partNumber": "A17 Pro",
+    "category": "Main CPU",
+    "deviceFamily": "Apple iPhone 15 / 15 Pro / 15 Pro Max",
+    "function": "المعالج الرئيسي (Bionic)",
+    "compatibles": ["A17 Pro (different batch)"],
+    "commonSymptoms": "موت كامل، سحب 0.00A، سخونة على المعالج.",
+    "diodeReadings": "فحص خطوط VDD_CPU و VDD_GPU، الممانعة الطبيعية 0.015V-0.060V."
+  },
+  {
+    "partNumber": "BQ25970",
+    "category": "Battery Charger / Power Path",
+    "deviceFamily": "Samsung Galaxy S22 / S23 / S24 Series",
+    "function": "آيسي الشحن السريع (Super Fast Charging 2.0)",
+    "compatibles": ["BQ25971", "BQ25972"],
+    "commonSymptoms": "شحن بطيء، لا يشحن بالشاحن السريع 45W.",
+    "diodeReadings": "فحص مسارات VBUS و VPH_PWR."
+  },
+  {
+    "partNumber": "PM8350",
+    "category": "PMIC (Main Power IC)",
+    "deviceFamily": "Qualcomm Snapdragon 888 Devices",
+    "function": "آيسي الباور الرئيسي",
+    "compatibles": ["PM8350-002", "PM8350-102"],
+    "commonSymptoms": "موت الجهاز، سحب 0.05A-0.10A وتوقف.",
+    "diodeReadings": "قياس ممانعة ملفات البك المحيطة."
+  },
+  {
+    "partNumber": "PM8450",
+    "category": "PMIC (Main Power IC)",
+    "deviceFamily": "Qualcomm Snapdragon 8 Gen 1 Devices",
+    "function": "آيسي الباور الرئيسي",
+    "compatibles": ["PM8450-002", "PM8450-102"],
+    "commonSymptoms": "موت الجهاز، سحب 0.05A-0.10A وتوقف.",
+    "diodeReadings": "قياس ممانعة ملفات البك المحيطة."
+  },
+  {
+    "partNumber": "PM8550",
+    "category": "PMIC (Main Power IC)",
+    "deviceFamily": "Qualcomm Snapdragon 8 Gen 2 Devices",
+    "function": "آيسي الباور الرئيسي",
+    "compatibles": ["PM8550-002", "PM8550-102"],
+    "commonSymptoms": "موت الجهاز، سحب 0.05A-0.10A وتوقف.",
+    "diodeReadings": "قياس ممانعة ملفات البك المحيطة."
+  },
+  {
+    "partNumber": "RT9486",
+    "category": "Battery Charger / Power Path",
+    "deviceFamily": "Xiaomi / Redmi / Oppo High-end Devices",
+    "function": "آيسي الشحن السريع (Quick Charge 4+)",
+    "compatibles": ["RT9486A", "RT9486B"],
+    "commonSymptoms": "شحن بطيء، لا يشحن بالشاحن السريع.",
+    "diodeReadings": "فحص مسارات VBUS و VPH_PWR."
+  },
+  {
+    "partNumber": "ISL69260",
+    "category": "CPU VCORE PWM Controller",
+    "deviceFamily": "Laptop Motherboards (Intel 11th/12th Gen)",
+    "function": "متحكم دائرة فولتية المعالج الحديث",
+    "compatibles": ["ISL69260A", "ISL69260B"],
+    "commonSymptoms": "غياب فولتية الـ VCORE.",
+    "diodeReadings": "فحص رجل الـ VDD_5V ورجل الـ VR_ON."
+  },
+  {
+    "partNumber": "RAA229620",
+    "category": "CPU VCORE PWM Controller",
+    "deviceFamily": "Laptop Motherboards (Intel 12th/13th Gen)",
+    "function": "متحكم دائرة فولتية المعالج الحديث",
+    "compatibles": ["RAA229621", "RAA229622"],
+    "commonSymptoms": "غياب فولتية الـ VCORE.",
+    "diodeReadings": "فحص رجل الـ VDD_5V ورجل الـ VR_ON."
+  },
+  {
+    "partNumber": "MP2888",
+    "category": "CPU VCORE PWM Controller",
+    "deviceFamily": "Laptop Motherboards (Intel 11th/12th Gen)",
+    "function": "متحكم دائرة فولتية المعالج الحديث",
+    "compatibles": ["MP2888A", "MP2888B"],
+    "commonSymptoms": "غياب فولتية الـ VCORE.",
+    "diodeReadings": "فحص رجل الـ VDD_5V ورجل الـ VR_ON."
+  },
+  {
+    "partNumber": "BQ25960",
+    "category": "Battery Charger / Power Path",
+    "deviceFamily": "Samsung Galaxy S20 / S21",
+    "function": "آيسي الشحن السريع (45W)",
+    "compatibles": ["BQ25961", "BQ25962"],
+    "commonSymptoms": "شحن بطيء، لا يشحن بالشاحن السريع.",
+    "diodeReadings": "فحص مسارات VBUS و VPH_PWR."
+  },
+  {
+    "partNumber": "SM5442",
+    "category": "Battery Charger / Power Path",
+    "deviceFamily": "Samsung Galaxy S23 / S24",
+    "function": "آيسي الشحن السريع (Super Fast Charging)",
+    "compatibles": ["SM5442E", "SM5442F"],
+    "commonSymptoms": "شحن بطيء، لا يشحن بالشاحن السريع.",
+    "diodeReadings": "فحص مسارات VBUS و VPH_PWR."
+  },
+  {
+    "partNumber": "BQ40Z50",
+    "category": "Battery Fuel Gauge",
+    "deviceFamily": "Laptop Batteries / Power Banks",
+    "function": "آيسي قياس البطارية (Fuel Gauge)",
+    "compatibles": ["BQ40Z60", "BQ40Z80"],
+    "commonSymptoms": "نسبة البطارية غير دقيقة، البطارية لا تشحن.",
+    "diodeReadings": "فحص مسارات SMBus."
+  },
+  {
+    "partNumber": "BQ27441",
+    "category": "Battery Fuel Gauge",
+    "deviceFamily": "Mobile Devices / Power Banks",
+    "function": "آيسي قياس البطارية (Fuel Gauge)",
+    "compatibles": ["BQ27426", "BQ27421"],
+    "commonSymptoms": "نسبة البطارية غير دقيقة.",
+    "diodeReadings": "فحص مسارات I2C."
+  },
+  {
+    "partNumber": "WCD9385",
+    "category": "Audio Codec",
+    "deviceFamily": "Qualcomm Snapdragon 888/8 Gen 1 Devices",
+    "function": "آيسي الصوت والميكروفون",
+    "compatibles": ["WCD9380", "WCD9390"],
+    "commonSymptoms": "لا يوجد صوت، المايك لا يعمل.",
+    "diodeReadings": "فحص مسارات الصوت والميكروفون."
+  },
+  {
+    "partNumber": "CS42L83",
+    "category": "Audio Codec",
+    "deviceFamily": "Apple iPhone 8 / 8 Plus / X",
+    "function": "آيسي الصوت (Audio IC)",
+    "compatibles": ["CS42L84", "CS42L85"],
+    "commonSymptoms": "لا صوت، سماعة الرأس لا تعمل.",
+    "diodeReadings": "فحص خطوط I2S."
+  },
+  {
+    "partNumber": "Face ID IC",
+    "category": "Security / Biometric",
+    "deviceFamily": "iPhone X / 11 / 12 / 13 / 14 / 15",
+    "function": "آيسي Face ID",
+    "compatibles": ["Face ID (same model only)"],
+    "commonSymptoms": "Face ID لا يعمل، خطأ 40 في iTunes.",
+    "diodeReadings": "فحص خطوط SPI و RESET."
+  },
+  {
+    "partNumber": "PMIC A17",
+    "category": "PMIC (Power Management)",
+    "deviceFamily": "Apple iPhone 15 / 15 Pro / 15 Pro Max",
+    "function": "آيسي إدارة الطاقة الرئيسي",
+    "compatibles": ["338S00900", "338S00901"],
+    "commonSymptoms": "لا يشتغل، سحب 0.00A، سخونة على PMIC.",
+    "diodeReadings": "فحص خطوط V_BATT و V_USB، الممانعة المتوقعة 0.350V-0.450V."
+  },
+  {
+    "partNumber": "A18",
+    "category": "Main CPU",
+    "deviceFamily": "Apple iPhone 16 / 16 Pro / 16 Pro Max",
+    "function": "المعالج الرئيسي (Bionic)",
+    "compatibles": ["A18 Bionic (different batch)"],
+    "commonSymptoms": "موت كامل، سحب 0.00A، سخونة على المعالج.",
+    "diodeReadings": "فحص خطوط VDD_CPU و VDD_GPU، الممانعة الطبيعية 0.012V-0.055V."
+  },
+  {
+    "partNumber": "PMIC A18",
+    "category": "PMIC (Power Management)",
+    "deviceFamily": "Apple iPhone 16 / 16 Pro / 16 Pro Max",
+    "function": "آيسي إدارة الطاقة الرئيسي",
+    "compatibles": ["338S00950", "338S00951"],
+    "commonSymptoms": "لا يشتغل، سحب 0.00A، سخونة على PMIC.",
+    "diodeReadings": "فحص خطوط V_BATT و V_USB، الممانعة المتوقعة 0.350V-0.450V."
   }
 ]

@@ -73,13 +73,37 @@ const SPECIALTY_OPTIONS: { id: DeviceSpecialty; label: string; icon: any; hint: 
 type CategoryId = 'mobile' | 'laptop' | 'desktop' | 'other';
 
 const CATEGORIES = [
-  { 
-    id: 'mobile' as CategoryId, 
-    label: 'موبايل (Mobile)', 
+  {
+    id: 'mobile' as CategoryId,
+    label: 'موبايل (Mobile)',
     desc: 'iPhone, Samsung, Xiaomi, Huawei, etc.',
     icon: Smartphone,
     specialties: ['mobile-repair'],
-    chips: ['iPhone 15 Pro', 'iPhone 13', 'Samsung S24 Ultra', 'Xiaomi 14'],
+    chips: [
+      'iPhone 15 Pro Max',
+      'iPhone 14 Pro',
+      'iPhone 13 Pro',
+      'iPhone 12',
+      'iPhone 11',
+      'iPhone XR',
+      'Samsung S24 Ultra',
+      'Samsung S23 Ultra',
+      'Samsung S22 Ultra',
+      'Samsung A54',
+      'Samsung A34',
+      'Xiaomi 14 Ultra',
+      'Xiaomi 13 Pro',
+      'Redmi Note 13',
+      'Redmi Note 12',
+      'Realme GT 3',
+      'Realme 11 Pro',
+      'Oppo Find X7',
+      'Oppo Reno 10',
+      'Huawei P60 Pro',
+      'Huawei Mate 60',
+      'Pixel 8 Pro',
+      'Pixel 7 Pro'
+    ],
     prompts: [
       'شورت صريح مع سخونة وسحب أمبير عالي قبل الضغط على الباور',
       'سحب 0.08A والتوقف عند الضغط على الباور (Freezing Boot)',
@@ -98,13 +122,37 @@ const CATEGORIES = [
       'الجهاز يعمل لكن يفرق باور عند التحميل'
     ]
   },
-  { 
-    id: 'laptop' as CategoryId, 
-    label: 'لابتوب (Laptop)', 
+  {
+    id: 'laptop' as CategoryId,
+    label: 'لابتوب (Laptop)',
     desc: 'MacBook, Dell, HP, Lenovo, etc.',
     icon: Laptop,
     specialties: ['laptop-motherboard'],
-    chips: ['MacBook Pro M3', 'Dell XPS 15', 'ThinkPad X1 Carbon', 'HP EliteBook'],
+    chips: [
+      'MacBook Pro M3 Max',
+      'MacBook Pro M2',
+      'MacBook Air M2',
+      'MacBook Pro 16" M1',
+      'MacBook Air M1',
+      'Dell XPS 15',
+      'Dell XPS 13',
+      'Dell Latitude 7000',
+      'Dell Inspiron 16',
+      'ThinkPad X1 Carbon',
+      'ThinkPad T14',
+      'ThinkPad E16',
+      'Lenovo Legion 9i',
+      'HP EliteBook 860',
+      'HP Spectre x360',
+      'HP Pavilion Gaming',
+      'HP ZBook Studio',
+      'ASUS ROG Zephyrus',
+      'ASUS ZenBook Pro',
+      'Acer Swift 14',
+      'Acer Predator Helios',
+      'MSI Raider GE78',
+      'Microsoft Surface Laptop 5'
+    ],
     prompts: [
       'لابتوب قاطع باور تماماً، لا يوجد سحب للأمبير',
       'يضيء لمبة الباور لثوانٍ ثم ينطفئ (ريستارت متكرر)',

@@ -514,10 +514,10 @@ export default function DahabFixAiConsole() {
   }
 
   return (
-    <div className={`min-h-screen flex flex-col font-sans bg-gray-50 dark:bg-workshop-bg text-gray-900 dark:text-gray-100 transition-colors duration-300 ${isDesktopMode ? 'w-[1200px] max-w-[1200px] mx-auto overflow-x-visible' : 'w-full overflow-x-hidden'}`}>
+    <div className={`min-h-screen flex flex-col font-sans bg-gradient-to-br from-dahab-50 via-amber-50 to-orange-50 dark:bg-workshop-bg text-gray-900 dark:text-gray-100 transition-colors duration-300 ${isDesktopMode ? 'w-[1200px] max-w-[1200px] mx-auto overflow-x-visible' : 'w-full overflow-x-hidden'}`}>
       {/* شريط الزائر المؤقت - مدمج ومختصر */}
       {currentUser?.isGuest && (
-        <div className="bg-gradient-to-r from-sky-600 to-indigo-600 text-white text-center py-1.5 px-3 text-xs font-bold flex items-center justify-between gap-2 z-[60] relative">
+        <div className="bg-gradient-to-r from-dahab-500 to-amber-600 text-white text-center py-1.5 px-3 text-xs font-bold flex items-center justify-between gap-2 z-[60] relative">
           <span className="truncate">🧪 وضع الزائر: متبقي لك <strong>{guestTrialsRemaining}</strong> تجارب اليوم</span>
           <button
             onClick={() => { localStorage.removeItem('dahab_current_user'); setCurrentUser(null); }}
@@ -528,7 +528,7 @@ export default function DahabFixAiConsole() {
         </div>
       )}
       {/* Header علوي نحيف ومضغوط بدون أي تداخل */}
-      <div className="bg-white/95 dark:bg-[#111827]/95 backdrop-blur-lg border-b border-gray-200 dark:border-[#1F2937] sticky top-0 z-40 transition-colors">
+      <div className="bg-white/95 dark:bg-[#111827]/95 backdrop-blur-lg border-b border-dahab-200 dark:border-[#1F2937] sticky top-0 z-40 transition-colors">
         <div className="px-3 py-2 md:px-6 md:py-2.5 max-w-full mx-auto flex items-center justify-between gap-2">
           <ConsoleHeader
             sessionId={activeSessionId}

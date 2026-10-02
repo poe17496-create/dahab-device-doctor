@@ -202,10 +202,16 @@ async function chatHandler(req: NextRequest) {
 
             buffer += decoder.decode(value, { stream: true });
 
-            // Send chunks as SSE events
+            // إرسال الـ chunks بشكل أصغر لسلاسة أكبر
             if (buffer.length > 0) {
-              const chunk = JSON.stringify({ chunk: buffer });
-              controller.enqueue(encoder.encode(`data: ${chunk}\n\n`));
+              // تقسيم النص إلى أجزاء صغيرة (حوالي 5-10 أحرف لكل chunk)
+              const chunkSize = 8;
+              for (let i = 0; i < buffer.length; i += chunkSize) {
+                const chunk = buffer.slice(i, i + chunkSize);
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ chunk })}\n\n`));
+                // تأخير بسيط جداً لمحاكاة الكتابة الطبيعية
+                await new Promise(resolve => setTimeout(resolve, 5));
+              }
               buffer = '';
             }
           }

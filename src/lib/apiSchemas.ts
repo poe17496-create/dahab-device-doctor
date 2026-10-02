@@ -4,7 +4,7 @@ import { z } from 'zod';
  * Schema للتحقق من طلبات الشات
  */
 export const chatRequestSchema = z.object({
-  message: z.string().min(1, 'الرسالة مطلوبة').max(10000, 'الرسالة طويلة جداً'),
+  message: z.string().max(10000, 'الرسالة طويلة جداً').optional(),
   imageBase64: z.string().optional(),
   chatHistory: z.array(z.object({
     role: z.enum(['user', 'assistant']),
@@ -13,7 +13,13 @@ export const chatRequestSchema = z.object({
   customKeys: z.record(z.string(), z.string()).optional(),
   stream: z.boolean().optional().default(false),
   diagnosticContext: z.any().optional(),
-}).passthrough();
+}).refine((data) => {
+  // يجب أن يكون هناك إما رسالة نصية أو صورة
+  if (!data.message && !data.imageBase64) {
+    return false;
+  }
+  return true;
+}, { message: 'يجب إرسال رسالة نصية أو صورة' }).passthrough();
 
 export type ChatRequest = z.infer<typeof chatRequestSchema>;
 
