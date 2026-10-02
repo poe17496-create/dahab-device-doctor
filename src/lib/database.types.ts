@@ -287,32 +287,6 @@ export interface Database {
           video_url?: string
         }
       }
-      cache_entries: {
-        Row: {
-          id: string
-          key: string
-          value: Json
-          expires_at?: string
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          key: string
-          value: Json
-          expires_at?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          key?: string
-          value?: Json
-          expires_at?: string
-          created_at?: string
-          updated_at?: string
-        }
-      }
       diagnosis_history: {
         Row: {
           id: string
