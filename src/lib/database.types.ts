@@ -395,6 +395,560 @@ export interface Database {
           notes?: string
         }
       }
+      engineering_references: {
+        Row: {
+          id: string
+          title: string
+          description?: string
+          reference_type: 'datasheet' | 'application_note' | 'whitepaper' | 'technical_manual' | 'standard' | 'guide'
+          manufacturer?: string
+          part_number?: string
+          category?: string
+          url?: string
+          pdf_url?: string
+          pages?: number
+          publication_date?: string
+          language?: string
+          tags?: string[]
+          source?: string
+          reliability_score?: number
+          created_at: string
+          updated_at: string
+          created_by?: string
+          verified_by?: string
+          verified_at?: string
+          is_official?: boolean
+          metadata?: Json
+        }
+        Insert: {
+          id?: string
+          title: string
+          description?: string
+          reference_type: 'datasheet' | 'application_note' | 'whitepaper' | 'technical_manual' | 'standard' | 'guide'
+          manufacturer?: string
+          part_number?: string
+          category?: string
+          url?: string
+          pdf_url?: string
+          pages?: number
+          publication_date?: string
+          language?: string
+          tags?: string[]
+          source?: string
+          reliability_score?: number
+          created_at?: string
+          updated_at?: string
+          created_by?: string
+          verified_by?: string
+          verified_at?: string
+          is_official?: boolean
+          metadata?: Json
+        }
+        Update: {
+          id?: string
+          title?: string
+          description?: string
+          reference_type?: 'datasheet' | 'application_note' | 'whitepaper' | 'technical_manual' | 'standard' | 'guide'
+          manufacturer?: string
+          part_number?: string
+          category?: string
+          url?: string
+          pdf_url?: string
+          pages?: number
+          publication_date?: string
+          language?: string
+          tags?: string[]
+          source?: string
+          reliability_score?: number
+          created_at?: string
+          updated_at?: string
+          created_by?: string
+          verified_by?: string
+          verified_at?: string
+          is_official?: boolean
+          metadata?: Json
+        }
+      }
+      case_studies: {
+        Row: {
+          id: string
+          title: string
+          description?: string
+          device_brand: string
+          device_model: string
+          device_category?: string
+          fault_category: string
+          fault_description: string
+          symptoms: string[]
+          diagnosis: string
+          solution: string
+          required_tools?: string[]
+          required_parts?: string[]
+          difficulty_level?: 'beginner' | 'intermediate' | 'advanced' | 'expert'
+          estimated_time?: number
+          success_rate?: number
+          related_ics?: string[]
+          related_faults?: string[]
+          images?: string[]
+          video_url?: string
+          created_at: string
+          updated_at: string
+          created_by?: string
+          verified_by?: string
+          verified_at?: string
+          status?: 'pending' | 'verified' | 'rejected'
+          view_count?: number
+          helpful_count?: number
+          metadata?: Json
+        }
+        Insert: {
+          id?: string
+          title: string
+          description?: string
+          device_brand: string
+          device_model: string
+          device_category?: string
+          fault_category: string
+          fault_description: string
+          symptoms: string[]
+          diagnosis: string
+          solution: string
+          required_tools?: string[]
+          required_parts?: string[]
+          difficulty_level?: 'beginner' | 'intermediate' | 'advanced' | 'expert'
+          estimated_time?: number
+          success_rate?: number
+          related_ics?: string[]
+          related_faults?: string[]
+          images?: string[]
+          video_url?: string
+          created_at?: string
+          updated_at?: string
+          created_by?: string
+          verified_by?: string
+          verified_at?: string
+          status?: 'pending' | 'verified' | 'rejected'
+          view_count?: number
+          helpful_count?: number
+          metadata?: Json
+        }
+        Update: {
+          id?: string
+          title?: string
+          description?: string
+          device_brand?: string
+          device_model?: string
+          device_category?: string
+          fault_category?: string
+          fault_description?: string
+          symptoms?: string[]
+          diagnosis?: string
+          solution?: string
+          required_tools?: string[]
+          required_parts?: string[]
+          difficulty_level?: 'beginner' | 'intermediate' | 'advanced' | 'expert'
+          estimated_time?: number
+          success_rate?: number
+          related_ics?: string[]
+          related_faults?: string[]
+          images?: string[]
+          video_url?: string
+          created_at?: string
+          updated_at?: string
+          created_by?: string
+          verified_by?: string
+          verified_at?: string
+          status?: 'pending' | 'verified' | 'rejected'
+          view_count?: number
+          helpful_count?: number
+          metadata?: Json
+        }
+      }
+      repair_logs: {
+        Row: {
+          id: string
+          case_study_id?: string
+          user_id: string
+          device_brand: string
+          device_model: string
+          serial_number?: string
+          symptoms: string[]
+          initial_diagnosis?: string
+          steps_taken: Json
+          tools_used?: string[]
+          parts_replaced?: string[]
+          measurements?: Json
+          final_diagnosis?: string
+          outcome?: 'success' | 'partial_success' | 'failed' | 'in_progress'
+          time_spent?: number
+          cost?: number
+          lessons_learned?: string
+          created_at: string
+          updated_at: string
+          images?: string[]
+          notes?: string
+        }
+        Insert: {
+          id?: string
+          case_study_id?: string
+          user_id: string
+          device_brand: string
+          device_model: string
+          serial_number?: string
+          symptoms: string[]
+          initial_diagnosis?: string
+          steps_taken: Json
+          tools_used?: string[]
+          parts_replaced?: string[]
+          measurements?: Json
+          final_diagnosis?: string
+          outcome?: 'success' | 'partial_success' | 'failed' | 'in_progress'
+          time_spent?: number
+          cost?: number
+          lessons_learned?: string
+          created_at?: string
+          updated_at?: string
+          images?: string[]
+          notes?: string
+        }
+        Update: {
+          id?: string
+          case_study_id?: string
+          user_id?: string
+          device_brand?: string
+          device_model?: string
+          serial_number?: string
+          symptoms?: string[]
+          initial_diagnosis?: string
+          steps_taken?: Json
+          tools_used?: string[]
+          parts_replaced?: string[]
+          measurements?: Json
+          final_diagnosis?: string
+          outcome?: 'success' | 'partial_success' | 'failed' | 'in_progress'
+          time_spent?: number
+          cost?: number
+          lessons_learned?: string
+          created_at?: string
+          updated_at?: string
+          images?: string[]
+          notes?: string
+        }
+      }
+      component_relationships: {
+        Row: {
+          id: string
+          source_component: string
+          source_type: 'ic' | 'capacitor' | 'resistor' | 'transistor' | 'coil' | 'connector' | 'other'
+          target_component: string
+          target_type: 'ic' | 'capacitor' | 'resistor' | 'transistor' | 'coil' | 'connector' | 'other'
+          relationship_type: 'powers' | 'controlled_by' | 'interacts_with' | 'located_near' | 'signal_path' | 'thermal_dependency' | 'voltage_reference'
+          relationship_description?: string
+          device_brand?: string
+          device_model?: string
+          confidence_score?: number
+          source_reference?: string
+          created_at: string
+          updated_at: string
+          created_by?: string
+          verified?: boolean
+        }
+        Insert: {
+          id?: string
+          source_component: string
+          source_type: 'ic' | 'capacitor' | 'resistor' | 'transistor' | 'coil' | 'connector' | 'other'
+          target_component: string
+          target_type: 'ic' | 'capacitor' | 'resistor' | 'transistor' | 'coil' | 'connector' | 'other'
+          relationship_type: 'powers' | 'controlled_by' | 'interacts_with' | 'located_near' | 'signal_path' | 'thermal_dependency' | 'voltage_reference'
+          relationship_description?: string
+          device_brand?: string
+          device_model?: string
+          confidence_score?: number
+          source_reference?: string
+          created_at?: string
+          updated_at?: string
+          created_by?: string
+          verified?: boolean
+        }
+        Update: {
+          id?: string
+          source_component?: string
+          source_type?: 'ic' | 'capacitor' | 'resistor' | 'transistor' | 'coil' | 'connector' | 'other'
+          target_component?: string
+          target_type?: 'ic' | 'capacitor' | 'resistor' | 'transistor' | 'coil' | 'connector' | 'other'
+          relationship_type?: 'powers' | 'controlled_by' | 'interacts_with' | 'located_near' | 'signal_path' | 'thermal_dependency' | 'voltage_reference'
+          relationship_description?: string
+          device_brand?: string
+          device_model?: string
+          confidence_score?: number
+          source_reference?: string
+          created_at?: string
+          updated_at?: string
+          created_by?: string
+          verified?: boolean
+        }
+      }
+      technical_specifications: {
+        Row: {
+          id: string
+          component_type: string
+          part_number: string
+          manufacturer?: string
+          category?: string
+          specifications: Json
+          electrical_specs?: Json
+          physical_specs?: Json
+          thermal_specs?: Json
+          pinout?: Json
+          timing_specs?: Json
+          application_notes?: string
+          typical_applications?: string[]
+          created_at: string
+          updated_at: string
+          datasheet_id?: string
+        }
+        Insert: {
+          id?: string
+          component_type: string
+          part_number: string
+          manufacturer?: string
+          category?: string
+          specifications: Json
+          electrical_specs?: Json
+          physical_specs?: Json
+          thermal_specs?: Json
+          pinout?: Json
+          timing_specs?: Json
+          application_notes?: string
+          typical_applications?: string[]
+          created_at?: string
+          updated_at?: string
+          datasheet_id?: string
+        }
+        Update: {
+          id?: string
+          component_type?: string
+          part_number?: string
+          manufacturer?: string
+          category?: string
+          specifications?: Json
+          electrical_specs?: Json
+          physical_specs?: Json
+          thermal_specs?: Json
+          pinout?: Json
+          timing_specs?: Json
+          application_notes?: string
+          typical_applications?: string[]
+          created_at?: string
+          updated_at?: string
+          datasheet_id?: string
+        }
+      }
+      knowledge_graph: {
+        Row: {
+          id: string
+          node_type: 'component' | 'fault' | 'symptom' | 'solution' | 'device' | 'category'
+          node_id: string
+          node_label: string
+          properties?: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          node_type: 'component' | 'fault' | 'symptom' | 'solution' | 'device' | 'category'
+          node_id: string
+          node_label: string
+          properties?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          node_type?: 'component' | 'fault' | 'symptom' | 'solution' | 'device' | 'category'
+          node_id?: string
+          node_label?: string
+          properties?: Json
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      knowledge_graph_edges: {
+        Row: {
+          id: string
+          source_node_id: string
+          target_node_id: string
+          edge_type: string
+          edge_weight?: number
+          properties?: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          source_node_id: string
+          target_node_id: string
+          edge_type: string
+          edge_weight?: number
+          properties?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          source_node_id?: string
+          target_node_id?: string
+          edge_type?: string
+          edge_weight?: number
+          properties?: Json
+          created_at?: string
+        }
+      }
+      image_gallery: {
+        Row: {
+          id: string
+          title?: string
+          description?: string
+          image_url: string
+          thumbnail_url?: string
+          category?: string
+          related_type?: 'case_study' | 'repair_log' | 'ic' | 'boardview' | 'reference'
+          related_id?: string
+          tags?: string[]
+          created_at: string
+          created_by?: string
+          is_verified?: boolean
+        }
+        Insert: {
+          id?: string
+          title?: string
+          description?: string
+          image_url: string
+          thumbnail_url?: string
+          category?: string
+          related_type?: 'case_study' | 'repair_log' | 'ic' | 'boardview' | 'reference'
+          related_id?: string
+          tags?: string[]
+          created_at?: string
+          created_by?: string
+          is_verified?: boolean
+        }
+        Update: {
+          id?: string
+          title?: string
+          description?: string
+          image_url?: string
+          thumbnail_url?: string
+          category?: string
+          related_type?: 'case_study' | 'repair_log' | 'ic' | 'boardview' | 'reference'
+          related_id?: string
+          tags?: string[]
+          created_at?: string
+          created_by?: string
+          is_verified?: boolean
+        }
+      }
+      diagnostic_rules: {
+        Row: {
+          id: string
+          rule_name: string
+          rule_description?: string
+          condition: Json
+          action: Json
+          confidence_score?: number
+          priority?: number
+          device_brand?: string
+          device_model?: string
+          fault_category?: string
+          is_active?: boolean
+          created_at: string
+          updated_at: string
+          created_by?: string
+          usage_count?: number
+          success_count?: number
+        }
+        Insert: {
+          id?: string
+          rule_name: string
+          rule_description?: string
+          condition: Json
+          action: Json
+          confidence_score?: number
+          priority?: number
+          device_brand?: string
+          device_model?: string
+          fault_category?: string
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+          created_by?: string
+          usage_count?: number
+          success_count?: number
+        }
+        Update: {
+          id?: string
+          rule_name?: string
+          rule_description?: string
+          condition?: Json
+          action?: Json
+          confidence_score?: number
+          priority?: number
+          device_brand?: string
+          device_model?: string
+          fault_category?: string
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+          created_by?: string
+          usage_count?: number
+          success_count?: number
+        }
+      }
+      quick_reference_guides: {
+        Row: {
+          id: string
+          title: string
+          description?: string
+          category: string
+          content: Json
+          device_brand?: string
+          device_model?: string
+          language?: string
+          order_index?: number
+          is_featured?: boolean
+          created_at: string
+          updated_at: string
+          created_by?: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          description?: string
+          category: string
+          content: Json
+          device_brand?: string
+          device_model?: string
+          language?: string
+          order_index?: number
+          is_featured?: boolean
+          created_at?: string
+          updated_at?: string
+          created_by?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          description?: string
+          category?: string
+          content?: Json
+          device_brand?: string
+          device_model?: string
+          language?: string
+          order_index?: number
+          is_featured?: boolean
+          created_at?: string
+          updated_at?: string
+          created_by?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never

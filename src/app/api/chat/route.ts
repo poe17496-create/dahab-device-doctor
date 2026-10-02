@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callAIEngine } from '@/lib/aiEngines';
 import { buildExpertPromptContext } from '@/lib/expertKnowledge';
+import { buildExpertSystemPrompt, getRelevantCaseStudies, getEngineeringReferences } from '@/lib/expertSystemService';
 import { checkRateLimit, sanitizeAndCheckTokenDrain } from '@/lib/securityRateLimiter';
 import { withErrorHandling, ErrorCode, withTimeout } from '@/lib/apiErrorHandler';
 import { chatRequestSchema } from '@/lib/apiSchemas';
@@ -107,6 +108,8 @@ async function chatHandler(req: NextRequest) {
 
   // إضافة سياق التشخيص والبوردفيو للنظام
   let contextInfo = '';
+  let expertSystemContext = '';
+
   if (diagnosticContext) {
     contextInfo = '\n\n--- سياق الجهاز الحالي ---\n';
     if (diagnosticContext.deviceModel) {
@@ -143,6 +146,33 @@ async function chatHandler(req: NextRequest) {
       }
     }
     contextInfo += '--- نهاية سياق الجهاز ---\n';
+
+    // Fetch expert system data if device info is available
+    try {
+      const deviceBrand = diagnosticContext.deviceModel?.split(' ')[0] || 'Unknown';
+      const deviceModel = diagnosticContext.deviceModel || '';
+      const symptoms = [];
+
+      // Extract symptoms from message or readings
+      if (message) {
+        if (message.includes('شورت')) symptoms.push('short circuit');
+        if (message.includes('سحب')) symptoms.push('power draw');
+        if (message.includes('لا يعمل')) symptoms.push('not working');
+        if (message.includes('حار')) symptoms.push('overheating');
+      }
+
+      if (symptoms.length > 0 || deviceModel) {
+        expertSystemContext = await buildExpertSystemPrompt(
+          deviceBrand,
+          deviceModel,
+          symptoms,
+          message || ''
+        );
+      }
+    } catch (error) {
+      console.error('Error fetching expert system data:', error);
+      // Continue without expert system context if it fails
+    }
   }
 
   // System prompt للمساعد الذكي المحسن
@@ -175,7 +205,7 @@ async function chatHandler(req: NextRequest) {
   // استدعاء محرك الذكاء الاصطناعي مع timeout safeguard
   const aiResponse = await withTimeout(
     callAIEngine({
-      prompt: contextPrompt + contextInfo + message + expertContext,
+      prompt: contextPrompt + contextInfo + expertSystemContext + message + expertContext,
       specialty: (diagnosticContext?.specialty as any) || 'mobile-repair',
       deviceModel: diagnosticContext?.deviceModel || 'General',
       readings: diagnosticContext?.readings || {},
