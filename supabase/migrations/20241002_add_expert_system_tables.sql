@@ -251,51 +251,108 @@ COMMENT ON TABLE image_gallery IS 'Image gallery with references to related enti
 COMMENT ON TABLE diagnostic_rules IS 'Diagnostic rules for automated fault detection';
 COMMENT ON TABLE quick_reference_guides IS 'Quick reference guides for common tasks';
 
--- Enable Row Level Security (RLS)
-ALTER TABLE engineering_references ENABLE ROW LEVEL SECURITY;
-ALTER TABLE case_studies ENABLE ROW LEVEL SECURITY;
-ALTER TABLE repair_logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE component_relationships ENABLE ROW LEVEL SECURITY;
-ALTER TABLE technical_specifications ENABLE ROW LEVEL SECURITY;
-ALTER TABLE knowledge_graph ENABLE ROW LEVEL SECURITY;
-ALTER TABLE knowledge_graph_edges ENABLE ROW LEVEL SECURITY;
-ALTER TABLE image_gallery ENABLE ROW LEVEL SECURITY;
-ALTER TABLE diagnostic_rules ENABLE ROW LEVEL SECURITY;
-ALTER TABLE quick_reference_guides ENABLE ROW LEVEL SECURITY;
+-- Enable Row Level Security (RLS) with safety checks
+DO $$ BEGIN
+  IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'engineering_references') THEN
+    ALTER TABLE engineering_references ENABLE ROW LEVEL SECURITY;
+  END IF;
+  IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'case_studies') THEN
+    ALTER TABLE case_studies ENABLE ROW LEVEL SECURITY;
+  END IF;
+  IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'repair_logs') THEN
+    ALTER TABLE repair_logs ENABLE ROW LEVEL SECURITY;
+  END IF;
+  IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'component_relationships') THEN
+    ALTER TABLE component_relationships ENABLE ROW LEVEL SECURITY;
+  END IF;
+  IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'technical_specifications') THEN
+    ALTER TABLE technical_specifications ENABLE ROW LEVEL SECURITY;
+  END IF;
+  IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'knowledge_graph') THEN
+    ALTER TABLE knowledge_graph ENABLE ROW LEVEL SECURITY;
+  END IF;
+  IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'knowledge_graph_edges') THEN
+    ALTER TABLE knowledge_graph_edges ENABLE ROW LEVEL SECURITY;
+  END IF;
+  IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'image_gallery') THEN
+    ALTER TABLE image_gallery ENABLE ROW LEVEL SECURITY;
+  END IF;
+  IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'diagnostic_rules') THEN
+    ALTER TABLE diagnostic_rules ENABLE ROW LEVEL SECURITY;
+  END IF;
+  IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'quick_reference_guides') THEN
+    ALTER TABLE quick_reference_guides ENABLE ROW LEVEL SECURITY;
+  END IF;
+END $$;
 
 -- RLS Policies (public read for most tables, write only for authenticated users)
-CREATE POLICY "Public read access for engineering_references" ON engineering_references FOR SELECT USING (true);
-CREATE POLICY "Authenticated insert for engineering_references" ON engineering_references FOR INSERT WITH CHECK (auth.uid() = created_by);
-CREATE POLICY "Authenticated update for engineering_references" ON engineering_references FOR UPDATE USING (auth.uid() = created_by OR auth.uid() = verified_by);
+-- Drop policies if they exist, then create them
+DO $$ BEGIN
+  -- engineering_references policies
+  DROP POLICY IF EXISTS "Public read access for engineering_references" ON engineering_references;
+  DROP POLICY IF EXISTS "Authenticated insert for engineering_references" ON engineering_references;
+  DROP POLICY IF EXISTS "Authenticated update for engineering_references" ON engineering_references;
+  CREATE POLICY "Public read access for engineering_references" ON engineering_references FOR SELECT USING (true);
+  CREATE POLICY "Authenticated insert for engineering_references" ON engineering_references FOR INSERT WITH CHECK (auth.uid() = created_by);
+  CREATE POLICY "Authenticated update for engineering_references" ON engineering_references FOR UPDATE USING (auth.uid() = created_by OR auth.uid() = verified_by);
 
-CREATE POLICY "Public read access for case_studies" ON case_studies FOR SELECT USING (true);
-CREATE POLICY "Authenticated insert for case_studies" ON case_studies FOR INSERT WITH CHECK (auth.uid() = created_by);
-CREATE POLICY "Authenticated update for case_studies" ON case_studies FOR UPDATE USING (auth.uid() = created_by OR auth.uid() = verified_by);
+  -- case_studies policies
+  DROP POLICY IF EXISTS "Public read access for case_studies" ON case_studies;
+  DROP POLICY IF EXISTS "Authenticated insert for case_studies" ON case_studies;
+  DROP POLICY IF EXISTS "Authenticated update for case_studies" ON case_studies;
+  CREATE POLICY "Public read access for case_studies" ON case_studies FOR SELECT USING (true);
+  CREATE POLICY "Authenticated insert for case_studies" ON case_studies FOR INSERT WITH CHECK (auth.uid() = created_by);
+  CREATE POLICY "Authenticated update for case_studies" ON case_studies FOR UPDATE USING (auth.uid() = created_by OR auth.uid() = verified_by);
 
-CREATE POLICY "User read own repair_logs" ON repair_logs FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Authenticated insert for repair_logs" ON repair_logs FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "User update own repair_logs" ON repair_logs FOR UPDATE USING (auth.uid() = user_id);
+  -- repair_logs policies
+  DROP POLICY IF EXISTS "User read own repair_logs" ON repair_logs;
+  DROP POLICY IF EXISTS "Authenticated insert for repair_logs" ON repair_logs;
+  DROP POLICY IF EXISTS "User update own repair_logs" ON repair_logs;
+  CREATE POLICY "User read own repair_logs" ON repair_logs FOR SELECT USING (auth.uid() = user_id);
+  CREATE POLICY "Authenticated insert for repair_logs" ON repair_logs FOR INSERT WITH CHECK (auth.uid() = user_id);
+  CREATE POLICY "User update own repair_logs" ON repair_logs FOR UPDATE USING (auth.uid() = user_id);
 
-CREATE POLICY "Public read access for component_relationships" ON component_relationships FOR SELECT USING (true);
-CREATE POLICY "Authenticated insert for component_relationships" ON component_relationships FOR INSERT WITH CHECK (auth.uid() = created_by);
+  -- component_relationships policies
+  DROP POLICY IF EXISTS "Public read access for component_relationships" ON component_relationships;
+  DROP POLICY IF EXISTS "Authenticated insert for component_relationships" ON component_relationships;
+  CREATE POLICY "Public read access for component_relationships" ON component_relationships FOR SELECT USING (true);
+  CREATE POLICY "Authenticated insert for component_relationships" ON component_relationships FOR INSERT WITH CHECK (auth.uid() = created_by);
 
-CREATE POLICY "Public read access for technical_specifications" ON technical_specifications FOR SELECT USING (true);
-CREATE POLICY "Authenticated insert for technical_specifications" ON technical_specifications FOR INSERT WITH CHECK (true);
+  -- technical_specifications policies
+  DROP POLICY IF EXISTS "Public read access for technical_specifications" ON technical_specifications;
+  DROP POLICY IF EXISTS "Authenticated insert for technical_specifications" ON technical_specifications;
+  CREATE POLICY "Public read access for technical_specifications" ON technical_specifications FOR SELECT USING (true);
+  CREATE POLICY "Authenticated insert for technical_specifications" ON technical_specifications FOR INSERT WITH CHECK (true);
 
-CREATE POLICY "Public read access for knowledge_graph" ON knowledge_graph FOR SELECT USING (true);
-CREATE POLICY "Public read access for knowledge_graph_edges" ON knowledge_graph_edges FOR SELECT USING (true);
+  -- knowledge_graph policies
+  DROP POLICY IF EXISTS "Public read access for knowledge_graph" ON knowledge_graph;
+  DROP POLICY IF EXISTS "Public read access for knowledge_graph_edges" ON knowledge_graph_edges;
+  CREATE POLICY "Public read access for knowledge_graph" ON knowledge_graph FOR SELECT USING (true);
+  CREATE POLICY "Public read access for knowledge_graph_edges" ON knowledge_graph_edges FOR SELECT USING (true);
 
-CREATE POLICY "Public read access for image_gallery" ON image_gallery FOR SELECT USING (true);
-CREATE POLICY "Authenticated insert for image_gallery" ON image_gallery FOR INSERT WITH CHECK (auth.uid() = created_by);
+  -- image_gallery policies
+  DROP POLICY IF EXISTS "Public read access for image_gallery" ON image_gallery;
+  DROP POLICY IF EXISTS "Authenticated insert for image_gallery" ON image_gallery;
+  CREATE POLICY "Public read access for image_gallery" ON image_gallery FOR SELECT USING (true);
+  CREATE POLICY "Authenticated insert for image_gallery" ON image_gallery FOR INSERT WITH CHECK (auth.uid() = created_by);
 
-CREATE POLICY "Public read access for diagnostic_rules" ON diagnostic_rules FOR SELECT USING (is_active = true);
-CREATE POLICY "Admin insert for diagnostic_rules" ON diagnostic_rules FOR INSERT WITH CHECK (
-  EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
-);
-CREATE POLICY "Admin update for diagnostic_rules" ON diagnostic_rules FOR UPDATE USING (
-  EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
-);
+  -- diagnostic_rules policies
+  DROP POLICY IF EXISTS "Public read access for diagnostic_rules" ON diagnostic_rules;
+  DROP POLICY IF EXISTS "Admin insert for diagnostic_rules" ON diagnostic_rules;
+  DROP POLICY IF EXISTS "Admin update for diagnostic_rules" ON diagnostic_rules;
+  CREATE POLICY "Public read access for diagnostic_rules" ON diagnostic_rules FOR SELECT USING (is_active = true);
+  CREATE POLICY "Admin insert for diagnostic_rules" ON diagnostic_rules FOR INSERT WITH CHECK (
+    EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
+  );
+  CREATE POLICY "Admin update for diagnostic_rules" ON diagnostic_rules FOR UPDATE USING (
+    EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
+  );
 
-CREATE POLICY "Public read access for quick_reference_guides" ON quick_reference_guides FOR SELECT USING (true);
-CREATE POLICY "Authenticated insert for quick_reference_guides" ON quick_reference_guides FOR INSERT WITH CHECK (auth.uid() = created_by);
-CREATE POLICY "Authenticated update for quick_reference_guides" ON quick_reference_guides FOR UPDATE USING (auth.uid() = created_by);
+  -- quick_reference_guides policies
+  DROP POLICY IF EXISTS "Public read access for quick_reference_guides" ON quick_reference_guides;
+  DROP POLICY IF EXISTS "Authenticated insert for quick_reference_guides" ON quick_reference_guides;
+  DROP POLICY IF EXISTS "Authenticated update for quick_reference_guides" ON quick_reference_guides;
+  CREATE POLICY "Public read access for quick_reference_guides" ON quick_reference_guides FOR SELECT USING (true);
+  CREATE POLICY "Authenticated insert for quick_reference_guides" ON quick_reference_guides FOR INSERT WITH CHECK (auth.uid() = created_by);
+  CREATE POLICY "Authenticated update for quick_reference_guides" ON quick_reference_guides FOR UPDATE USING (auth.uid() = created_by);
+END $$;
