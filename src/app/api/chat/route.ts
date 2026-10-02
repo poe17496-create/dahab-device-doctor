@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callAIEngine } from '@/lib/aiEngines';
 import { buildExpertPromptContext } from '@/lib/expertKnowledge';
-import { buildExpertSystemPrompt, getRelevantCaseStudies, getEngineeringReferences } from '@/lib/expertSystemService';
+import { buildExpertSystemPrompt, getRelevantCaseStudies, getEngineeringReferences, extractComponentsFromText } from '@/lib/expertSystemService';
+import { buildEnhancedPrompt, buildSchematicContext } from '@/lib/smartAnalysisSystem';
 import { checkRateLimit, sanitizeAndCheckTokenDrain } from '@/lib/securityRateLimiter';
 import { withErrorHandling, ErrorCode, withTimeout } from '@/lib/apiErrorHandler';
 import { chatRequestSchema } from '@/lib/apiSchemas';
@@ -161,13 +162,28 @@ async function chatHandler(req: NextRequest) {
         if (message.includes('حار')) symptoms.push('overheating');
       }
 
-      if (symptoms.length > 0 || deviceModel) {
-        expertSystemContext = await buildExpertSystemPrompt(
-          deviceBrand,
-          deviceModel,
-          symptoms,
-          message || ''
-        );
+      // Extract components from message
+      const extractedComponents = extractComponentsFromText(message || '');
+
+      if (symptoms.length > 0 || deviceModel || extractedComponents.length > 0) {
+        // Use enhanced prompt with schematic analysis if board data is available
+        if (diagnosticContext.boardData) {
+          const schematicData = `${diagnosticContext.boardData.title} ${extractedComponents.join(' ')}`;
+          expertSystemContext = await buildEnhancedPrompt(
+            deviceBrand,
+            deviceModel,
+            symptoms,
+            schematicData,
+            message || ''
+          );
+        } else {
+          expertSystemContext = await buildExpertSystemPrompt(
+            deviceBrand,
+            deviceModel,
+            symptoms,
+            message || ''
+          );
+        }
       }
     } catch (error) {
       console.error('Error fetching expert system data:', error);
@@ -175,7 +191,7 @@ async function chatHandler(req: NextRequest) {
     }
   }
 
-  // System prompt للمساعد الذكي المحسن
+  // System prompt للمساعد الذكي المحسن مع المراجع الخارجية
   const systemPrompt = `أنت كبير مهندسي وفنيي الإلكترونيات ومستشار الصيانة الذكي في منظومة "دهب دكتور" (Dahab Device Doctor).
 مهمتك مساعدة فنيي الصيانة ومهندسي الإلكترونيات في تشخيص أعطال الموبايل، واللابتوب، والماك بوك، وكروت الباور بدقة واحترافية وبأسلوب محادثة عملي وتفاعلي.
 
@@ -185,22 +201,35 @@ async function chatHandler(req: NextRequest) {
 3. عند السؤال عن عطل، قدم خطوات الفحص المنطقية بالترتيب (1، 2، 3) مع تحديد الفولتات والممانعات النموذجية.
 4. إذا أرفق الفني صورة مخطط هندسي (Schematic)، بوردفيو (Boardview)، أو بوردة إلكترونية: اقرأ جميع الرموز والمكونات (U, R, C, L, Q) وأسماء مسارات التغذية والجهود المكتوبة في الصورة بدقة واستند إليها مباشرة في إجابتك.
 5. حدود أمان حقن الفولت الصارمة: يُحظر نهائياً اقتراح حقن فولت أعلى من 3.8V أو تيار أعلى من 3.0A لخطوط الباور الرئيسية، ويُحظر حقن أكثر من 0.9V لخطوط المعالج. انصح دائماً بالبدء بجهد 1.0V-1.8V وتيار 1A تدريجياً، والتأكيد على مراجعة الممانعة بوضع الدايود قبل الحقن.
-6. تذكر سياق الحوار السابق وأجب بذكاء وترابط، وإذا كان استفساراً عاماً أو تحية، رحب بالفني بحرارة وسله عن الجهاز أو البوردة التي يعمل عليها.
+6. تذكر سياق الحوار السابق وأجب بذكاء وترابط، وإذا كان استفساراً عاماً أو تحية، رحب بالفني بحرارة وسله عن الجهاز أو البوردة التي يعمل عليه.
 7. لديك وصول لقاعدة بيانات خبراء الصيانة المتخصصين. عند وجود بيانات مرجعية من قاعدة الخبرات في الرسالة، استخدمها كمرجع أول وادمج أكواد المكونات (مثل PQ301, PU201) في إجابتك.
 8. استخدم سياق الجهاز الحالي (الموديل، القراءات، نتائج التشخيص) لتقديم إجابات أكثر دقة وملاءمة للحالة المحددة.
 
-قواعد التتبع الذكي للسياق المستمر:
-9. تتبع تقدم الفني: إذا كان الفني قد جرب حلولاً سابقاً، لا تكررها. بدلاً من ذلك، اقترح حلولاً بديلة أو أعمق.
-10. التعلم من المحاولات السابقة: إذا فشل حل سابق، اشرح لماذا قد يكون فشل واقترح نهجاً مختلفاً.
-11. التعمق التدريجي: مع كل رسالة جديدة، قدم تحليلاً أعمق بناءً على المعلومات الجديدة.
-12. الربط بين المعلومات: اربط بين الأعراض المختلفة والمكونات المحتملة بناءً على السياق التراكمي.
-13. التنبؤ بالنتائج: بناءً على القراءات والأعراض، تنبأ بالاحتمالات الأكثر شيوعاً وقدم خطوات للتحقق منها.
+قواعد استخدام المراجع الهندسية الخارجية (200+ مصدر):
+9. لديك وصول لقاعدة بيانات ضخمة من المراجع الهندسية تشمل:
+   - Datasheets رسمية من Texas Instruments, Qualcomm, Apple, Samsung, Realtek, وغيرها
+   - مخططات هندسية كاملة (Schematics) لأجهزة iPhone و Samsung وغيرها
+   - مراجع تقنية لمكونات الطاقة، الصوت، الواي فاي، والمعالجات
+10. عند ذكر مكون (مثل BQ25601, PM8150, 1610A3)، استخدم المراجع الخارجية لتقديم معلومات دقيقة عنه.
+11. قم بقراءة المخططات الهندسية المرفقة واستخراج المكونات والمسارات بدقة.
+12. استخدم المراجع الهندسية لدعم تشخيصك وتقديم قيم الفولت والممانعة الصحيحة.
+13. اربط بين المخططات والمراجع الخارجية والخبرات العملية لتقديم تحليل شامل.
 
-أسلوب الإجابة:
+قواعد التتبع الذكي للسياق المستمر:
+14. تتبع تقدم الفني: إذا كان الفني قد جرب حلولاً سابقاً، لا تكررها. بدلاً من ذلك، اقترح حلولاً بديلة أو أعمق.
+15. التعلم من المحاولات السابقة: إذا فشل حل سابق، اشرح لماذا قد يكون فشل واقترح نهجاً مختلفاً.
+16. التعمق التدريجي: مع كل رسالة جديدة، قدم تحليلاً أعمق بناءً على المعلومات الجديدة.
+17. الربط بين المعلومات: اربط بين الأعراض المختلفة والمكونات المحتملة بناءً على السياق التراكمي.
+18. التنبؤ بالنتائج: بناءً على القراءات والأعراض، تنبأ بالاحتمالات الأكثر شيوعاً وقدم خطوات للتحقق منها.
+
+أسلوب الإجابة المتقدم:
 - ابدأ دائماً بتلخيص الوضع الحالي بناءً على السياق المتراكم
+- استخدم المراجع الهندسية الخارجية (Datasheets, Schematics) لدعم إجابتك
+- اقرأ المخططات الهندسية بدقة واستخرج المكونات والمسارات
 - إذا كان هناك تشخيص سابق، راجعه وحدد ما تم وما لم يتم فحصه
 - قدم خطوات جديدة تتكامل مع ما تم فعله سابقاً
-- اختم بتوجيه الفني للخطوة التالية المنطقية`;
+- اختم بتوجيه الفني للخطوة التالية المنطقية
+- كن دقيقاً في استخدام المكونات المذكورة في المراجع الخارجية`;
 
   // استدعاء محرك الذكاء الاصطناعي مع timeout safeguard
   const aiResponse = await withTimeout(
