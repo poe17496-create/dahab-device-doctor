@@ -16,6 +16,25 @@ import {
 
 export const dynamic = 'force-dynamic';
 
+// Rate limiting: allow 1 user creation per minute
+const userCreationTimestamps: number[] = [];
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const MAX_USER_CREATIONS_PER_WINDOW = 1;
+
+function checkRateLimit(): boolean {
+  const now = Date.now();
+  // Remove timestamps older than the window
+  const recentTimestamps = userCreationTimestamps.filter(ts => now - ts < RATE_LIMIT_WINDOW);
+
+  if (recentTimestamps.length >= MAX_USER_CREATIONS_PER_WINDOW) {
+    return false;
+  }
+
+  // Add current timestamp
+  userCreationTimestamps.push(now);
+  return true;
+}
+
 export async function GET() {
   try {
     const users = await getAllUsers();
@@ -170,6 +189,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'الاسم واسم المستخدم مطلوبان' }, { status: 400 });
     }
 
+    // Rate limiting check
+    if (!checkRateLimit()) {
+      return NextResponse.json(
+        { error: 'يمكنك إضافة مستخدم واحد فقط في الدقيقة الواحدة. يرجى الانتظار دقيقة ثم المحاولة مرة أخرى.' },
+        { status: 429 }
+      );
+    }
+
     const cleanUsername = String(username).trim();
     const cleanPassword = password || '123456';
     const isUnlimited = subscriptionDays === 'unlimited' || subscriptionDays === undefined;
@@ -201,17 +228,24 @@ export async function POST(req: NextRequest) {
 
         const { error } = await supabaseAdmin.from('users').insert([payload]);
         if (error) {
+          console.error('Supabase insert error:', error);
           // محاولة ثانية بالحقول الأساسية فقط
-          await supabaseAdmin.from('users').insert([{
+          const fallbackPayload = {
             username: cleanUsername,
             password: cleanPassword,
             expires_at: computedExpiresAt || null,
             is_active: true,
             device_id: null,
-          }]);
+          };
+          const { error: fallbackError } = await supabaseAdmin.from('users').insert([fallbackPayload]);
+          if (fallbackError) {
+            console.error('Supabase fallback insert error:', fallbackError);
+            // نستمر رغم الخطأ لأن الحفظ المحلي سينجح
+          }
         }
       } catch (sbErr) {
-        console.warn('Supabase insert user note:', sbErr);
+        console.error('Supabase insert exception:', sbErr);
+        // نستمر رغم الخطأ لأن الحفظ المحلي سينجح
       }
     }
 

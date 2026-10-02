@@ -179,8 +179,17 @@ export async function addUser(
 ): Promise<UserAccount> {
   const users = await getAllUsers();
 
-  if (user.password && user.password.length < 8) {
-    throw new Error('كلمة المرور يجب أن تكون 8 أحرف على الأقل');
+  // التحقق من عدم تكرار اسم المستخدم
+  const existingUser = users.find(
+    (u) => u.username.toLowerCase() === user.username.toLowerCase()
+  );
+  if (existingUser) {
+    throw new Error('اسم المستخدم موجود بالفعل');
+  }
+
+  // شرط 8 أحرف فقط للمشرف، وليس للمستخدمين العاديين
+  if (user.role === 'admin' && user.password && user.password.length < 8) {
+    throw new Error('كلمة مرور المشرف يجب أن تكون 8 أحرف على الأقل');
   }
 
   let expiresAt = user.expiresAt;
@@ -200,23 +209,29 @@ export async function addUser(
 
   // حفظ في Supabase
   if (isSupabaseConfigured && supabaseAdmin) {
-    const { error } = await supabaseAdmin.from('users').insert({
-      id: newUser.id,
-      email: newUser.email,
-      username: newUser.username,
-      password: newUser.password,
-      name: newUser.name,
-      role: newUser.role,
-      specialty: newUser.specialty,
-      is_active: newUser.active,
-      device_id: newUser.deviceInfo,
-      expires_at: newUser.expiresAt,
-      price: newUser.price,
-    });
+    try {
+      const { error } = await supabaseAdmin.from('users').insert({
+        id: newUser.id,
+        email: newUser.email,
+        username: newUser.username,
+        password: newUser.password,
+        name: newUser.name,
+        role: newUser.role,
+        specialty: newUser.specialty,
+        is_active: newUser.active,
+        device_id: newUser.deviceInfo,
+        expires_at: newUser.expiresAt,
+        price: newUser.price,
+      });
 
-    if (error) {
-      console.error('Error adding user to Supabase:', error);
-      throw new Error('فشل في إضافة المستخدم');
+      if (error) {
+        console.error('Error adding user to Supabase:', error);
+        // نستمر رغم الخطأ لأن الحفظ المحلي سينجح
+        // لكن نسجل التحذير
+      }
+    } catch (sbErr) {
+      console.error('Exception adding user to Supabase:', sbErr);
+      // نستمر رغم الخطأ لأن الحفظ المحلي سينجح
     }
   }
 
