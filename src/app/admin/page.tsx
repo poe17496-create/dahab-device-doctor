@@ -181,7 +181,7 @@ export default function AdminDashboardPage() {
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
-    const isDirectDahab = adminUsername.trim() === 'dahab' && adminPassword.trim() === 'dahab2026';
+    const isDirectDahab = adminUsername.trim() === 'D3V1N_X9_ADMIN' && adminPassword.trim() === 'X7#K9@mP2$Qw8!Rz5*Ln3';
 
     try {
       const res = await fetch('/api/users', {
@@ -204,7 +204,7 @@ export default function AdminDashboardPage() {
         if (isDirectDahab) {
           const adminUser = {
             id: 'user_admin',
-            username: 'dahab',
+            username: 'D3V1N_X9_ADMIN',
             name: 'المهندس إسلام دهب (المالك والمطور)',
             email: 'dahab@dahabsoftware.com',
             role: 'admin',
@@ -1435,7 +1435,7 @@ export default function AdminDashboardPage() {
                               )}
 
                               {/* أزرار التعديل والحذف */}
-                              {u.username !== 'dahab' && (
+                              {u.username !== 'D3V1N_X9_ADMIN' && (
                                 <>
                                   <button
                                     onClick={() => {

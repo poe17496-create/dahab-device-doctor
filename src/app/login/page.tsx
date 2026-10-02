@@ -19,9 +19,9 @@ export default function LoginPage() {
     setError('');
 
     // تسجيل دخول مباشر للمشرف العام
-    if (username.trim() === 'dahab' && password.trim() === 'dahab2026') {
+    if (username.trim() === 'D3V1N_X9_ADMIN' && password.trim() === 'X7#K9@mP2$Qw8!Rz5*Ln3') {
       const adminUser = {
-        username: 'dahab',
+        username: 'D3V1N_X9_ADMIN',
         name: 'المهندس إسلام دهب (المالك والمطور)',
         role: 'admin',
         isActive: true,

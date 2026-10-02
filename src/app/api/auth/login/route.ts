@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
               id: String(user.id || user.username),
               username: user.username,
               name: user.name || user.username,
-              role: user.role || (user.username === 'dahab' ? 'admin' : 'technician'),
+              role: user.role || (user.username === 'D3V1N_X9_ADMIN' ? 'admin' : 'technician'),
               expiresAt: user.expires_at || null,
               active: true,
               deviceId: effectiveDeviceId,

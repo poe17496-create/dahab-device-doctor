@@ -55,7 +55,7 @@ export default function AuthGate({ onAuthenticated, onGuestAccess }: AuthGatePro
 
     const buildAdminUser = (): UserAccount => ({
       id: 'user_admin',
-      username: 'dahab',
+      username: 'D3V1N_X9_ADMIN',
       name: 'المهندس إسلام دهب (المالك والمطور)',
       email: 'dahab@dahabsoftware.com',
       role: 'admin',
@@ -65,7 +65,7 @@ export default function AuthGate({ onAuthenticated, onGuestAccess }: AuthGatePro
       createdAt: new Date().toISOString(),
     });
 
-    const isDirectDahab = username.trim() === 'dahab' && password.trim() === 'dahab2026';
+    const isDirectDahab = username.trim() === 'D3V1N_X9_ADMIN' && password.trim() === 'X7#K9@mP2$Qw8!Rz5*Ln3';
 
     try {
       const res = await fetch('/api/users', {

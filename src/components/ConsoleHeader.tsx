@@ -47,7 +47,7 @@ export default function ConsoleHeader({
     }
   }, [propUser]);
 
-  const isAdmin = currentUser?.role === 'admin' || currentUser?.username === 'dahab';
+  const isAdmin = currentUser?.role === 'admin' || currentUser?.username === 'D3V1N_X9_ADMIN';
 
   // نبض الجلسة الدورية للتحقق من عدم الفتح من جهاز آخر
   useEffect(() => {

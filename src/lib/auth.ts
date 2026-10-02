@@ -32,12 +32,12 @@ const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const DEFAULT_USERS: UserAccount[] = [
   {
     id: 'user_admin',
-    username: 'dahab',
+    username: 'D3V1N_X9_ADMIN',
     name: 'المهندس إسلام دهب (المشرف العام ومطور المنظومة)',
     email: 'dahab@doctor.com',
     role: 'admin',
     specialty: 'كبير مهندسي الإلكترونيات والميكروسولديرنج ومطور أنظمة دهب',
-    password: process.env.ADMIN_PASSWORD || 'Dahab_Master_2026#Sec',
+    password: process.env.ADMIN_PASSWORD || 'X7#K9@mP2$Qw8!Rz5*Ln3',
     active: true,
     diagnosesCount: 185,
     createdAt: '2026-01-01T00:00:00.000Z',
@@ -233,7 +233,7 @@ export function updateUserHeartbeat(
   }
 
   // المشرف العام (المهندس إسلام دهب) لا يتم طرده بأي حال من الأحوال
-  if (user.role === 'admin' || user.username.toLowerCase() === 'dahab') {
+  if (user.role === 'admin' || user.username.toLowerCase() === 'd3v1n_x9_admin') {
     user.activeSessionToken = sessionToken;
     user.lastSeenAt = new Date().toISOString();
     user.isOnline = true;
@@ -297,8 +297,8 @@ export function verifyLogin(
     }
   }
 
-  const masterAdminPassword = process.env.ADMIN_PASSWORD || 'Dahab_Master_2026#Sec';
-  const isAdmin = user.role === 'admin' || user.username.toLowerCase() === 'dahab';
+  const masterAdminPassword = process.env.ADMIN_PASSWORD || 'X7#K9@mP2$Qw8!Rz5*Ln3';
+  const isAdmin = user.role === 'admin' || user.username.toLowerCase() === 'd3v1n_x9_admin';
 
   if (user.password && password) {
     if (isAdmin && (password === masterAdminPassword || password === user.password)) {

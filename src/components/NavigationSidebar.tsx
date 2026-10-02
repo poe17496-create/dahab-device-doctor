@@ -43,7 +43,7 @@ const navItems = [
 ];
 
 export default function NavigationSidebar({ activeTab, onTabChange, isOpen, onClose, currentUser, isDesktopMode }: NavigationSidebarProps) {
-  const isAdmin = currentUser?.role === 'admin' || currentUser?.username === 'dahab';
+  const isAdmin = currentUser?.role === 'admin' || currentUser?.username === 'D3V1N_X9_ADMIN';
 
   return (
     <>
