@@ -22,6 +22,7 @@ export interface AIResponse {
   engine: AIEngine;
   modelUsed?: string;
   errorLog?: string[];
+  stream?: ReadableStream<Uint8Array>;
 }
 
 /**
@@ -91,7 +92,7 @@ function extractMetrics(text: string): DiagnosticMetrics | undefined {
  */
 async function tryCallGemini(
   apiKey: string,
-  params: { prompt: string; imageBase64?: string; systemPrompt?: string }
+  params: { prompt: string; imageBase64?: string; systemPrompt?: string; stream?: boolean }
 ): Promise<AIResponse> {
   const modelsToTry = [
     'gemini-3.5-flash-lite',
@@ -125,6 +126,42 @@ async function tryCallGemini(
         }
       }
 
+      // Streaming mode
+      if (params.stream) {
+        const result = await model.generateContentStream(contentParts);
+        const encoder = new TextEncoder();
+        const stream = new ReadableStream({
+          async start(controller) {
+            try {
+              for await (const chunk of result.stream) {
+                const chunkText = chunk.text();
+                if (chunkText) {
+                  controller.enqueue(encoder.encode(chunkText));
+                }
+              }
+              controller.close();
+            } catch (err) {
+              controller.error(err);
+            }
+          },
+        });
+
+        // Collect full text for metrics extraction
+        let fullText = '';
+        for await (const chunk of result.stream) {
+          fullText += chunk.text();
+        }
+
+        return {
+          text: fullText,
+          metrics: extractMetrics(fullText),
+          engine: 'gemini',
+          modelUsed: modelName,
+          stream,
+        };
+      }
+
+      // Non-streaming mode (original)
       const result = await model.generateContent(contentParts);
       const text = result.response.text();
       if (text && text.trim().length > 0) {
@@ -151,7 +188,7 @@ async function tryCallGemini(
  */
 async function tryCallOpenRouter(
   apiKey: string,
-  params: { prompt: string; imageBase64?: string; systemPrompt?: string }
+  params: { prompt: string; imageBase64?: string; systemPrompt?: string; stream?: boolean }
 ): Promise<AIResponse> {
   const client = new OpenAI({
     apiKey,
@@ -193,6 +230,48 @@ async function tryCallOpenRouter(
 
   for (const model of modelsToTry) {
     try {
+      // Streaming mode
+      if (params.stream) {
+        const stream = await client.chat.completions.create({
+          model,
+          messages,
+          max_tokens: 3000,
+          stream: true,
+        });
+
+        const encoder = new TextEncoder();
+        const readableStream = new ReadableStream({
+          async start(controller) {
+            try {
+              for await (const chunk of stream) {
+                const delta = chunk.choices[0]?.delta?.content || '';
+                if (delta) {
+                  controller.enqueue(encoder.encode(delta));
+                }
+              }
+              controller.close();
+            } catch (err) {
+              controller.error(err);
+            }
+          },
+        });
+
+        // Collect full text for metrics
+        let fullText = '';
+        for await (const chunk of stream) {
+          fullText += chunk.choices[0]?.delta?.content || '';
+        }
+
+        return {
+          text: fullText,
+          metrics: extractMetrics(fullText),
+          engine: 'openrouter',
+          modelUsed: model,
+          stream: readableStream,
+        };
+      }
+
+      // Non-streaming mode (original)
       const response = await client.chat.completions.create({
         model,
         messages,
@@ -378,6 +457,7 @@ export async function callAIEngine(params: {
   preferredEngine?: AIEngine;
   systemPrompt?: string;
   skipEnhancement?: boolean;
+  stream?: boolean;
   customKeys?: {
     deepseek?: string | string[];
     gemini?: string | string[];
@@ -386,13 +466,14 @@ export async function callAIEngine(params: {
     groq?: string | string[];
   };
 }): Promise<AIResponse> {
-  const { specialty = 'mobile-repair', systemPrompt = DAHAB_SYSTEM_PROMPT, skipEnhancement = false } = params;
+  const { specialty = 'mobile-repair', systemPrompt = DAHAB_SYSTEM_PROMPT, skipEnhancement = false, stream = false } = params;
 
   const enhancedPrompt = skipEnhancement ? params.prompt : enhanceArabicPrompt(params.prompt);
   const payload = {
     prompt: enhancedPrompt,
     imageBase64: params.imageBase64,
     systemPrompt,
+    stream,
   };
 
   const errorsLog: string[] = [];

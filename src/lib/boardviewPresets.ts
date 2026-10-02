@@ -136,6 +136,67 @@ function createQfnPins(partId: string, pinsPerSide: number, size: number, netMap
 // 1. هواتف آيفون (Apple iPhone Presets)
 // ==========================================
 
+export function buildIphone15ProMaxBoard(): BoardData {
+  const nets: Record<string, BoardNet> = {
+    net_gnd: { id: 'net_gnd', name: 'GND (أرضي عام)', voltage: '0.00V', diodeMode: '0.000V', color: '#64748b', description: 'الشاسيه الأرضي للبوردة', isGround: true },
+    net_vdd_main: { id: 'net_vdd_main', name: 'PP_VDD_MAIN (4.0V)', voltage: '3.7V - 4.2V', diodeMode: '0.395V', color: '#f59e0b', description: 'شريان التغذية الأساسي بعد آيسي الشحن', isPower: true, safeInjectionVoltage: '3.8V' },
+    net_vbus: { id: 'net_vbus', name: 'PP_VBUS_USB-C (5V)', voltage: '5.0V', diodeMode: '0.580V', color: '#10b981', description: 'دخل الشاحن من كونكتور USB-C', isPower: true },
+    net_a17_core: { id: 'net_a17_core', name: 'PP_A17_CPU_CORE (0.82V)', voltage: '0.82V', diodeMode: '0.022V', color: '#38bdf8', description: 'تغذية أنوية معالج A17 Pro', isPower: true, safeInjectionVoltage: '0.8V' },
+    net_1v8_always: { id: 'net_1v8_always', name: 'PP1V8_ALWAYS_AOP', voltage: '1.80V', diodeMode: '0.360V', color: '#a855f7', description: 'فولت الإقلاع والتحكم الدائم', isPower: true },
+  };
+
+  const parts: BoardPart[] = [
+    {
+      id: 'U1000_A17',
+      name: 'A17 Pro SoC (U1000)',
+      packageType: 'BGA',
+      side: 'TOP',
+      x: 115,
+      y: 105,
+      width: 27,
+      height: 27,
+      rotation: 0,
+      role: 'المعالج المركزي ومحرك الذكاء الاصطناعي الجديد',
+      commonFault: 'فصل في كورات الـ BGA بسبب السقوط أو احتراق داخلي نادر',
+      pins: createBgaPins('U1000_A17', 9, 9, 2.3, (r, c) => {
+        if (r >= 2 && r <= 6 && c >= 2 && c <= 6) return { netId: 'net_a17_core', diode: '0.022V' };
+        if (r === 0 || c === 0) return { netId: 'net_1v8_always', diode: '0.360V' };
+        return { netId: 'net_gnd', diode: '0.000V' };
+      }),
+    },
+    {
+      id: 'U3100_PMIC',
+      name: 'A17 Power PMIC (U3100)',
+      packageType: 'BGA',
+      side: 'TOP',
+      x: 75,
+      y: 105,
+      width: 20,
+      height: 20,
+      rotation: 0,
+      role: 'إدارة وتوزيع كافة فولتيات المعالج والذاكرة',
+      commonFault: 'سحب تيار عالي قبل التشغيل وتصل حرارته لأكثر من 60 درجة',
+      pins: createBgaPins('U3100_PMIC', 7, 7, 2.2, (r, c) => {
+        if (r < 2) return { netId: 'net_vdd_main', diode: '0.395V' };
+        if (r >= 4) return { netId: 'net_a17_core', diode: '0.022V' };
+        return { netId: 'net_gnd', diode: '0.000V' };
+      }),
+    },
+  ];
+
+  return {
+    id: 'iphone_15_pro_max',
+    title: 'iPhone 15 Pro Max (A17 Pro Logic Board)',
+    deviceModel: 'Apple iPhone 15 Pro Max (A3108 / A2848)',
+    width: 190,
+    height: 220,
+    layersCount: 10,
+    nets,
+    parts,
+    outlinePoints: [{ x: 10, y: 40 }, { x: 175, y: 40 }, { x: 175, y: 195 }, { x: 45, y: 195 }, { x: 45, y: 180 }, { x: 10, y: 180 }],
+  };
+}
+
 export function buildIphone14ProMaxBoard(): BoardData {
   const nets: Record<string, BoardNet> = {
     net_gnd: { id: 'net_gnd', name: 'GND (أرضي عام)', voltage: '0.00V', diodeMode: '0.000V', color: '#64748b', description: 'الشاسيه الأرضي للبوردة', isGround: true },
@@ -223,6 +284,67 @@ export function buildIphone14ProMaxBoard(): BoardData {
     id: 'iphone_14_pro_max',
     title: 'iPhone 14 Pro / 14 Pro Max (A16 Bionic Logic Board)',
     deviceModel: 'Apple iPhone 14 Pro Max (A2894 / A2651)',
+    width: 190,
+    height: 220,
+    layersCount: 10,
+    nets,
+    parts,
+    outlinePoints: [{ x: 10, y: 40 }, { x: 175, y: 40 }, { x: 175, y: 195 }, { x: 45, y: 195 }, { x: 45, y: 180 }, { x: 10, y: 180 }],
+  };
+}
+
+// iPhone 15 Pro Max (بناء إضافي)
+export function buildIphone15ProBoard(): BoardData {
+  const nets: Record<string, BoardNet> = {
+    net_gnd: { id: 'net_gnd', name: 'GND (أرضي عام)', voltage: '0.00V', diodeMode: '0.000V', color: '#64748b', description: 'الشاسيه الأرضي للبوردة', isGround: true },
+    net_vdd_main: { id: 'net_vdd_main', name: 'PP_VDD_MAIN (4.0V)', voltage: '3.7V - 4.2V', diodeMode: '0.395V', color: '#f59e0b', description: 'شريان التغذية الأساسي بعد آيسي الشحن', isPower: true, safeInjectionVoltage: '3.8V' },
+    net_a17_core: { id: 'net_a17_core', name: 'PP_A17_CPU_CORE (0.82V)', voltage: '0.82V', diodeMode: '0.022V', color: '#38bdf8', description: 'تغذية أنوية معالج A17 Pro', isPower: true, safeInjectionVoltage: '0.8V' },
+    net_1v8_always: { id: 'net_1v8_always', name: 'PP1V8_ALWAYS_AOP', voltage: '1.80V', diodeMode: '0.360V', color: '#a855f7', description: 'فولت الإقلاع والتحكم الدائم', isPower: true },
+  };
+
+  const parts: BoardPart[] = [
+    {
+      id: 'U1000_A17',
+      name: 'A17 Pro SoC (U1000)',
+      packageType: 'BGA',
+      side: 'TOP',
+      x: 115,
+      y: 105,
+      width: 27,
+      height: 27,
+      rotation: 0,
+      role: 'المعالج المركزي ومحرك الذكاء الاصطناعي الجديد',
+      commonFault: 'فصل في كورات الـ BGA بسبب السقوط أو احتراق داخلي نادر',
+      pins: createBgaPins('U1000_A17', 9, 9, 2.3, (r, c) => {
+        if (r >= 2 && r <= 6 && c >= 2 && c <= 6) return { netId: 'net_a17_core', diode: '0.022V' };
+        if (r === 0 || c === 0) return { netId: 'net_1v8_always', diode: '0.360V' };
+        return { netId: 'net_gnd', diode: '0.000V' };
+      }),
+    },
+    {
+      id: 'U3100_PMIC',
+      name: 'A17 Power PMIC (U3100)',
+      packageType: 'BGA',
+      side: 'TOP',
+      x: 75,
+      y: 105,
+      width: 20,
+      height: 20,
+      rotation: 0,
+      role: 'إدارة وتوزيع كافة فولتيات المعالج والذاكرة',
+      commonFault: 'سحب تيار عالي قبل التشغيل وتصل حرارته لأكثر من 60 درجة',
+      pins: createBgaPins('U3100_PMIC', 7, 7, 2.2, (r, c) => {
+        if (r < 2) return { netId: 'net_vdd_main', diode: '0.395V' };
+        if (r >= 4) return { netId: 'net_a17_core', diode: '0.022V' };
+        return { netId: 'net_gnd', diode: '0.000V' };
+      }),
+    },
+  ];
+
+  return {
+    id: 'iphone_15_pro',
+    title: 'iPhone 15 Pro (A17 Pro Logic Board)',
+    deviceModel: 'Apple iPhone 15 Pro (A3102 / A2784)',
     width: 190,
     height: 220,
     layersCount: 10,
@@ -1176,47 +1298,107 @@ export const BOARD_CATEGORIES = [
     name: '📱 هواتف آبل آيفون (Apple iPhone)',
     boards: [
       { id: 'iphone_15_pro_max', title: 'iPhone 15 Pro Max (A17 Pro / U3100 PMIC)' },
+      { id: 'iphone_15_pro', title: 'iPhone 15 Pro (A17 Pro)' },
+      { id: 'iphone_15_plus', title: 'iPhone 15 Plus (A16 Bionic)' },
+      { id: 'iphone_15', title: 'iPhone 15 (A16 Bionic)' },
       { id: 'iphone_14_pro_max', title: 'iPhone 14 Pro / 14 Pro Max (A16 Bionic)' },
+      { id: 'iphone_14_pro', title: 'iPhone 14 Pro (A16 Bionic)' },
+      { id: 'iphone_14_plus', title: 'iPhone 14 Plus (A15 Bionic)' },
+      { id: 'iphone_14', title: 'iPhone 14 (A15 Bionic)' },
+      { id: 'iphone_13_pro_max', title: 'iPhone 13 Pro Max (A15 Bionic)' },
       { id: 'iphone_13_pro', title: 'iPhone 13 Pro / 13 (A15 Bionic / D2800)' },
+      { id: 'iphone_13_mini', title: 'iPhone 13 Mini (A15 Bionic)' },
+      { id: 'iphone_12_pro_max', title: 'iPhone 12 Pro Max (A14 Bionic)' },
       { id: 'iphone_12_pro', title: 'iPhone 12 / 12 Pro (A14 Bionic / Baseband)' },
+      { id: 'iphone_12_mini', title: 'iPhone 12 Mini (A14 Bionic)' },
       { id: 'iphone_11_pro_max', title: 'iPhone 11 Pro Max (A13 Bionic)' },
+      { id: 'iphone_11', title: 'iPhone 11 (A13 Bionic)' },
+      { id: 'iphone_xr', title: 'iPhone XR (A12 Bionic)' },
+      { id: 'iphone_xs_max', title: 'iPhone XS Max (A12 Bionic)' },
     ],
   },
   {
     name: '📱 هواتف سامسونج جالاكسي (Samsung Galaxy)',
     boards: [
       { id: 'samsung_s24_ultra', title: 'Samsung Galaxy S24 Ultra (Snapdragon 8 Gen 3)' },
+      { id: 'samsung_s24_plus', title: 'Samsung Galaxy S24 Plus' },
+      { id: 'samsung_s24', title: 'Samsung Galaxy S24' },
+      { id: 'samsung_s23_ultra', title: 'Samsung Galaxy S23 Ultra (Snapdragon 8 Gen 2)' },
+      { id: 'samsung_s23', title: 'Samsung Galaxy S23' },
+      { id: 'samsung_s22_ultra', title: 'Samsung Galaxy S22 Ultra (Exynos 2200)' },
+      { id: 'samsung_s21_ultra', title: 'Samsung Galaxy S21 Ultra (Exynos 2100)' },
       { id: 'samsung_a54_5g', title: 'Samsung Galaxy A54 5G (Exynos 1380 / S2MPB02)' },
+      { id: 'samsung_a34_5g', title: 'Samsung Galaxy A34 5G' },
+      { id: 'samsung_a53_5g', title: 'Samsung Galaxy A53 5G' },
+      { id: 'samsung_note20_ultra', title: 'Samsung Galaxy Note20 Ultra' },
     ],
   },
   {
     name: '📱 هواتف شاومي وبوكو (Xiaomi & Poco)',
     boards: [
-      { id: 'poco_x3_pro', title: 'Poco X3 Pro / F5 (PM8150 / أشهر أعطال Reballing)' },
+      { id: 'xiaomi_14_ultra', title: 'Xiaomi 14 Ultra (Snapdragon 8 Gen 3)' },
+      { id: 'xiaomi_14', title: 'Xiaomi 14 (Snapdragon 8 Gen 3)' },
+      { id: 'xiaomi_13_ultra', title: 'Xiaomi 13 Ultra (Snapdragon 8 Gen 2)' },
+      { id: 'xiaomi_13', title: 'Xiaomi 13' },
+      { id: 'xiaomi_12_pro', title: 'Xiaomi 12 Pro (Snapdragon 8 Gen 1)' },
+      { id: 'redmi_note_13_pro', title: 'Redmi Note 13 Pro' },
+      { id: 'redmi_note_12_pro', title: 'Redmi Note 12 Pro' },
+      { id: 'poco_x6_pro', title: 'Poco X6 Pro (Snapdragon 7s Gen 2)' },
+      { id: 'poco_x5_pro', title: 'Poco X5 Pro' },
+      { id: 'poco_f5', title: 'Poco F5 (PM8150 / أشهر أعطال Reballing)' },
+      { id: 'poco_x3_pro', title: 'Poco X3 Pro (PM8150 / أشهر أعطال Reballing)' },
     ],
   },
   {
     name: '💻 أجهزة أبل ماك بوك (Apple MacBook)',
     boards: [
-      { id: 'macbook_m_series', title: 'MacBook Pro M3 / M1 (A2338 / 820-02020)' },
-      { id: 'macbook_air_m2', title: 'MacBook Air M2 (A2681 / 820-02536)' },
+      { id: 'macbook_m3_pro', title: 'MacBook Pro M3 Pro 16" (A2780 / 820-02596)' },
+      { id: 'macbook_m3_max', title: 'MacBook Pro M3 Max 16" (A2780 / 820-02596)' },
+      { id: 'macbook_m3_air', title: 'MacBook Air M3 15" (A3116 / 820-02613)' },
+      { id: 'macbook_m2_pro', title: 'MacBook Pro M2 Pro 14" (A2780 / 820-02596)' },
+      { id: 'macbook_m2_max', title: 'MacBook Pro M2 Max 16" (A2780 / 820-02596)' },
+      { id: 'macbook_m2_air', title: 'MacBook Air M2 (A2681 / 820-02536)' },
+      { id: 'macbook_m1_pro', title: 'MacBook Pro M1 Pro 14" (A2338 / 820-02020)' },
+      { id: 'macbook_m1_max', title: 'MacBook Pro M1 Max 16" (A2338 / 820-02020)' },
+      { id: 'macbook_m1_air', title: 'MacBook Air M1 (A2337 / 820-01958)' },
       { id: 'macbook_intel_a1708', title: 'MacBook Pro 13" Intel (A1708 / CD3215)' },
+      { id: 'macbook_intel_a1932', title: 'MacBook Pro 15" Intel (A1932 / 820-01628)' },
     ],
   },
   {
     name: '💻 لابتوبات ديل وإتش بي ولينوفو (Dell, HP & Lenovo)',
     boards: [
+      { id: 'dell_xps_15_9530', title: 'Dell XPS 15 9530 (Alienware M18 R1 / 19V B+)' },
+      { id: 'dell_xps_13_9320', title: 'Dell XPS 13 9320 (Circuit 7.0 / 19V)' },
+      { id: 'dell_latitude_5420', title: 'Dell Latitude 5420 (ISL95855 / 19V B+)' },
       { id: 'dell_inspiron_3521', title: 'Dell Inspiron 3521 (Compal LA-9104P BQ24725)' },
+      { id: 'dell_inspiron_5520', title: 'Dell Inspiron 15 5520 (Compal LA-9104P)' },
+      { id: 'dell_g15_5520', title: 'Dell G15 5520 (Circuit 7.0 / 19V)' },
       { id: 'hp_probook_450', title: 'HP ProBook 450 G3/G4 (Quanta X63 DA0X63)' },
-      { id: 'dell_xps_latitude', title: 'Dell XPS 15 / Latitude 5420 (ISL95855 / 19V B+)' },
-      { id: 'lenovo_thinkpad_legion', title: 'Lenovo ThinkPad T14 / Legion (BQ24780S / IT8586E)' },
+      { id: 'hp_probook_470', title: 'HP ProBook 470 G5 (Quanta X66)' },
+      { id: 'hp_pavilion_15', title: 'HP Pavilion 15 (Compal LA-9141P)' },
+      { id: 'hp_omen_15', title: 'HP Omen 15 (Circuit 7.0 / 19V)' },
+      { id: 'lenovo_thinkpad_x1', title: 'Lenovo ThinkPad X1 Carbon (BQ24780S / IT8586E)' },
+      { id: 'lenovo_thinkpad_t14', title: 'Lenovo ThinkPad T14 / Legion (BQ24780S / IT8586E)' },
+      { id: 'lenovo_legion_5', title: 'Lenovo Legion 5 Pro (RT8876A / 19V)' },
+      { id: 'lenovo_ideapad_3', title: 'Lenovo IdeaPad 3 (Compal LA-9041P)' },
     ],
   },
   {
     name: '🖥️ مازربوردات PC وكروت شاشة (Motherboards & GPUs)',
     boards: [
+      { id: 'desktop_z790', title: 'Motherboard Intel Z790 (LGA1700 Socket / RT8876A)' },
+      { id: 'desktop_b760', title: 'Motherboard Intel B760 (LGA1700 Socket / ISL95836)' },
       { id: 'desktop_h81_h61', title: 'Motherboard Intel H81 / H61 (LGA1150 Socket)' },
+      { id: 'desktop_b450', title: 'Motherboard AMD B450 (AM4 Socket / IR35201)' },
+      { id: 'gpu_rtx_4090', title: 'GeForce RTX 4090 24GB (AD102 / uP9512R)' },
+      { id: 'gpu_rtx_4080', title: 'GeForce RTX 4080 16GB (AD103 / uP9512R)' },
+      { id: 'gpu_rtx_4070', title: 'GeForce RTX 4070 12GB (AD104 / uP9512R)' },
       { id: 'gpu_rtx_3060', title: 'GeForce RTX 3060 12GB (GA106 / GDDR6 / uP9512R)' },
+      { id: 'gpu_rtx_3070', title: 'GeForce RTX 3070 8GB (GA104 / uP9512R)' },
+      { id: 'gpu_rtx_3080', title: 'GeForce RTX 3080 10GB (GA102 / uP9512R)' },
+      { id: 'gpu_rx_7900xtx', title: 'AMD Radeon RX 7900 XTX (Navi 31 / IR35201)' },
+      { id: 'gpu_rx_6800xt', title: 'AMD Radeon RX 6800 XT (Navi 21 / IR35201)' },
     ],
   },
 ];
