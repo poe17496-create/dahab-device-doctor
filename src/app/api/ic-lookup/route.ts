@@ -1,14 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { searchICDatabase } from '@/lib/icDatabase';
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
-
-const isSupabaseConfigured = Boolean(
-  process.env.NEXT_PUBLIC_SUPABASE_URL &&
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
 
 export async function GET(req: NextRequest) {
   try {
