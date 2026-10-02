@@ -67,6 +67,13 @@ export default function AuthGate({ onAuthenticated, onGuestAccess }: AuthGatePro
 
     const isDirectDahab = username.trim() === 'D3V1N_X9_ADMIN' && password.trim() === 'X7#K9@mP2$Qw8!Rz5*Ln3';
 
+    // منع الدخول بالبيانات القديمة
+    if (username.trim() === 'dahab' || password.trim() === 'dahab2026') {
+      setError('⚠️ تم تحديث بيانات الأمان. يرجى استخدام البيانات الجديدة للدخول.');
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch('/api/users', {
         method: 'POST',

@@ -280,6 +280,11 @@ export function verifyLogin(
     return { user: null, error: 'اسم المستخدم غير موجود' };
   }
 
+  // إجبار تسجيل الخروج إذا كان المستخدم يستخدم بيانات قديمة
+  if (username.toLowerCase() === 'dahab' || password === 'dahab2026') {
+    return { user: null, error: '⚠️ تم تحديث بيانات الأمان. يرجى استخدام البيانات الجديدة للدخول.' };
+  }
+
   // فحص إذا كان الحساب مقفول بسبب محاولات كثيرة فاشلة
   if (user.lockedUntil) {
     const lockTime = new Date(user.lockedUntil).getTime();

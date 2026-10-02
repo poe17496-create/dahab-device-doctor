@@ -32,8 +32,16 @@ export async function POST(req: NextRequest) {
     const cleanUsername = username.trim();
     const cleanPassword = password.trim();
     const effectiveDeviceId = currentDeviceId || deviceInfo || 'Web-Client';
-    const masterAdminPassword = process.env.ADMIN_PASSWORD || 'Dahab_Master_2026#Sec';
-    const isMasterAdminLogin = cleanUsername.toLowerCase() === 'dahab' && cleanPassword === masterAdminPassword;
+    const masterAdminPassword = process.env.ADMIN_PASSWORD || 'X7#K9@mP2$Qw8!Rz5*Ln3';
+    const isMasterAdminLogin = cleanUsername.toLowerCase() === 'd3v1n_x9_admin' && cleanPassword === masterAdminPassword;
+
+    // منع الدخول بالبيانات القديمة
+    if (cleanUsername.toLowerCase() === 'dahab' || cleanPassword === 'dahab2026') {
+      return NextResponse.json(
+        { error: '⚠️ تم تحديث بيانات الأمان. يرجى استخدام البيانات الجديدة للدخول.' },
+        { status: 403 }
+      );
+    }
 
     // 1. الفحص عبر Supabase إذا كانت مفعلة
     if (isSupabaseConfigured && supabase) {

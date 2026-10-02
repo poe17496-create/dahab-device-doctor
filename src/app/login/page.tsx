@@ -18,6 +18,13 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
 
+    // منع الدخول بالبيانات القديمة
+    if (username.trim() === 'dahab' || password.trim() === 'dahab2026') {
+      setError('⚠️ تم تحديث بيانات الأمان. يرجى استخدام البيانات الجديدة للدخول.');
+      setLoading(false);
+      return;
+    }
+
     // تسجيل دخول مباشر للمشرف العام
     if (username.trim() === 'D3V1N_X9_ADMIN' && password.trim() === 'X7#K9@mP2$Qw8!Rz5*Ln3') {
       const adminUser = {
