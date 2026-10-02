@@ -35,6 +35,10 @@ COMMENT ON TABLE restore_logs IS 'جدول سجل عمليات استعادة ا
 ALTER TABLE database_backups ENABLE ROW LEVEL SECURITY;
 ALTER TABLE restore_logs ENABLE ROW LEVEL SECURITY;
 
+-- حذف الـ policies القديمة إذا كانت موجودة
+DROP POLICY IF EXISTS "Admin only can access database_backups" ON database_backups;
+DROP POLICY IF EXISTS "Admin only can access restore_logs" ON restore_logs;
+
 -- السماح للمشرف فقط بالوصول
 CREATE POLICY "Admin only can access database_backups" ON database_backups
   FOR ALL USING (auth.uid() IS NULL OR auth.role() = 'service_role');
