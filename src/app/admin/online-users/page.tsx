@@ -55,15 +55,15 @@ export default function OnlineUsersPage() {
   const onlineUsers = users.filter(u => u.isOnline);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-[#0B0F17] dark:via-[#111827] dark:to-[#0B0F17] text-gray-900 dark:text-gray-100 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-[#0B0F17] dark:via-[#111827] dark:to-[#0B0F17] text-gray-900 dark:text-gray-100 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
-            <Link href="/admin/dashboard" className="p-2 hover:bg-gray-200 dark:hover:bg-[#111827] rounded-lg transition-colors">
+            <Link href="/admin" className="p-2 hover:bg-gray-200 dark:hover:bg-[#111827] rounded-lg transition-colors">
               <ArrowLeft className="w-6 h-6" />
             </Link>
-            <h1 className="text-3xl font-bold flex items-center gap-3">
-              <Wifi className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+            <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3">
+              <Wifi className="w-7 h-7 md:w-8 md:h-8 text-emerald-600 dark:text-emerald-400" />
               المستخدمين المتصلين حالياً
             </h1>
           </div>

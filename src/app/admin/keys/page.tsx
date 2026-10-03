@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ShieldCheck, ArrowRight, Key, Lock, User } from 'lucide-react';
+import { ShieldCheck, ArrowRight, Key, Lock, User, BarChart3, Settings, RefreshCw } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import AIKeysManager from '@/components/AIKeysManager';
+import KeysStatsDashboard from '@/components/KeysStatsDashboard';
 
 export default function AdminKeysPage() {
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(false);
@@ -12,6 +13,7 @@ export default function AdminKeysPage() {
   const [adminPassword, setAdminPassword] = useState('');
   const [authError, setAuthError] = useState('');
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [activeTab, setActiveTab] = useState<'keys' | 'stats'>('keys');
 
   useEffect(() => {
     const userStr = localStorage.getItem('dahab_current_user');
@@ -186,8 +188,38 @@ export default function AdminKeysPage() {
           </div>
         </header>
 
-        {/* المكون الرئيسي لإدارة المفاتيح واختبارها */}
-        <AIKeysManager />
+        {/* تبويبات التنقل */}
+        <div className="flex gap-2 p-2 rounded-2xl bg-white dark:bg-workshop-card border border-gray-200 dark:border-gray-800">
+          <button
+            onClick={() => setActiveTab('keys')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition ${
+              activeTab === 'keys'
+                ? 'bg-dahab-500 text-slate-950 shadow-lg shadow-dahab-500/25'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+            }`}
+          >
+            <Settings className="w-4 h-4" />
+            إدارة المفاتيح
+          </button>
+          <button
+            onClick={() => setActiveTab('stats')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition ${
+              activeTab === 'stats'
+                ? 'bg-dahab-500 text-slate-950 shadow-lg shadow-dahab-500/25'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            مراقبة الاستخدام
+          </button>
+        </div>
+
+        {/* المحتوى حسب التبويب */}
+        {activeTab === 'keys' ? (
+          <AIKeysManager />
+        ) : (
+          <KeysStatsDashboard />
+        )}
       </div>
     </div>
   );

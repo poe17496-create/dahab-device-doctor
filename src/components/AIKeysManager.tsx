@@ -147,7 +147,9 @@ function KeySlot({
 
 export default function AIKeysManager() {
   const [geminiSlots, setGeminiSlots] = useState<SingleKeyState[]>([makeKey()]);
-  const [openrouterSlots, setOpenrouterSlots] = useState<SingleKeyState[]>([makeKey()]);
+  const [openrouterSlots, setOpenrouterSlots] = useState<SingleKeyState[]>([]);
+  const [openaiSlots, setOpenaiSlots] = useState<SingleKeyState[]>([]);
+  const [deepseekSlots, setDeepseekSlots] = useState<SingleKeyState[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -209,7 +211,9 @@ export default function AIKeysManager() {
         }
 
         setGeminiSlots(gArr.length > 0 ? gArr.map((v: string) => makeKey(v)) : [makeKey()]);
-        setOpenrouterSlots(oArr.length > 0 ? oArr.map((v: string) => makeKey(v)) : [makeKey()]);
+        setOpenrouterSlots(oArr.length > 0 ? oArr.map((v: string) => makeKey(v)) : []);
+        setOpenaiSlots([]);
+        setDeepseekSlots([]);
       } catch (err) {
         console.error('Error loading API keys:', err);
       } finally {
@@ -261,6 +265,22 @@ export default function AIKeysManager() {
   const deleteOpenrouterSlot = (i: number) =>
     setOpenrouterSlots((prev) => prev.filter((_, idx) => idx !== i));
 
+  // ---- دوال OpenAI ----
+  const updateOpenaiSlot = (i: number, patch: Partial<SingleKeyState>) => {
+    setOpenaiSlots((prev) => prev.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
+  };
+  const addOpenaiSlot = () => setOpenaiSlots((prev) => [...prev, makeKey()]);
+  const deleteOpenaiSlot = (i: number) =>
+    setOpenaiSlots((prev) => prev.filter((_, idx) => idx !== i));
+
+  // ---- دوال DeepSeek ----
+  const updateDeepseekSlot = (i: number, patch: Partial<SingleKeyState>) => {
+    setDeepseekSlots((prev) => prev.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
+  };
+  const addDeepseekSlot = () => setDeepseekSlots((prev) => [...prev, makeKey()]);
+  const deleteDeepseekSlot = (i: number) =>
+    setDeepseekSlots((prev) => prev.filter((_, idx) => idx !== i));
+
   const testOpenrouterKey = async (i: number) => {
     const key = openrouterSlots[i].value.trim();
     if (!key) return;
@@ -287,9 +307,63 @@ export default function AIKeysManager() {
     }
   };
 
+  const testOpenaiKey = async (i: number) => {
+    const key = openaiSlots[i].value.trim();
+    if (!key) return;
+    updateOpenaiSlot(i, { status: 'testing', error: undefined });
+    const start = Date.now();
+    try {
+      const res = await fetch('/api/admin/keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'testSingleKey', provider: 'openai', key }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        updateOpenaiSlot(i, {
+          status: 'success',
+          latencyMs: Date.now() - start,
+          modelUsed: data.modelUsed || 'openai',
+        });
+      } else {
+        updateOpenaiSlot(i, { status: 'error', error: data.error || data.message || 'فشل الاتصال' });
+      }
+    } catch (err: any) {
+      updateOpenaiSlot(i, { status: 'error', error: err?.message || 'خطأ في الشبكة' });
+    }
+  };
+
+  const testDeepseekKey = async (i: number) => {
+    const key = deepseekSlots[i].value.trim();
+    if (!key) return;
+    updateDeepseekSlot(i, { status: 'testing', error: undefined });
+    const start = Date.now();
+    try {
+      const res = await fetch('/api/admin/keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'testSingleKey', provider: 'deepseek', key }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        updateDeepseekSlot(i, {
+          status: 'success',
+          latencyMs: Date.now() - start,
+          modelUsed: data.modelUsed || 'deepseek',
+        });
+      } else {
+        updateDeepseekSlot(i, { status: 'error', error: data.error || data.message || 'فشل الاتصال' });
+      }
+    } catch (err: any) {
+      updateDeepseekSlot(i, { status: 'error', error: err?.message || 'خطأ في الشبكة' });
+    }
+  };
+
   // ---- اختبار كل مفاتيح مزود واحد دفعة ----
   const testAllGemini = () => geminiSlots.forEach((_, i) => { if (geminiSlots[i].value.trim()) testGeminiKey(i); });
   const testAllOpenrouter = () => openrouterSlots.forEach((_, i) => { if (openrouterSlots[i].value.trim()) testOpenrouterKey(i); });
+  const testAllOpenai = () => openaiSlots.forEach((_, i) => { if (openaiSlots[i].value.trim()) testOpenaiKey(i); });
+  const testAllDeepseek = () => deepseekSlots.forEach((_, i) => { if (deepseekSlots[i].value.trim()) testDeepseekKey(i); });
 
   // ---- حفظ ----
   const handleSave = async () => {
@@ -298,11 +372,13 @@ export default function AIKeysManager() {
 
     const gList = geminiSlots.map((s) => s.value.trim()).filter((v) => v.length > 5);
     const oList = openrouterSlots.map((s) => s.value.trim()).filter((v) => v.length > 5);
+    const aList = openaiSlots.map((s) => s.value.trim()).filter((v) => v.length > 5);
+    const dList = deepseekSlots.map((s) => s.value.trim()).filter((v) => v.length > 5);
 
     try {
       localStorage.setItem(
         'dahab_system_api_keys',
-        JSON.stringify({ gemini: gList, openrouter: oList, updatedAt: new Date().toISOString() })
+        JSON.stringify({ gemini: gList, openrouter: oList, openai: aList, deepseek: dList, updatedAt: new Date().toISOString() })
       );
     } catch {}
 
@@ -310,7 +386,7 @@ export default function AIKeysManager() {
       const res = await fetch('/api/admin/keys', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ geminiKeys: gList, openrouterKeys: oList }),
+        body: JSON.stringify({ geminiKeys: gList, openrouterKeys: oList, openaiKeys: aList, deepseekKeys: dList }),
       });
       if (res.ok) {
         setSaveSuccess(true);
@@ -329,8 +405,12 @@ export default function AIKeysManager() {
   // عدد المفاتيح العاملة
   const geminiWorking = geminiSlots.filter((s) => s.status === 'success').length;
   const openrouterWorking = openrouterSlots.filter((s) => s.status === 'success').length;
+  const openaiWorking = openaiSlots.filter((s) => s.status === 'success').length;
+  const deepseekWorking = deepseekSlots.filter((s) => s.status === 'success').length;
   const geminiTotal = geminiSlots.filter((s) => s.value.trim().length > 5).length;
   const openrouterTotal = openrouterSlots.filter((s) => s.value.trim().length > 5).length;
+  const openaiTotal = openaiSlots.filter((s) => s.value.trim().length > 5).length;
+  const deepseekTotal = deepseekSlots.filter((s) => s.value.trim().length > 5).length;
 
   return (
     <div className="space-y-6" dir="rtl">
@@ -353,7 +433,7 @@ export default function AIKeysManager() {
           جاري تحميل المفاتيح...
         </div>
       ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-4 gap-6">
 
           {/* ===== كارت Google Gemini ===== */}
           <div className="rounded-2xl bg-white dark:bg-workshop-card border border-gray-200 dark:border-gray-800 shadow-md overflow-hidden">
@@ -507,11 +587,163 @@ export default function AIKeysManager() {
               </div>
             </div>
           </div>
+
+          {/* ===== كارت OpenAI ===== */}
+          <div className="rounded-2xl bg-white dark:bg-workshop-card border border-gray-200 dark:border-gray-800 shadow-md overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-xl">🤖</div>
+                <div>
+                  <h3 className="text-sm font-black text-gray-900 dark:text-gray-100">OpenAI</h3>
+                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">GPT-4o & GPT-4 Turbo</p>
+                </div>
+              </div>
+              <div className="flex flex-col items-end gap-1">
+                <span className="text-[11px] font-black text-emerald-600 dark:text-emerald-400">
+                  {openaiTotal} مفتاح {openaiTotal !== 1 ? 'محفوظين' : 'محفوظ'}
+                </span>
+                {openaiWorking > 0 && (
+                  <span className="text-[10px] text-emerald-500 font-bold">✓ {openaiWorking} يعمل</span>
+                )}
+              </div>
+            </div>
+
+            <div className="px-5 py-4 space-y-3">
+              {/* معلومة */}
+              <div className="flex items-start gap-2 p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/5 border border-emerald-100 dark:border-emerald-500/20">
+                <Info className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                <p className="text-[10px] text-emerald-700 dark:text-emerald-300 leading-relaxed">
+                  احصل على مفاتيح من{' '}
+                  <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer"
+                    className="underline font-bold">platform.openai.com</a>
+                  {' '}— مفتاح واحد كافٍ. يدعم النسخ الاحتياطي والتدوير.
+                </p>
+              </div>
+
+              {/* خانات المفاتيح */}
+              <div className="space-y-2">
+                {openaiSlots.map((slot, i) => (
+                  <KeySlot
+                    key={i}
+                    index={i}
+                    slot={slot}
+                    provider="openai"
+                    color="emerald"
+                    placeholder="sk-..."
+                    onChange={(v) => updateOpenaiSlot(i, { value: v, status: 'idle', error: undefined })}
+                    onDelete={() => deleteOpenaiSlot(i)}
+                    onTest={() => testOpenaiKey(i)}
+                    onToggleVisible={() => updateOpenaiSlot(i, { visible: !slot.visible })}
+                    canDelete={openaiSlots.length > 1}
+                  />
+                ))}
+              </div>
+
+              {/* أزرار الإجراء */}
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={addOpenaiSlot}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold transition"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  إضافة مفتاح جديد
+                </button>
+                {openaiSlots.some((s) => s.value.trim().length > 5) && (
+                  <button
+                    type="button"
+                    onClick={testAllOpenai}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs font-bold transition"
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    اختبار الكل
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* ===== كارت DeepSeek ===== */}
+          <div className="rounded-2xl bg-white dark:bg-workshop-card border border-gray-200 dark:border-gray-800 shadow-md overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-xl">🔍</div>
+                <div>
+                  <h3 className="text-sm font-black text-gray-900 dark:text-gray-100">DeepSeek</h3>
+                  <p className="text-[11px] text-amber-600 dark:text-amber-400 font-bold">DeepSeek V3 & Coder</p>
+                </div>
+              </div>
+              <div className="flex flex-col items-end gap-1">
+                <span className="text-[11px] font-black text-amber-600 dark:text-amber-400">
+                  {deepseekTotal} مفتاح {deepseekTotal !== 1 ? 'محفوظين' : 'محفوظ'}
+                </span>
+                {deepseekWorking > 0 && (
+                  <span className="text-[10px] text-emerald-500 font-bold">✓ {deepseekWorking} يعمل</span>
+                )}
+              </div>
+            </div>
+
+            <div className="px-5 py-4 space-y-3">
+              {/* معلومة */}
+              <div className="flex items-start gap-2 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-500/5 border border-amber-100 dark:border-amber-500/20">
+                <Info className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                <p className="text-[10px] text-amber-700 dark:text-amber-300 leading-relaxed">
+                  احصل على مفاتيح من{' '}
+                  <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noreferrer"
+                    className="underline font-bold">platform.deepseek.com</a>
+                  {' '}— مفتاح واحد كافٍ. يدعم النسخ الاحتياطي والتدوير.
+                </p>
+              </div>
+
+              {/* خانات المفاتيح */}
+              <div className="space-y-2">
+                {deepseekSlots.map((slot, i) => (
+                  <KeySlot
+                    key={i}
+                    index={i}
+                    slot={slot}
+                    provider="deepseek"
+                    color="amber"
+                    placeholder="sk-..."
+                    onChange={(v) => updateDeepseekSlot(i, { value: v, status: 'idle', error: undefined })}
+                    onDelete={() => deleteDeepseekSlot(i)}
+                    onTest={() => testDeepseekKey(i)}
+                    onToggleVisible={() => updateDeepseekSlot(i, { visible: !slot.visible })}
+                    canDelete={deepseekSlots.length > 1}
+                  />
+                ))}
+              </div>
+
+              {/* أزرار الإجراء */}
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={addDeepseekSlot}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-bold transition"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  إضافة مفتاح جديد
+                </button>
+                {deepseekSlots.some((s) => s.value.trim().length > 5) && (
+                  <button
+                    type="button"
+                    onClick={testAllDeepseek}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs font-bold transition"
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    اختبار الكل
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
       {/* مؤشر التدوير التلقائي */}
-      {(geminiTotal > 1 || openrouterTotal > 1) && (
+      {(geminiTotal > 1 || openrouterTotal > 1 || openaiTotal > 1 || deepseekTotal > 1) && (
         <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-500/5 border border-amber-200 dark:border-amber-500/20 flex items-center gap-3 text-xs text-amber-700 dark:text-amber-300">
           <RefreshCw className="w-4 h-4 text-amber-500 animate-spin" style={{ animationDuration: '3s' }} />
           <span>
