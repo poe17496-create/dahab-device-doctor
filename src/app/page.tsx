@@ -147,7 +147,7 @@ export default function DahabFixAiConsole() {
         const u = JSON.parse(userStr);
         if (u && u.username) {
           // إذا كان زائراً: تحقق من المحاولات المتبقية
-          if (u.isGuest) {
+          if (u.isGuest === true || u.role === 'guest') {
             const today = new Date().toISOString().split('T')[0];
             const used = parseInt(localStorage.getItem(`dahab_guest_usage_${today}`) || '0', 10);
             const remaining = Math.max(0, 5 - used);
@@ -158,6 +158,10 @@ export default function DahabFixAiConsole() {
               return;
             }
             setGuestTrialsRemaining(remaining);
+          } else {
+            // مستخدم مسجل - تأكد من isGuest: false
+            u.isGuest = false;
+            localStorage.setItem('dahab_current_user', JSON.stringify(u));
           }
           setCurrentUser(u);
           setIsCheckingAuth(false);
