@@ -22,6 +22,7 @@ export interface UserAccount {
   price?: number;
   loginAttempts?: number;
   lockedUntil?: string;
+  isGuest?: boolean;
 }
 
 const DEFAULT_ADMIN: UserAccount = {
