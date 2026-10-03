@@ -380,14 +380,15 @@ export default function AIChat({ currentUser }: AIChatProps) {
         checklistProgress: checklistProgress || null,
       };
 
-      // كشف الموبايل - إذا كان موبايل، استخدم non-streaming كـ fallback
+      // كشف الموبايل - تمكين streaming للموبايل أيضاً للسرعة
       const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      const useStreaming = !isMobile;
+      // تمكين streaming للموبايل أيضاً لتحسين السرعة
+      const useStreaming = true;
 
       console.log('[Mobile Debug] Is mobile device:', isMobile);
       console.log('[Mobile Debug] Using streaming:', useStreaming);
 
-      // استخدام streaming mode (مع fallback للموبايل)
+      // استخدام streaming mode (ممكن للموبايل أيضاً)
       const requestBody: any = {
         chatHistory: historyPayload,
         customKeys,
@@ -444,19 +445,21 @@ export default function AIChat({ currentUser }: AIChatProps) {
 
       let fullText = '';
 
-      // إذا كان موبايل أو لا نريد streaming، استخدم non-streaming mode
+      // استخدام streaming mode للكمبيوتر والموبايل على حد سواء
+      // هذا يضمن نفس السرعة والذكاء على جميع الأجهزة
       if (!useStreaming) {
-        console.log('[Mobile Debug] Using non-streaming mode for mobile');
+        console.log('[Mobile Debug] Using non-streaming mode (fallback)');
         const jsonData = await res.json();
         fullText = jsonData.message || jsonData.text || jsonData.response || '';
         console.log('[Mobile Debug] Non-streaming response length:', fullText.length);
       } else {
-        // قراءة الـ stream للـ desktop
+        // قراءة الـ stream - يعمل على الكمبيوتر والموبايل
         const reader = res.body?.getReader();
         const decoder = new TextDecoder();
         let rawBuffer = '';
         let streamChunkCount = 0;
 
+        console.log('[Mobile Debug] Using streaming mode');
         console.log('[Mobile Debug] Response body available:', !!reader);
         console.log('[Mobile Debug] Response body exists:', !!res.body);
 
