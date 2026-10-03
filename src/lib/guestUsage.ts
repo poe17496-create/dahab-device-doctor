@@ -12,7 +12,9 @@ export function isCurrentGuest(): boolean {
   if (!userStr) return true; // غير مسجل يعتبر زائر
   try {
     const user = JSON.parse(userStr);
-    return !!user.isGuest || user.role === 'guest';
+    // المستخدم مسجل إذا كان لديه username و role وليس guest
+    const isRegistered = user.username && user.role && user.role !== 'guest' && !user.isGuest;
+    return !isRegistered;
   } catch {
     return true;
   }

@@ -313,18 +313,23 @@ export default function AIChat({ currentUser }: AIChatProps) {
     // تأخير بسيط لمنع double-click
     await new Promise(resolve => setTimeout(resolve, 200));
 
-    // فحص رصيد التجارب الموحد للزائر
-    const trial = consumeGuestTrial('ai-chat');
-    if (!trial.success) {
-      const limitMsg: ChatMessage = {
-        id: Date.now().toString(),
-        role: 'assistant',
-        content:
-          '⚠️ انتهت تجاربك المجانية اليومية (5 من 5).\n\nللحصول على وصول غير محدود لمساعد الذكاء الاصطناعي ومحاكي البورد فيو والتشخيص، سجّل الدخول بحساب فني معتمد أو تواصل مع م. إسلام دهب على واتساب: 01064147224',
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, limitMsg]);
-      return;
+    // فحص رصيد التجارب الموحد للزائر - فقط إذا لم يكن مستخدم مسجل
+    const isGuestUser = currentUser?.isGuest || !currentUser || currentUser.isGuest === true;
+    console.log('[Mobile Debug] Is guest user:', isGuestUser, 'Current user:', currentUser);
+
+    if (isGuestUser) {
+      const trial = consumeGuestTrial('ai-chat');
+      if (!trial.success) {
+        const limitMsg: ChatMessage = {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content:
+            '⚠️ انتهت تجاربك المجانية اليومية (5 من 5).\n\nللحصول على وصول غير محدود لمساعد الذكاء الاصطناعي ومحاكي البورد فيو والتشخيص، سجّل الدخول بحساب فني معتمد أو تواصل مع م. إسلام دهب على واتساب: 01064147224',
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, limitMsg]);
+        return;
+      }
     }
 
     const userMessage: ChatMessage = {
@@ -437,11 +442,13 @@ export default function AIChat({ currentUser }: AIChatProps) {
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
+        console.error('[Mobile Debug] Server error response:', errData);
         throw new Error(errData.error || `خطأ في الخادم (${res.status})`);
       }
 
       console.log('[Mobile Debug] Response headers:', Object.fromEntries(res.headers.entries()));
       console.log('[Mobile Debug] Response status:', res.status);
+      console.log('[Mobile Debug] Response body exists:', !!res.body);
 
       let fullText = '';
 
@@ -449,14 +456,24 @@ export default function AIChat({ currentUser }: AIChatProps) {
       // هذا يضمن نفس السرعة والذكاء على جميع الأجهزة
       if (!useStreaming) {
         console.log('[Mobile Debug] Using non-streaming mode (fallback)');
-        const jsonData = await res.json();
-        fullText = jsonData.message || jsonData.text || jsonData.response || '';
-        console.log('[Mobile Debug] Non-streaming response length:', fullText.length);
+        try {
+          const jsonData = await res.json();
+          fullText = jsonData.message || jsonData.text || jsonData.response || '';
+          console.log('[Mobile Debug] Non-streaming response length:', fullText.length);
+          console.log('[Mobile Debug] Response data:', jsonData);
 
-        // معالجة حالة عدم وجود رد في non-streaming mode
-        if (!fullText) {
-          console.error('[Mobile Debug] Empty response in non-streaming mode!');
-          fullText = '⚠️ خطأ: الخادم أرجع رد فارغ. يرجى المحاولة مرة أخرى.';
+          // معالجة حالة عدم وجود رد في non-streaming mode
+          if (!fullText) {
+            console.error('[Mobile Debug] Empty response in non-streaming mode!');
+            if (jsonData.error) {
+              fullText = `⚠️ خطأ من الخادم: ${jsonData.error}`;
+            } else {
+              fullText = '⚠️ خطأ: الخادم أرجع رد فارغ. يرجى المحاولة مرة أخرى.';
+            }
+          }
+        } catch (jsonError) {
+          console.error('[Mobile Debug] Error parsing JSON response:', jsonError);
+          fullText = '⚠️ خطأ في قراءة رد الخادم. يرجى المحاولة مرة أخرى.';
         }
       } else {
         // قراءة الـ stream - يعمل على الكمبيوتر والموبايل
