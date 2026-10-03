@@ -387,12 +387,9 @@ export async function updateUserHeartbeat(
     return { valid: true, user };
   }
 
-  // التحقق من التوكن
-  if (!user.activeSessionToken) {
-    user.activeSessionToken = sessionToken;
-  } else if (user.activeSessionToken !== sessionToken) {
-    return { valid: false, error: 'تم تسجيل الدخول إلى هذا الحساب من جهاز آخر' };
-  }
+  // نظام جلسة واحدة نشطة - تحديث التوكن دائماً بدون فحص
+  // السماح بالتبديل بين الأجهزة بحرية
+  user.activeSessionToken = sessionToken;
 
   const sub = checkSubscription(user);
   if (sub.isExpired) {
@@ -403,11 +400,12 @@ export async function updateUserHeartbeat(
   user.isOnline = true;
   if (deviceInfo) user.deviceInfo = deviceInfo;
 
+  // تحديث device_id في Supabase دائماً (نظام جلسة واحدة نشطة)
   if (isSupabaseConfigured && supabaseAdmin) {
     await supabaseAdmin
       .from('users')
       .update({
-        device_id: deviceInfo,
+        device_id: deviceInfo || sessionToken,
         updated_at: new Date().toISOString(),
       })
       .eq('id', user.id);

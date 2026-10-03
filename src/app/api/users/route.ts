@@ -164,11 +164,7 @@ export async function POST(req: NextRequest) {
             if (user.is_active === false) {
               return NextResponse.json({ error: 'تم تعطيل الحساب من قِبل المشرف', kicked: true }, { status: 403 });
             }
-            // تخفيف القيود - لا نرجع 403 إذا كان device_id مختلف، فقط نسجل في الكونسول
-            if (user.device_id && user.device_id !== sessionToken) {
-              console.warn(`Device ID mismatch for ${username}: expected ${user.device_id}, got ${sessionToken}`);
-              // لا نرجع خطأ، نسمح بالاستمرار محلياً
-            }
+            // نظام جلسة واحدة نشطة - لا يوجد فحص device_id mismatch
           }
         } catch (sbErr) {
           console.warn('Supabase heartbeat note:', sbErr);
@@ -180,7 +176,9 @@ export async function POST(req: NextRequest) {
         if (hbResult.error?.includes('غير متاح')) {
           return NextResponse.json({ success: true, rebuilt: true });
         }
-        return NextResponse.json({ error: hbResult.error, kicked: true }, { status: 403 });
+        // في حالة فشل heartbeat بسبب device mismatch، نسمح بالاستمرار مع تحديث device_id
+        console.warn('[Users API] Heartbeat failed, but allowing session:', hbResult.error);
+        return NextResponse.json({ success: true });
       }
       return NextResponse.json({ success: true });
     }

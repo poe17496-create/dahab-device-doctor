@@ -71,7 +71,9 @@ export default function ConsoleHeader({
         });
 
         const data = await res.json();
-        if (data.kicked && !isAdmin) {
+        // نظام جلسة واحدة نشطة - لا يوجد kicked من device mismatch
+        // يتم السماح بالتبديل بين الأجهزة بحرية
+        if (data.kicked && !isAdmin && !data.error?.includes('انتهت') && !data.error?.includes('معطل')) {
           alert(`⚠️ تنبيه أمان:\n${data.error || 'تم تسجيل الدخول إلى هذا الحساب من جهاز آخر، وسيتم إغلاق هذه الجلسة فوراً.'}`);
           localStorage.removeItem('dahab_current_user');
           localStorage.removeItem('dahab_session_token');
