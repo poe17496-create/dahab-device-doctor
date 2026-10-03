@@ -50,7 +50,7 @@ export async function uploadImage(
       throw new Error('Cloudinary not configured');
     }
 
-    let uploadResult;
+    let uploadResult: any;
 
     if (typeof file === 'string') {
       // Handle base64 string
@@ -62,19 +62,19 @@ export async function uploadImage(
         public_id: options.publicId,
       });
     } else {
-      // Handle File object
+      // Handle File object - convert to base64
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
+      const base64 = buffer.toString('base64');
+      const dataUrl = `data:${file.type};base64,${base64}`;
       
-      uploadResult = await cloudinary.uploader.upload_stream(
-        {
-          folder: options.folder || 'dahab-device-doctor',
-          transformation: options.transformation || [
-            { width: 800, quality: 'auto', fetch_format: 'auto' },
-          ],
-          public_id: options.publicId,
-        }
-      ).end(buffer);
+      uploadResult = await cloudinary.uploader.upload(dataUrl, {
+        folder: options.folder || 'dahab-device-doctor',
+        transformation: options.transformation || [
+          { width: 800, quality: 'auto', fetch_format: 'auto' },
+        ],
+        public_id: options.publicId,
+      });
     }
 
     return {
