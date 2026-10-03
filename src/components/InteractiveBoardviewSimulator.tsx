@@ -619,6 +619,9 @@ export default function InteractiveBoardviewSimulator() {
   const [showComponentLabels, setShowComponentLabels] = useState(true);
   const [showGrid, setShowGrid] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showPartLabels, setShowPartLabels] = useState(true);
+  const [showPinNumbers, setShowPinNumbers] = useState(false);
+  const [highContrastMode, setHighContrastMode] = useState(false);
 
   // بوردات ومخططات السحابة المرفوعة
   const [cloudBoards, setCloudBoards] = useState<BoardData[]>([]);
@@ -1730,7 +1733,7 @@ export default function InteractiveBoardviewSimulator() {
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
               }`}
             >
-              الوجه الأمامي (TOP)
+              TOP
             </button>
             <button
               onClick={() => setSelectedSide('BOTTOM')}
@@ -1740,7 +1743,55 @@ export default function InteractiveBoardviewSimulator() {
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
               }`}
             >
-              الوجه الخلفي (BOTTOM)
+              BOTTOM
+            </button>
+          </div>
+
+          {/* ميزات العرض */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setShowPartLabels(!showPartLabels)}
+              className={`p-2 rounded-lg text-xs font-bold transition border ${
+                showPartLabels
+                  ? 'bg-dahab-500/10 text-dahab-600 dark:text-dahab-400 border-dahab-500/30'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700'
+              }`}
+              title="إظهار/إخفاء أسماء المكونات"
+            >
+              <Layers className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setShowPinNumbers(!showPinNumbers)}
+              className={`p-2 rounded-lg text-xs font-bold transition border ${
+                showPinNumbers
+                  ? 'bg-dahab-500/10 text-dahab-600 dark:text-dahab-400 border-dahab-500/30'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700'
+              }`}
+              title="إظهار/إخفاء أرقام البنات"
+            >
+              <Check className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setShowGrid(!showGrid)}
+              className={`p-2 rounded-lg text-xs font-bold transition border ${
+                showGrid
+                  ? 'bg-dahab-500/10 text-dahab-600 dark:text-dahab-400 border-dahab-500/30'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700'
+              }`}
+              title="إظهار/إخفاء الشبكة"
+            >
+              <Eye className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setHighContrastMode(!highContrastMode)}
+              className={`p-2 rounded-lg text-xs font-bold transition border ${
+                highContrastMode
+                  ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700'
+              }`}
+              title="وضع التباين العالي"
+            >
+              <Sliders className="w-4 h-4" />
             </button>
           </div>
 
