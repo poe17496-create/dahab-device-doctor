@@ -8,6 +8,7 @@ import { withErrorHandling, ErrorCode, withTimeout } from '@/lib/apiErrorHandler
 import { chatRequestSchema } from '@/lib/apiSchemas';
 import { getCachedResponse, setCachedResponse, generateCacheKey } from '@/lib/cache';
 import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
+import { generateUserIdentifier } from '@/lib/userFingerprint';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -36,20 +37,22 @@ async function chatHandler(req: NextRequest) {
     );
   }
 
-  // 🎯 تتبع الاستخدام اليومي عبر الـ IP (مع timeout قصير)
+  // 🎯 تتبع الاستخدام اليومي عبر Device Fingerprint المحسن (IP + User Agent + Cookie)
+  let needsCookie = false;
+  let sessionId = '';
   if (isSupabaseConfigured && supabaseAdmin) {
     try {
       const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('Usage check timeout')), 3000)
       );
 
-      // استخراج الـ IP الحقيقي
-      const forwarded = req.headers.get('x-forwarded-for');
-      const ip = forwarded ? forwarded.split(',')[0].trim() : req.headers.get('x-real-ip') || 'anonymous';
+      // Generate comprehensive user identifier
+      const { combinedId, sessionId: newSessionId } = generateUserIdentifier(req);
+      sessionId = newSessionId;
 
       // التحقق من الاستخدام وزيادة العداد مع timeout
       const usageCheckPromise = supabaseAdmin.rpc('check_and_increment_usage', {
-        p_ip_address: ip
+        p_ip_address: combinedId // Use combined ID instead of just IP
       });
 
       const { data: usageResult, error: usageError } = await Promise.race([usageCheckPromise, timeoutPromise]);
@@ -69,6 +72,10 @@ async function chatHandler(req: NextRequest) {
           { status: 429 }
         );
       }
+
+      // Check if we need to set session cookie
+      const existingCookie = req.headers.get('cookie') || '';
+      needsCookie = !existingCookie.includes('dahab_session=');
     } catch (error) {
       console.error('Error checking usage:', error);
       // في حالة الخطأ، نسمح بالطلب لتجنب تعطيل الخدمة
@@ -322,7 +329,7 @@ async function chatHandler(req: NextRequest) {
   // Streaming mode - return SSE stream
   if (stream && aiResponse.stream) {
     const encoder = new TextEncoder();
-    const stream = new ReadableStream({
+    const readableStream = new ReadableStream({
       async start(controller) {
         try {
           const reader = aiResponse.stream!.getReader();
@@ -354,7 +361,7 @@ async function chatHandler(req: NextRequest) {
       },
     });
 
-    return new Response(stream, {
+    const response = new NextResponse(readableStream, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache, no-store, no-transform, must-revalidate, max-age=0',
@@ -365,6 +372,19 @@ async function chatHandler(req: NextRequest) {
         'X-Content-Type-Options': 'nosniff',
       },
     });
+
+    // Set session cookie if needed
+    if (needsCookie && sessionId) {
+      response.cookies.set('dahab_session', sessionId, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 30, // 30 days
+        path: '/',
+      });
+    }
+
+    return response;
   }
 
   // Non-streaming mode (original)
@@ -380,7 +400,7 @@ async function chatHandler(req: NextRequest) {
     }, 24); // Cache لمدة 24 ساعة
   }
 
-  return NextResponse.json({
+  const response = NextResponse.json({
     message: cleanedMessage || aiResponse.text,
     engine: aiResponse.engine,
     modelUsed: aiResponse.modelUsed || 'default',
@@ -393,6 +413,19 @@ async function chatHandler(req: NextRequest) {
       openrouterKeysCount: (process.env.OPENROUTER_API_KEY || '').split(/[\n,;]+/).filter(Boolean).length,
     },
   });
+
+  // Set session cookie if needed
+  if (needsCookie && sessionId) {
+    response.cookies.set('dahab_session', sessionId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 30, // 30 days
+      path: '/',
+    });
+  }
+
+  return response;
 }
 
 export const POST = withErrorHandling(chatHandler);
