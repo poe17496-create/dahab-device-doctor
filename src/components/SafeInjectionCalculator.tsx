@@ -3,6 +3,12 @@
 import React, { useState, useEffect } from 'react';
 import { Zap, AlertTriangle, ShieldCheck, Flame, Info, CheckCircle2, Plus, Trash2, Edit, X, Settings, Save, History } from 'lucide-react';
 import { useDiagnosticContext } from '@/contexts/DiagnosticContext';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 interface RailInfo {
   id: string;
@@ -116,27 +122,42 @@ export default function SafeInjectionCalculator() {
 
   const rail = rails[selectedIdx];
 
-  // تحميل المسارات المخصصة من localStorage
+  // تحميل المسارات المخصصة من Supabase
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    const loadCustomRails = async () => {
       try {
-        const saved = localStorage.getItem('dahab_custom_rails');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
-            setRails([...DEFAULT_RAILS, ...parsed]);
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const token = session.access_token;
+          const response = await fetch('/api/custom-rails', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+          if (response.ok) {
+            const { data } = await response.json();
+            const customRails = data.map((rail: any) => ({
+              id: rail.id,
+              name: rail.name,
+              nominalVoltage: rail.nominal_voltage,
+              maxSafeVoltage: rail.max_safe_voltage,
+              recommendedVoltage: rail.recommended_voltage,
+              maxSafeCurrent: rail.max_safe_current,
+              dangerZone: rail.danger_zone,
+              firstSuspects: rail.first_suspects,
+              notes: rail.notes,
+              isCustom: true,
+            }));
+            setRails([...DEFAULT_RAILS, ...customRails]);
           }
         }
-      } catch {}
-    }
-  }, []);
+      } catch (error) {
+        console.error('Error loading custom rails:', error);
+      }
+    };
 
-  // حفظ المسارات المخصصة في localStorage
-  const saveCustomRails = (customRails: RailInfo[]) => {
-    try {
-      localStorage.setItem('dahab_custom_rails', JSON.stringify(customRails));
-    } catch {}
-  };
+    loadCustomRails();
+  }, []);
 
   // تحديث الـ Context عند تغيير المسار المختار
   useEffect(() => {
@@ -149,53 +170,108 @@ export default function SafeInjectionCalculator() {
   }, [selectedIdx, rail, setCalculatorContext]);
 
   // إضافة مسار مخصص
-  const handleAddRail = () => {
+  const handleAddRail = async () => {
     if (!newRail.name || newRail.nominalVoltage === 0) {
       alert('يرجى إدخال اسم المسار والجهد النموذجي');
       return;
     }
 
-    const customRail: RailInfo = {
-      id: `custom_${Date.now()}`,
-      name: newRail.name,
-      nominalVoltage: newRail.nominalVoltage,
-      maxSafeVoltage: newRail.maxSafeVoltage || newRail.nominalVoltage * 1.1,
-      recommendedVoltage: newRail.recommendedVoltage || newRail.nominalVoltage * 0.5,
-      maxSafeCurrent: newRail.maxSafeCurrent || 2.0,
-      dangerZone: newRail.dangerZone || newRail.nominalVoltage * 1.2,
-      firstSuspects: newRail.firstSuspects,
-      notes: newRail.notes,
-      isCustom: true,
-    };
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('يجب تسجيل الدخول لإضافة مسارات مخصصة');
+        return;
+      }
 
-    const customRails = rails.filter((r) => r.isCustom);
-    const updatedCustomRails = [customRail, ...customRails];
-    const updatedRails = [...DEFAULT_RAILS, ...updatedCustomRails];
+      const token = session.access_token;
+      const response = await fetch('/api/custom-rails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: newRail.name,
+          nominalVoltage: newRail.nominalVoltage,
+          maxSafeVoltage: newRail.maxSafeVoltage || newRail.nominalVoltage * 1.1,
+          recommendedVoltage: newRail.recommendedVoltage || newRail.nominalVoltage * 0.5,
+          maxSafeCurrent: newRail.maxSafeCurrent || 2.0,
+          dangerZone: newRail.dangerZone || newRail.nominalVoltage * 1.2,
+          firstSuspects: newRail.firstSuspects,
+          notes: newRail.notes,
+        }),
+      });
 
-    setRails(updatedRails);
-    saveCustomRails(updatedCustomRails);
-    setNewRail({
-      name: '',
-      nominalVoltage: 0,
-      maxSafeVoltage: 0,
-      recommendedVoltage: 0,
-      maxSafeCurrent: 0,
-      dangerZone: 0,
-      firstSuspects: '',
-      notes: '',
-    });
-    setShowAddModal(false);
+      if (response.ok) {
+        const { data } = await response.json();
+        const customRail: RailInfo = {
+          id: data.id,
+          name: data.name,
+          nominalVoltage: data.nominal_voltage,
+          maxSafeVoltage: data.max_safe_voltage,
+          recommendedVoltage: data.recommended_voltage,
+          maxSafeCurrent: data.max_safe_current,
+          dangerZone: data.danger_zone,
+          firstSuspects: data.first_suspects,
+          notes: data.notes,
+          isCustom: true,
+        };
+
+        const customRails = rails.filter((r) => r.isCustom);
+        const updatedCustomRails = [customRail, ...customRails];
+        const updatedRails = [...DEFAULT_RAILS, ...updatedCustomRails];
+
+        setRails(updatedRails);
+        setNewRail({
+          name: '',
+          nominalVoltage: 0,
+          maxSafeVoltage: 0,
+          recommendedVoltage: 0,
+          maxSafeCurrent: 0,
+          dangerZone: 0,
+          firstSuspects: '',
+          notes: '',
+        });
+        setShowAddModal(false);
+      } else {
+        const error = await response.json();
+        alert(error.error || 'فشل إضافة المسار');
+      }
+    } catch (error) {
+      console.error('Error adding rail:', error);
+      alert('حدث خطأ أثناء إضافة المسار');
+    }
   };
 
   // حذف مسار مخصص
-  const handleDeleteRail = (id: string) => {
-    if (!id.startsWith('custom_')) return;
+  const handleDeleteRail = async (id: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('يجب تسجيل الدخول لحذف المسارات');
+        return;
+      }
 
-    const updated = rails.filter((r) => r.id !== id);
-    const customRails = updated.filter((r) => r.isCustom);
-    setRails(updated);
-    saveCustomRails(customRails);
-    if (selectedIdx >= updated.length) setSelectedIdx(0);
+      const token = session.access_token;
+      const response = await fetch(`/api/custom-rails?id=${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const updated = rails.filter((r) => r.id !== id);
+        setRails(updated);
+        if (selectedIdx >= updated.length) setSelectedIdx(0);
+      } else {
+        const error = await response.json();
+        alert(error.error || 'فشل حذف المسار');
+      }
+    } catch (error) {
+      console.error('Error deleting rail:', error);
+      alert('حدث خطأ أثناء حذف المسار');
+    }
   };
 
   // تعديل مسار
@@ -215,33 +291,78 @@ export default function SafeInjectionCalculator() {
   };
 
   // حفظ التعديل
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editingRail || !newRail.name || newRail.nominalVoltage === 0) {
       alert('يرجى إدخال اسم المسار والجهد النموذجي');
       return;
     }
 
-    const updated = rails.map((r) =>
-      r.id === editingRail.id
-        ? { ...r, ...newRail }
-        : r
-    );
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('يجب تسجيل الدخول لتعديل المسارات');
+        return;
+      }
 
-    const customRails = updated.filter((r) => r.isCustom);
-    setRails(updated);
-    saveCustomRails(customRails);
-    setEditingRail(null);
-    setNewRail({
-      name: '',
-      nominalVoltage: 0,
-      maxSafeVoltage: 0,
-      recommendedVoltage: 0,
-      maxSafeCurrent: 0,
-      dangerZone: 0,
-      firstSuspects: '',
-      notes: '',
-    });
-    setShowAddModal(false);
+      const token = session.access_token;
+      const response = await fetch('/api/custom-rails', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: editingRail.id,
+          name: newRail.name,
+          nominalVoltage: newRail.nominalVoltage,
+          maxSafeVoltage: newRail.maxSafeVoltage,
+          recommendedVoltage: newRail.recommendedVoltage,
+          maxSafeCurrent: newRail.maxSafeCurrent,
+          dangerZone: newRail.dangerZone,
+          firstSuspects: newRail.firstSuspects,
+          notes: newRail.notes,
+        }),
+      });
+
+      if (response.ok) {
+        const { data } = await response.json();
+        const updated = rails.map((r) =>
+          r.id === editingRail.id
+            ? {
+                ...r,
+                name: data.name,
+                nominalVoltage: data.nominal_voltage,
+                maxSafeVoltage: data.max_safe_voltage,
+                recommendedVoltage: data.recommended_voltage,
+                maxSafeCurrent: data.max_safe_current,
+                dangerZone: data.danger_zone,
+                firstSuspects: data.first_suspects,
+                notes: data.notes,
+              }
+            : r
+        );
+
+        setRails(updated);
+        setEditingRail(null);
+        setNewRail({
+          name: '',
+          nominalVoltage: 0,
+          maxSafeVoltage: 0,
+          recommendedVoltage: 0,
+          maxSafeCurrent: 0,
+          dangerZone: 0,
+          firstSuspects: '',
+          notes: '',
+        });
+        setShowAddModal(false);
+      } else {
+        const error = await response.json();
+        alert(error.error || 'فشل حفظ التعديل');
+      }
+    } catch (error) {
+      console.error('Error saving edit:', error);
+      alert('حدث خطأ أثناء حفظ التعديل');
+    }
   };
 
   return (

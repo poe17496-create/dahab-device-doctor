@@ -2,6 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { AlertOctagon, CheckCircle2, FileText, Cpu, Search, Sparkles, Copy, Check, Download, Plus, Trash2, X, History, Save } from 'lucide-react';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 interface PanicSignature {
   id: string;
@@ -124,42 +130,61 @@ export default function PanicLogAnalyzer() {
   });
   const [savedLogs, setSavedLogs] = useState<Array<{ id: string; date: string; text: string; results: PanicSignature[] }>>([]);
 
-  // تحميل البصمات المخصصة والسجلات المحفوظة من localStorage
+  // تحميل البصمات المخصصة والسجلات المحفوظة من Supabase
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    const loadData = async () => {
       try {
-        const savedSigs = localStorage.getItem('dahab_custom_signatures');
-        if (savedSigs) {
-          const parsed = JSON.parse(savedSigs);
-          if (Array.isArray(parsed)) {
-            setSignatures([...DEFAULT_SIGNATURES, ...parsed]);
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const token = session.access_token;
+
+          // تحميل البصمات المخصصة
+          const sigsResponse = await fetch('/api/custom-panic-signatures', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+          if (sigsResponse.ok) {
+            const { data } = await sigsResponse.json();
+            const customSigs = data.map((sig: any) => ({
+              id: sig.id,
+              keyword: sig.keyword,
+              component: sig.component,
+              affectedDevices: sig.affected_devices,
+              symptom: sig.symptom,
+              fixSolution: sig.fix_solution,
+              dangerLevel: sig.danger_level,
+              isCustom: true,
+            }));
+            setSignatures([...DEFAULT_SIGNATURES, ...customSigs]);
+          }
+
+          // تحميل السجلات المحفوظة
+          const logsResponse = await fetch('/api/saved-panic-logs', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+          if (logsResponse.ok) {
+            const { data } = await logsResponse.json();
+            const savedLogsData = data.map((log: any) => ({
+              id: log.id,
+              date: new Date(log.created_at).toLocaleDateString('ar-EG'),
+              text: log.log_text,
+              results: log.results || [],
+            }));
+            setSavedLogs(savedLogsData);
           }
         }
+      } catch (error) {
+        console.error('Error loading data:', error);
+      }
+    };
 
-        const savedLogsData = localStorage.getItem('dahab_saved_panic_logs');
-        if (savedLogsData) {
-          const parsed = JSON.parse(savedLogsData);
-          if (Array.isArray(parsed)) setSavedLogs(parsed);
-        }
-      } catch {}
-    }
+    loadData();
   }, []);
 
-  // حفظ البصمات المخصصة في localStorage
-  const saveCustomSignatures = (customSigs: PanicSignature[]) => {
-    try {
-      localStorage.setItem('dahab_custom_signatures', JSON.stringify(customSigs));
-    } catch {}
-  };
-
-  // حفظ السجلات في localStorage
-  const saveLogs = (logs: typeof savedLogs) => {
-    try {
-      localStorage.setItem('dahab_saved_panic_logs', JSON.stringify(logs));
-    } catch {}
-  };
-
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
     if (!logText.trim()) return;
     const lower = logText.toLowerCase();
 
@@ -170,16 +195,38 @@ export default function PanicLogAnalyzer() {
     setDetectedSignatures(matched);
     setAnalyzed(true);
 
-    // حفظ السجل المحلل
-    const newLog = {
-      id: `log_${Date.now()}`,
-      date: new Date().toLocaleDateString('ar-EG'),
-      text: logText,
-      results: matched,
-    };
-    const updatedLogs = [newLog, ...savedLogs].slice(0, 20); // احتفظ بآخر 20 سجل
-    setSavedLogs(updatedLogs);
-    saveLogs(updatedLogs);
+    // حفظ السجل المحلل في Supabase
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const token = session.access_token;
+        const response = await fetch('/api/saved-panic-logs', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            logText: logText,
+            results: matched,
+          }),
+        });
+
+        if (response.ok) {
+          const { data } = await response.json();
+          const newLog = {
+            id: data.id,
+            date: new Date(data.created_at).toLocaleDateString('ar-EG'),
+            text: data.log_text,
+            results: data.results || [],
+          };
+          const updatedLogs = [newLog, ...savedLogs].slice(0, 20);
+          setSavedLogs(updatedLogs);
+        }
+      }
+    } catch (error) {
+      console.error('Error saving log:', error);
+    }
   };
 
   const handleClear = () => {
@@ -226,48 +273,101 @@ export default function PanicLogAnalyzer() {
   };
 
   // إضافة بصمة مخصصة
-  const handleAddSignature = () => {
+  const handleAddSignature = async () => {
     if (!newSignature.keyword || !newSignature.component) {
       alert('يرجى إدخال الكلمة المفتاحية والمكون');
       return;
     }
 
-    const customSig: PanicSignature = {
-      id: `custom_${Date.now()}`,
-      keyword: newSignature.keyword,
-      component: newSignature.component,
-      affectedDevices: newSignature.affectedDevices,
-      symptom: newSignature.symptom,
-      fixSolution: newSignature.fixSolution,
-      dangerLevel: newSignature.dangerLevel,
-      isCustom: true,
-    };
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('يجب تسجيل الدخول لإضافة بصمات');
+        return;
+      }
 
-    const customSigs = signatures.filter((s) => s.isCustom);
-    const updatedCustomSigs = [customSig, ...customSigs];
-    const updatedSignatures = [...DEFAULT_SIGNATURES, ...updatedCustomSigs];
+      const token = session.access_token;
+      const response = await fetch('/api/custom-panic-signatures', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          keyword: newSignature.keyword,
+          component: newSignature.component,
+          affectedDevices: newSignature.affectedDevices,
+          symptom: newSignature.symptom,
+          fixSolution: newSignature.fixSolution,
+          dangerLevel: newSignature.dangerLevel,
+        }),
+      });
 
-    setSignatures(updatedSignatures);
-    saveCustomSignatures(updatedCustomSigs);
-    setNewSignature({
-      keyword: '',
-      component: '',
-      affectedDevices: '',
-      symptom: '',
-      fixSolution: '',
-      dangerLevel: 'MEDIUM',
-    });
-    setShowAddModal(false);
+      if (response.ok) {
+        const { data } = await response.json();
+        const customSig: PanicSignature = {
+          id: data.id,
+          keyword: data.keyword,
+          component: data.component,
+          affectedDevices: data.affected_devices,
+          symptom: data.symptom,
+          fixSolution: data.fix_solution,
+          dangerLevel: data.danger_level,
+          isCustom: true,
+        };
+
+        const customSigs = signatures.filter((s) => s.isCustom);
+        const updatedCustomSigs = [customSig, ...customSigs];
+        const updatedSignatures = [...DEFAULT_SIGNATURES, ...updatedCustomSigs];
+
+        setSignatures(updatedSignatures);
+        setNewSignature({
+          keyword: '',
+          component: '',
+          affectedDevices: '',
+          symptom: '',
+          fixSolution: '',
+          dangerLevel: 'MEDIUM',
+        });
+        setShowAddModal(false);
+      } else {
+        const error = await response.json();
+        alert(error.error || 'فشل إضافة البصمة');
+      }
+    } catch (error) {
+      console.error('Error adding signature:', error);
+      alert('حدث خطأ أثناء إضافة البصمة');
+    }
   };
 
   // حذف بصمة مخصصة
-  const handleDeleteSignature = (id: string) => {
-    if (!id.startsWith('custom_')) return;
+  const handleDeleteSignature = async (id: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('يجب تسجيل الدخول لحذف البصمات');
+        return;
+      }
 
-    const updated = signatures.filter((s) => s.id !== id);
-    const customSigs = updated.filter((s) => s.isCustom);
-    setSignatures(updated);
-    saveCustomSignatures(customSigs);
+      const token = session.access_token;
+      const response = await fetch(`/api/custom-panic-signatures?id=${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const updated = signatures.filter((s) => s.id !== id);
+        setSignatures(updated);
+      } else {
+        const error = await response.json();
+        alert(error.error || 'فشل حذف البصمة');
+      }
+    } catch (error) {
+      console.error('Error deleting signature:', error);
+      alert('حدث خطأ أثناء حذف البصمة');
+    }
   };
 
   // استرجاع سجل محفوظ
@@ -278,10 +378,33 @@ export default function PanicLogAnalyzer() {
   };
 
   // حذف سجل محفوظ
-  const handleDeleteLog = (id: string) => {
-    const updated = savedLogs.filter((l) => l.id !== id);
-    setSavedLogs(updated);
-    saveLogs(updated);
+  const handleDeleteLog = async (id: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('يجب تسجيل الدخول لحذف السجلات');
+        return;
+      }
+
+      const token = session.access_token;
+      const response = await fetch(`/api/saved-panic-logs?id=${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const updated = savedLogs.filter((l) => l.id !== id);
+        setSavedLogs(updated);
+      } else {
+        const error = await response.json();
+        alert(error.error || 'فشل حذف السجل');
+      }
+    } catch (error) {
+      console.error('Error deleting log:', error);
+      alert('حدث خطأ أثناء حذف السجل');
+    }
   };
 
   return (

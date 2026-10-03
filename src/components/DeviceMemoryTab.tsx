@@ -181,16 +181,12 @@ export default function DeviceMemoryTab({
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [savedChats, setSavedChats] = useState<any[]>([]);
 
-  // تحميل جلسات الشات المؤرشفة من localStorage
+  // جلسات الشات المؤرشفة - لا تستخدم localStorage الآن
+  // البيانات ستأتي من الـ props أو سيتم حفظها في Supabase لاحقاً
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      const raw = localStorage.getItem('dahab_saved_chat_sessions');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) setSavedChats(parsed);
-      }
-    } catch {}
+    // في المستقبل، يمكن تحميل جلسات الشات من Supabase
+    // حالياً، نستخدم البيانات القادمة من الـ props
+    setSavedChats([]);
   }, []);
 
   // دمج الجلسات الفعلية مع الحالات الاسترشادية النموذجية

@@ -3,6 +3,12 @@
 import React, { useState, useEffect } from 'react';
 import { CheckSquare, Square, ShieldCheck, HelpCircle, Plus, Trash2, Edit, RotateCcw, TrendingUp, AlertTriangle, X } from 'lucide-react';
 import { useDiagnosticContext } from '@/contexts/DiagnosticContext';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 interface ChecklistItem {
   id: string;
@@ -124,29 +130,67 @@ export default function InteractiveChecklist() {
     priority: 'medium' as 'high' | 'medium' | 'low',
   });
 
-  // تحميل العناصر المخصصة من localStorage
+  // تحميل العناصر المخصصة من Supabase
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    const loadCustomItems = async () => {
       try {
-        const saved = localStorage.getItem('dahab_custom_checklist');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
-            setItems([...DEFAULT_ITEMS, ...parsed]);
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const token = session.access_token;
+          const response = await fetch('/api/custom-checklist', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+          if (response.ok) {
+            const { data } = await response.json();
+            const customItems = data.map((item: any) => ({
+              id: item.id,
+              label: item.label,
+              standard: item.standard,
+              category: item.category,
+              priority: item.priority,
+              checked: item.checked,
+            }));
+            setItems([...DEFAULT_ITEMS, ...customItems]);
           }
         }
-      } catch {}
-    }
+      } catch (error) {
+        console.error('Error loading custom checklist items:', error);
+      }
+    };
+
+    loadCustomItems();
   }, []);
 
-  // حفظ العناصر المخصصة في localStorage
-  const saveCustomItems = (customItems: ChecklistItem[]) => {
+  const toggleCheck = async (id: string) => {
     try {
-      localStorage.setItem('dahab_custom_checklist', JSON.stringify(customItems));
-    } catch {}
-  };
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session && id.startsWith('custom_')) {
+        const token = session.access_token;
+        const item = items.find((i) => i.id === id);
+        if (item) {
+          await fetch('/api/custom-checklist', {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              id,
+              label: item.label,
+              standard: item.standard,
+              category: item.category,
+              priority: item.priority,
+              checked: !item.checked,
+            }),
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling check:', error);
+    }
 
-  const toggleCheck = (id: string) => {
     setItems((prev) =>
       prev.map((item) => (item.id === id ? { ...item, checked: !item.checked } : item))
     );
@@ -166,39 +210,93 @@ export default function InteractiveChecklist() {
   }, [items, completedCount, setChecklistProgress]);
 
   // إضافة عنصر جديد
-  const handleAddItem = () => {
+  const handleAddItem = async () => {
     if (!newItem.label || !newItem.standard) {
       alert('يرجى إدخال العنوان والمعيار');
       return;
     }
 
-    const customItem: ChecklistItem = {
-      id: `custom_${Date.now()}`,
-      label: newItem.label,
-      standard: newItem.standard,
-      category: newItem.category,
-      priority: newItem.priority,
-      checked: false,
-    };
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('يجب تسجيل الدخول لإضافة نقاط فحص');
+        return;
+      }
 
-    const customItems = items.filter((i) => i.id.startsWith('custom_'));
-    const updatedCustomItems = [customItem, ...customItems];
-    const updatedItems = [...DEFAULT_ITEMS, ...updatedCustomItems];
+      const token = session.access_token;
+      const response = await fetch('/api/custom-checklist', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          label: newItem.label,
+          standard: newItem.standard,
+          category: newItem.category,
+          priority: newItem.priority,
+          checked: false,
+        }),
+      });
 
-    setItems(updatedItems);
-    saveCustomItems(updatedCustomItems);
-    setNewItem({ label: '', standard: '', category: 'hardware', priority: 'medium' });
-    setShowAddModal(false);
+      if (response.ok) {
+        const { data } = await response.json();
+        const customItem: ChecklistItem = {
+          id: data.id,
+          label: data.label,
+          standard: data.standard,
+          category: data.category,
+          priority: data.priority,
+          checked: data.checked,
+        };
+
+        const customItems = items.filter((i) => i.id.startsWith('custom_'));
+        const updatedCustomItems = [customItem, ...customItems];
+        const updatedItems = [...DEFAULT_ITEMS, ...updatedCustomItems];
+
+        setItems(updatedItems);
+        setNewItem({ label: '', standard: '', category: 'hardware', priority: 'medium' });
+        setShowAddModal(false);
+      } else {
+        const error = await response.json();
+        alert(error.error || 'فشل إضافة نقطة الفحص');
+      }
+    } catch (error) {
+      console.error('Error adding item:', error);
+      alert('حدث خطأ أثناء إضافة نقطة الفحص');
+    }
   };
 
   // حذف عنصر مخصص
-  const handleDeleteItem = (id: string) => {
-    if (!id.startsWith('custom_')) return; // لا يمكن حذف العناصر الافتراضية
+  const handleDeleteItem = async (id: string) => {
+    if (!id.startsWith('custom_')) return;
 
-    const updated = items.filter((i) => i.id !== id);
-    const customItems = updated.filter((i) => i.id.startsWith('custom_'));
-    setItems(updated);
-    saveCustomItems(customItems);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('يجب تسجيل الدخول لحذف نقاط الفحص');
+        return;
+      }
+
+      const token = session.access_token;
+      const response = await fetch(`/api/custom-checklist?id=${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const updated = items.filter((i) => i.id !== id);
+        setItems(updated);
+      } else {
+        const error = await response.json();
+        alert(error.error || 'فشل حذف نقطة الفحص');
+      }
+    } catch (error) {
+      console.error('Error deleting item:', error);
+      alert('حدث خطأ أثناء حذف نقطة الفحص');
+    }
   };
 
   // تعديل عنصر
@@ -214,24 +312,62 @@ export default function InteractiveChecklist() {
   };
 
   // حفظ التعديل
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editingItem || !newItem.label || !newItem.standard) {
       alert('يرجى إدخال العنوان والمعيار');
       return;
     }
 
-    const updated = items.map((i) =>
-      i.id === editingItem.id
-        ? { ...i, label: newItem.label, standard: newItem.standard, category: newItem.category, priority: newItem.priority }
-        : i
-    );
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('يجب تسجيل الدخول لتعديل نقاط الفحص');
+        return;
+      }
 
-    const customItems = updated.filter((i) => i.id.startsWith('custom_'));
-    setItems(updated);
-    saveCustomItems(customItems);
-    setEditingItem(null);
-    setNewItem({ label: '', standard: '', category: 'hardware', priority: 'medium' });
-    setShowAddModal(false);
+      const token = session.access_token;
+      const response = await fetch('/api/custom-checklist', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: editingItem.id,
+          label: newItem.label,
+          standard: newItem.standard,
+          category: newItem.category,
+          priority: newItem.priority,
+          checked: editingItem.checked,
+        }),
+      });
+
+      if (response.ok) {
+        const { data } = await response.json();
+        const updated = items.map((i) =>
+          i.id === editingItem.id
+            ? {
+                ...i,
+                label: data.label,
+                standard: data.standard,
+                category: data.category,
+                priority: data.priority,
+              }
+            : i
+        );
+
+        setItems(updated);
+        setEditingItem(null);
+        setNewItem({ label: '', standard: '', category: 'hardware', priority: 'medium' });
+        setShowAddModal(false);
+      } else {
+        const error = await response.json();
+        alert(error.error || 'فشل حفظ التعديل');
+      }
+    } catch (error) {
+      console.error('Error saving edit:', error);
+      alert('حدث خطأ أثناء حفظ التعديل');
+    }
   };
 
   // إعادة تعيين القائمة

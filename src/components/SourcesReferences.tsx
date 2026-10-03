@@ -1,8 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ReferenceSource } from '@/lib/types';
 import { ExternalLink, BookOpen, Youtube, Cpu, MessageSquare, Wrench, Search, Scale, Shield, Filter, Plus, X, Tag, Globe, FileText, Video } from 'lucide-react';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 interface SourcesReferencesProps {
   sources: ReferenceSource[];
@@ -31,54 +37,121 @@ export default function SourcesReferences({ sources }: SourcesReferencesProps) {
     description: '',
   });
 
-  // تحميل المراجع المخصصة من localStorage
-  React.useEffect(() => {
-    if (typeof window !== 'undefined') {
+  // تحميل المراجع المخصصة من Supabase
+  useEffect(() => {
+    const loadCustomReferences = async () => {
       try {
-        const saved = localStorage.getItem('dahab_custom_references');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) setCustomReferences(parsed);
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const token = session.access_token;
+          const response = await fetch('/api/custom-references', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+          if (response.ok) {
+            const { data } = await response.json();
+            const customRefs = data.map((ref: any) => ({
+              id: ref.id,
+              title: ref.title,
+              url: ref.url,
+              category: ref.category,
+              description: ref.description,
+              date: new Date(ref.created_at).toLocaleDateString('ar-EG'),
+            }));
+            setCustomReferences(customRefs);
+          }
         }
-      } catch {}
-    }
+      } catch (error) {
+        console.error('Error loading custom references:', error);
+      }
+    };
+
+    loadCustomReferences();
   }, []);
 
-  // حفظ المراجع المخصصة في localStorage
-  const saveCustomReferences = (refs: CustomReference[]) => {
-    try {
-      localStorage.setItem('dahab_custom_references', JSON.stringify(refs));
-    } catch {}
-  };
-
   // إضافة مرجع مخصص
-  const handleAddReference = () => {
+  const handleAddReference = async () => {
     if (!newReference.title || !newReference.url) {
       alert('يرجى إدخال العنوان والرابط');
       return;
     }
 
-    const reference: CustomReference = {
-      id: `custom_${Date.now()}`,
-      title: newReference.title,
-      url: newReference.url,
-      category: newReference.category,
-      description: newReference.description,
-      date: new Date().toLocaleDateString('ar-EG'),
-    };
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('يجب تسجيل الدخول لإضافة مراجع');
+        return;
+      }
 
-    const updated = [reference, ...customReferences];
-    setCustomReferences(updated);
-    saveCustomReferences(updated);
-    setNewReference({ title: '', url: '', category: 'custom', description: '' });
-    setShowAddModal(false);
+      const token = session.access_token;
+      const response = await fetch('/api/custom-references', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: newReference.title,
+          url: newReference.url,
+          category: newReference.category,
+          description: newReference.description,
+        }),
+      });
+
+      if (response.ok) {
+        const { data } = await response.json();
+        const reference: CustomReference = {
+          id: data.id,
+          title: data.title,
+          url: data.url,
+          category: data.category,
+          description: data.description,
+          date: new Date(data.created_at).toLocaleDateString('ar-EG'),
+        };
+
+        const updated = [reference, ...customReferences];
+        setCustomReferences(updated);
+        setNewReference({ title: '', url: '', category: 'custom', description: '' });
+        setShowAddModal(false);
+      } else {
+        const error = await response.json();
+        alert(error.error || 'فشل إضافة المرجع');
+      }
+    } catch (error) {
+      console.error('Error adding reference:', error);
+      alert('حدث خطأ أثناء إضافة المرجع');
+    }
   };
 
   // حذف مرجع مخصص
-  const handleDeleteCustomReference = (id: string) => {
-    const updated = customReferences.filter((r) => r.id !== id);
-    setCustomReferences(updated);
-    saveCustomReferences(updated);
+  const handleDeleteCustomReference = async (id: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('يجب تسجيل الدخول لحذف المراجع');
+        return;
+      }
+
+      const token = session.access_token;
+      const response = await fetch(`/api/custom-references?id=${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const updated = customReferences.filter((r) => r.id !== id);
+        setCustomReferences(updated);
+      } else {
+        const error = await response.json();
+        alert(error.error || 'فشل حذف المرجع');
+      }
+    } catch (error) {
+      console.error('Error deleting reference:', error);
+      alert('حدث خطأ أثناء حذف المرجع');
+    }
   };
 
   // دمج المراجع الافتراضية مع المخصصة
