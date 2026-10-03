@@ -20,6 +20,11 @@ import {
   Layers,
   Bot,
   Printer,
+  Filter,
+  SortAsc,
+  BarChart3,
+  TrendingUp,
+  ShieldAlert,
 } from 'lucide-react';
 import { RepairSession } from '@/lib/types';
 import { generateProfessionalDiagnosticPDF } from '@/lib/pdfReportGenerator';
@@ -170,6 +175,10 @@ export default function DeviceMemoryTab({
   const [activeSubTab, setActiveSubTab] = useState<'devices' | 'chats'>('devices');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'mobile' | 'laptop' | 'desktop'>('all');
+  const [filterClassification, setFilterClassification] = useState<'all' | 'hardware' | 'software'>('all');
+  const [filterUrgency, setFilterUrgency] = useState<'all' | 'high' | 'medium' | 'low'>('all');
+  const [sortBy, setSortBy] = useState<'date' | 'urgency' | 'name'>('date');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [savedChats, setSavedChats] = useState<any[]>([]);
 
   // تحميل جلسات الشات المؤرشفة من localStorage
@@ -191,22 +200,72 @@ export default function DeviceMemoryTab({
     return [...sessions, ...uniqueRefs];
   }, [sessions]);
 
-  const filteredSessions = allDisplaySessions.filter((s) => {
-    const q = searchQuery.toLowerCase().trim();
-    const matchesQuery =
-      !q ||
-      (s.title && s.title.toLowerCase().includes(q)) ||
-      (s.deviceModel && s.deviceModel.toLowerCase().includes(q)) ||
-      (s.deviceType && s.deviceType.toLowerCase().includes(q));
+  // حساب الإحصائيات
+  const statistics = React.useMemo(() => {
+    const hardwareCount = allDisplaySessions.filter(s => s.metrics?.classification === 'HARDWARE').length;
+    const softwareCount = allDisplaySessions.filter(s => s.metrics?.classification === 'SOFTWARE').length;
+    const highUrgencyCount = allDisplaySessions.filter(s => s.metrics?.urgencyLevel === 'HIGH').length;
+    const mobileCount = allDisplaySessions.filter(s => s.deviceType?.includes('mobile')).length;
+    const laptopCount = allDisplaySessions.filter(s => s.deviceType?.includes('laptop')).length;
 
-    if (!matchesQuery) return false;
+    return {
+      total: allDisplaySessions.length,
+      hardware: hardwareCount,
+      software: softwareCount,
+      highUrgency: highUrgencyCount,
+      mobile: mobileCount,
+      laptop: laptopCount,
+    };
+  }, [allDisplaySessions]);
 
-    if (filterType === 'all') return true;
-    if (filterType === 'mobile') return s.deviceType?.includes('mobile');
-    if (filterType === 'laptop') return s.deviceType?.includes('laptop');
-    if (filterType === 'desktop') return s.deviceType?.includes('tv') || s.deviceType?.includes('general');
-    return true;
-  });
+  const filteredSessions = React.useMemo(() => {
+    let filtered = allDisplaySessions.filter((s) => {
+      const q = searchQuery.toLowerCase().trim();
+      const matchesQuery =
+        !q ||
+        (s.title && s.title.toLowerCase().includes(q)) ||
+        (s.deviceModel && s.deviceModel.toLowerCase().includes(q)) ||
+        (s.deviceType && s.deviceType.toLowerCase().includes(q));
+
+      if (!matchesQuery) return false;
+
+      if (filterType === 'all') return true;
+      if (filterType === 'mobile') return s.deviceType?.includes('mobile');
+      if (filterType === 'laptop') return s.deviceType?.includes('laptop');
+      if (filterType === 'desktop') return s.deviceType?.includes('tv') || s.deviceType?.includes('general');
+      return true;
+    });
+
+    // تطبيق فلتر التصنيف
+    if (filterClassification !== 'all') {
+      filtered = filtered.filter(s => {
+        if (filterClassification === 'hardware') return s.metrics?.classification === 'HARDWARE';
+        if (filterClassification === 'software') return s.metrics?.classification === 'SOFTWARE';
+        return true;
+      });
+    }
+
+    // تطبيق فلتر الأولوية
+    if (filterUrgency !== 'all') {
+      filtered = filtered.filter(s => s.metrics?.urgencyLevel === filterUrgency.toUpperCase());
+    }
+
+    // الترتيب
+    if (sortBy === 'date') {
+      filtered.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    } else if (sortBy === 'urgency') {
+      const urgencyOrder = { HIGH: 0, MEDIUM: 1, LOW: 2 };
+      filtered.sort((a, b) => {
+        const aUrgency = urgencyOrder[a.metrics?.urgencyLevel as keyof typeof urgencyOrder] ?? 3;
+        const bUrgency = urgencyOrder[b.metrics?.urgencyLevel as keyof typeof urgencyOrder] ?? 3;
+        return aUrgency - bUrgency;
+      });
+    } else if (sortBy === 'name') {
+      filtered.sort((a, b) => (a.deviceModel || a.title || '').localeCompare(b.deviceModel || b.title || ''));
+    }
+
+    return filtered;
+  }, [allDisplaySessions, searchQuery, filterType, filterClassification, filterUrgency, sortBy]);
 
   const getDeviceIcon = (deviceType?: string) => {
     if (deviceType?.includes('laptop')) return Laptop;
@@ -227,31 +286,61 @@ export default function DeviceMemoryTab({
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* 1. Header والتحكم السريع */}
-      <div className="bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border rounded-3xl p-6 shadow-xl flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-dahab-500 to-amber-600 flex items-center justify-center text-slate-950 font-black shadow-lg shadow-dahab-500/20">
-            <History className="w-6 h-6" />
+      <div className="bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border rounded-3xl p-6 shadow-xl">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-dahab-500 to-amber-600 flex items-center justify-center text-slate-950 font-black shadow-lg shadow-dahab-500/20">
+              <History className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-lg font-black text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                <span>ذاكرة الأجهزة والمحادثات السابقة</span>
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-dahab-500/15 text-dahab-700 dark:text-dahab-300 font-bold border border-dahab-500/30">
+                  {allDisplaySessions.length} أجهزة وبوردات
+                </span>
+              </h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                أرشيف شامل لجميع الأجهزة والتقارير الفنية ومحادثات المساعد الذكي، مع إمكانية استرجاع أي جهاز أو محادثة فوراً
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-lg font-black text-gray-900 dark:text-gray-100 flex items-center gap-2">
-              <span>ذاكرة الأجهزة والمحادثات السابقة</span>
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-dahab-500/15 text-dahab-700 dark:text-dahab-300 font-bold border border-dahab-500/30">
-                {allDisplaySessions.length} أجهزة وبوردات
-              </span>
-            </h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              أرشيف شامل لجميع الأجهزة والتقارير الفنية ومحادثات المساعد الذكي، مع إمكانية استرجاع أي جهاز أو محادثة فوراً
-            </p>
-          </div>
+
+          <button
+            onClick={onNewSession}
+            className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-dahab-500 to-amber-600 text-slate-950 font-black text-xs hover:from-dahab-600 hover:to-amber-700 transition flex items-center gap-2 shadow-lg shadow-dahab-500/20 cursor-pointer active:scale-95"
+          >
+            <Zap className="w-4 h-4 fill-slate-950" />
+            <span>+ فحص جهاز جديد الآن</span>
+          </button>
         </div>
 
-        <button
-          onClick={onNewSession}
-          className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-dahab-500 to-amber-600 text-slate-950 font-black text-xs hover:from-dahab-600 hover:to-amber-700 transition flex items-center gap-2 shadow-lg shadow-dahab-500/20 cursor-pointer active:scale-95"
-        >
-          <Zap className="w-4 h-4 fill-slate-950" />
-          <span>+ فحص جهاز جديد الآن</span>
-        </button>
+        {/* إحصائيات سريعة */}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+          <div className="bg-gray-50 dark:bg-gray-900/60 rounded-2xl p-3 text-center">
+            <div className="text-lg font-black text-dahab-600 dark:text-dahab-400">{statistics.total}</div>
+            <div className="text-[10px] text-gray-500 dark:text-gray-400 font-bold">الإجمالي</div>
+          </div>
+          <div className="bg-rose-50 dark:bg-rose-950/20 rounded-2xl p-3 text-center">
+            <div className="text-lg font-black text-rose-600 dark:text-rose-400">{statistics.hardware}</div>
+            <div className="text-[10px] text-gray-500 dark:text-gray-400 font-bold">هاردوير</div>
+          </div>
+          <div className="bg-sky-50 dark:bg-sky-950/20 rounded-2xl p-3 text-center">
+            <div className="text-lg font-black text-sky-600 dark:text-sky-400">{statistics.software}</div>
+            <div className="text-[10px] text-gray-500 dark:text-gray-400 font-bold">سوفتوير</div>
+          </div>
+          <div className="bg-amber-50 dark:bg-amber-950/20 rounded-2xl p-3 text-center">
+            <div className="text-lg font-black text-amber-600 dark:text-amber-400">{statistics.highUrgency}</div>
+            <div className="text-[10px] text-gray-500 dark:text-gray-400 font-bold">أولوية عالية</div>
+          </div>
+          <div className="bg-emerald-50 dark:bg-emerald-950/20 rounded-2xl p-3 text-center">
+            <div className="text-lg font-black text-emerald-600 dark:text-emerald-400">{statistics.mobile}</div>
+            <div className="text-[10px] text-gray-500 dark:text-gray-400 font-bold">هواتف</div>
+          </div>
+          <div className="bg-purple-50 dark:bg-purple-950/20 rounded-2xl p-3 text-center">
+            <div className="text-lg font-black text-purple-600 dark:text-purple-400">{statistics.laptop}</div>
+            <div className="text-[10px] text-gray-500 dark:text-gray-400 font-bold">لابتوبات</div>
+          </div>
+        </div>
       </div>
 
       {/* 2. التبديل بين فحوصات الأجهزة ومحادثات المساعد الذكي */}
@@ -283,38 +372,164 @@ export default function DeviceMemoryTab({
 
       {/* 3. شريط البحث والفلترة (يظهر في وضع الأجهزة) */}
       {activeSubTab === 'devices' && (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="relative flex-1 min-w-[260px] max-w-md">
-            <Search className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="ابحث في الأجهزة السابقة باسم الموديل أو العطل..."
-              className="w-full pr-9 pl-4 py-2 bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border rounded-2xl text-xs text-gray-800 dark:text-gray-200 outline-none focus:border-dahab-500"
-            />
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="relative flex-1 min-w-[260px] max-w-md">
+              <Search className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="ابحث في الأجهزة السابقة باسم الموديل أو العطل..."
+                className="w-full pr-9 pl-4 py-2 bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border rounded-2xl text-xs text-gray-800 dark:text-gray-200 outline-none focus:border-dahab-500"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                className={`px-3 py-2 rounded-xl transition flex items-center gap-2 text-xs font-bold ${
+                  showAdvancedFilters
+                    ? 'bg-dahab-500 text-slate-950'
+                    : 'bg-white dark:bg-workshop-card text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-workshop-border'
+                }`}
+              >
+                <Filter className="w-4 h-4" />
+                <span>فلاتر متقدمة</span>
+              </button>
+
+              <div className="flex items-center gap-2 bg-white dark:bg-workshop-card p-1 rounded-2xl border border-gray-200 dark:border-workshop-border text-xs font-bold">
+                <button
+                  onClick={() => setFilterType('all')}
+                  className={`px-3 py-1.5 rounded-xl transition ${filterType === 'all' ? 'bg-dahab-500 text-slate-950' : 'text-gray-600 dark:text-gray-400'}`}
+                >
+                  الكل ({allDisplaySessions.length})
+                </button>
+                <button
+                  onClick={() => setFilterType('mobile')}
+                  className={`px-3 py-1.5 rounded-xl transition ${filterType === 'mobile' ? 'bg-dahab-500 text-slate-950' : 'text-gray-600 dark:text-gray-400'}`}
+                >
+                  📱 هواتف
+                </button>
+                <button
+                  onClick={() => setFilterType('laptop')}
+                  className={`px-3 py-1.5 rounded-xl transition ${filterType === 'laptop' ? 'bg-dahab-500 text-slate-950' : 'text-gray-600 dark:text-gray-400'}`}
+                >
+                  💻 لابتوبات
+                </button>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2 bg-white dark:bg-workshop-card p-1 rounded-2xl border border-gray-200 dark:border-workshop-border text-xs font-bold">
-            <button
-              onClick={() => setFilterType('all')}
-              className={`px-3 py-1.5 rounded-xl transition ${filterType === 'all' ? 'bg-dahab-500 text-slate-950' : 'text-gray-600 dark:text-gray-400'}`}
-            >
-              الكل ({allDisplaySessions.length})
-            </button>
-            <button
-              onClick={() => setFilterType('mobile')}
-              className={`px-3 py-1.5 rounded-xl transition ${filterType === 'mobile' ? 'bg-dahab-500 text-slate-950' : 'text-gray-600 dark:text-gray-400'}`}
-            >
-              📱 هواتف
-            </button>
-            <button
-              onClick={() => setFilterType('laptop')}
-              className={`px-3 py-1.5 rounded-xl transition ${filterType === 'laptop' ? 'bg-dahab-500 text-slate-950' : 'text-gray-600 dark:text-gray-400'}`}
-            >
-              💻 لابتوبات
-            </button>
-          </div>
+          {/* الفلاتر المتقدمة */}
+          {showAdvancedFilters && (
+            <div className="bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border rounded-2xl p-4 space-y-3 animate-fadeIn">
+              <div className="flex flex-wrap items-center gap-4">
+                {/* فلتر التصنيف */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-gray-600 dark:text-gray-400">التصنيف:</span>
+                  <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-900 p-1 rounded-xl">
+                    <button
+                      onClick={() => setFilterClassification('all')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition ${filterClassification === 'all' ? 'bg-white dark:bg-gray-800 text-dahab-600 dark:text-dahab-400 shadow-sm' : 'text-gray-600 dark:text-gray-400'}`}
+                    >
+                      الكل
+                    </button>
+                    <button
+                      onClick={() => setFilterClassification('hardware')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition ${filterClassification === 'hardware' ? 'bg-white dark:bg-gray-800 text-rose-600 dark:text-rose-400 shadow-sm' : 'text-gray-600 dark:text-gray-400'}`}
+                    >
+                      هاردوير
+                    </button>
+                    <button
+                      onClick={() => setFilterClassification('software')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition ${filterClassification === 'software' ? 'bg-white dark:bg-gray-800 text-sky-600 dark:text-sky-400 shadow-sm' : 'text-gray-600 dark:text-gray-400'}`}
+                    >
+                      سوفتوير
+                    </button>
+                  </div>
+                </div>
+
+                {/* فلتر الأولوية */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-gray-600 dark:text-gray-400">الأولوية:</span>
+                  <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-900 p-1 rounded-xl">
+                    <button
+                      onClick={() => setFilterUrgency('all')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition ${filterUrgency === 'all' ? 'bg-white dark:bg-gray-800 text-dahab-600 dark:text-dahab-400 shadow-sm' : 'text-gray-600 dark:text-gray-400'}`}
+                    >
+                      الكل
+                    </button>
+                    <button
+                      onClick={() => setFilterUrgency('high')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition ${filterUrgency === 'high' ? 'bg-white dark:bg-gray-800 text-amber-600 dark:text-amber-400 shadow-sm' : 'text-gray-600 dark:text-gray-400'}`}
+                    >
+                      عالية
+                    </button>
+                    <button
+                      onClick={() => setFilterUrgency('medium')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition ${filterUrgency === 'medium' ? 'bg-white dark:bg-gray-800 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-gray-600 dark:text-gray-400'}`}
+                    >
+                      متوسطة
+                    </button>
+                    <button
+                      onClick={() => setFilterUrgency('low')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition ${filterUrgency === 'low' ? 'bg-white dark:bg-gray-800 text-sky-600 dark:text-sky-400 shadow-sm' : 'text-gray-600 dark:text-gray-400'}`}
+                    >
+                      منخفضة
+                    </button>
+                  </div>
+                </div>
+
+                {/* الترتيب */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-gray-600 dark:text-gray-400">الترتيب:</span>
+                  <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-900 p-1 rounded-xl">
+                    <button
+                      onClick={() => setSortBy('date')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${sortBy === 'date' ? 'bg-white dark:bg-gray-800 text-dahab-600 dark:text-dahab-400 shadow-sm' : 'text-gray-600 dark:text-gray-400'}`}
+                    >
+                      <Clock className="w-3 h-3" />
+                      التاريخ
+                    </button>
+                    <button
+                      onClick={() => setSortBy('urgency')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${sortBy === 'urgency' ? 'bg-white dark:bg-gray-800 text-dahab-600 dark:text-dahab-400 shadow-sm' : 'text-gray-600 dark:text-gray-400'}`}
+                    >
+                      <ShieldAlert className="w-3 h-3" />
+                      الأولوية
+                    </button>
+                    <button
+                      onClick={() => setSortBy('name')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${sortBy === 'name' ? 'bg-white dark:bg-gray-800 text-dahab-600 dark:text-dahab-400 shadow-sm' : 'text-gray-600 dark:text-gray-400'}`}
+                    >
+                      <SortAsc className="w-3 h-3" />
+                      الاسم
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* إظهار عدد النتائج */}
+              <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-800">
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  يعرض {filteredSessions.length} من {allDisplaySessions.length} جهاز
+                </span>
+                <button
+                  onClick={() => {
+                    setFilterClassification('all');
+                    setFilterUrgency('all');
+                    setSortBy('date');
+                    setFilterType('all');
+                    setSearchQuery('');
+                  }}
+                  className="text-xs text-dahab-600 dark:text-dahab-400 font-bold hover:underline"
+                >
+                  إعادة تعيين الفلاتر
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

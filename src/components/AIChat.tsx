@@ -20,6 +20,10 @@ import {
   AlertCircle,
   Clock,
   ChevronLeft,
+  Download,
+  FileJson,
+  Maximize2,
+  ZoomIn,
 } from 'lucide-react';
 import { consumeGuestTrial } from '@/lib/guestUsage';
 import { useDiagnosticContext } from '@/contexts/DiagnosticContext';
@@ -98,6 +102,7 @@ export default function AIChat() {
   const [micErrorBanner, setMicErrorBanner] = useState<string | null>(null);
   const [showMicModal, setShowMicModal] = useState(false);
   const [micModalError, setMicModalError] = useState<string | null>(null);
+  const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
   const speakTimerRef = useRef<any>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -239,6 +244,31 @@ export default function AIChat() {
     try {
       localStorage.setItem('dahab_saved_chat_sessions', JSON.stringify(updated));
     } catch {}
+  };
+
+  // تصدير المحادثة الحالية كملف JSON
+  const handleExportChat = () => {
+    const exportData = {
+      id: `chat_${Date.now()}`,
+      title: messages.find(m => m.role === 'user')?.content.slice(0, 50) || 'محادثة هندسية',
+      date: new Date().toISOString(),
+      messageCount: messages.length,
+      messages: messages.map(m => ({
+        role: m.role,
+        content: m.content,
+        timestamp: m.timestamp.toISOString(),
+        hasImage: !!m.image,
+      })),
+    };
+
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(exportData, null, 2));
+    const dl = document.createElement('a');
+    dl.setAttribute('href', dataStr);
+    dl.setAttribute('download', `dahab_chat_${Date.now()}.json`);
+    document.body.appendChild(dl);
+    dl.click();
+    dl.remove();
+    setToastMsg('تم تصدير المحادثة بنجاح ✅');
   };
 
   // تهيئة أصوات النطق باللغة العربية عند فتح المكون
@@ -774,6 +804,17 @@ export default function AIChat() {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-1.5 shrink-0">
+            {/* زر تصدير المحادثة */}
+            <button
+              type="button"
+              onClick={handleExportChat}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs font-bold transition"
+              title="تصدير المحادثة كملف JSON"
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-500" />
+              <span className="hidden sm:inline">تصدير</span>
+            </button>
+
             {/* زر محادثة جديدة */}
             <button
               type="button"
@@ -817,12 +858,21 @@ export default function AIChat() {
               }`}
             >
               {message.image && (
-                <div className="mb-2.5">
+                <div className="mb-2.5 relative group">
                   <img
                     src={message.image}
                     alt="Uploaded Schematic or Board"
-                    className="max-w-full max-h-72 object-contain rounded-xl border border-gray-300 dark:border-gray-700 shadow-md"
+                    className="max-w-full max-h-72 object-contain rounded-xl border border-gray-300 dark:border-gray-700 shadow-md cursor-pointer hover:opacity-90 transition"
+                    onClick={() => setEnlargedImage(message.image || null)}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setEnlargedImage(message.image || null)}
+                    className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/50 text-white opacity-0 group-hover:opacity-100 transition hover:bg-black/70"
+                    title="تكبير الصورة"
+                  >
+                    <ZoomIn className="w-4 h-4" />
+                  </button>
                   <span className="text-[10px] text-gray-400 block mt-1">📐 تم إرفاق صورة/مخطط للفحص</span>
                 </div>
               )}
@@ -1151,6 +1201,30 @@ export default function AIChat() {
                 إلغاء
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal تكبير الصورة */}
+      {enlargedImage && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn"
+          onClick={() => setEnlargedImage(null)}
+        >
+          <div className="relative max-w-5xl max-h-[90vh]">
+            <img
+              src={enlargedImage}
+              alt="Enlarged Image"
+              className="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl"
+            />
+            <button
+              type="button"
+              onClick={() => setEnlargedImage(null)}
+              className="absolute -top-4 -right-4 p-2 rounded-full bg-white text-gray-900 hover:bg-gray-100 transition shadow-lg"
+              title="إغلاق"
+            >
+              <X className="w-6 h-6" />
+            </button>
           </div>
         </div>
       )}

@@ -1,14 +1,154 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { ReferenceSource } from '@/lib/types';
-import { ExternalLink, BookOpen, Youtube, Cpu, MessageSquare, Wrench, Search, Scale, Shield } from 'lucide-react';
+import { ExternalLink, BookOpen, Youtube, Cpu, MessageSquare, Wrench, Search, Scale, Shield, Filter, Plus, X, Tag, Globe, FileText, Video } from 'lucide-react';
 
 interface SourcesReferencesProps {
   sources: ReferenceSource[];
 }
 
+type ReferenceCategory = 'all' | 'schematics' | 'forums' | 'videos' | 'guides' | 'custom';
+
+interface CustomReference {
+  id: string;
+  title: string;
+  url: string;
+  category: ReferenceCategory;
+  description: string;
+  date: string;
+}
+
 export default function SourcesReferences({ sources }: SourcesReferencesProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<ReferenceCategory>('all');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [customReferences, setCustomReferences] = useState<CustomReference[]>([]);
+  const [newReference, setNewReference] = useState({
+    title: '',
+    url: '',
+    category: 'custom' as ReferenceCategory,
+    description: '',
+  });
+
+  // تحميل المراجع المخصصة من localStorage
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('dahab_custom_references');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) setCustomReferences(parsed);
+        }
+      } catch {}
+    }
+  }, []);
+
+  // حفظ المراجع المخصصة في localStorage
+  const saveCustomReferences = (refs: CustomReference[]) => {
+    try {
+      localStorage.setItem('dahab_custom_references', JSON.stringify(refs));
+    } catch {}
+  };
+
+  // إضافة مرجع مخصص
+  const handleAddReference = () => {
+    if (!newReference.title || !newReference.url) {
+      alert('يرجى إدخال العنوان والرابط');
+      return;
+    }
+
+    const reference: CustomReference = {
+      id: `custom_${Date.now()}`,
+      title: newReference.title,
+      url: newReference.url,
+      category: newReference.category,
+      description: newReference.description,
+      date: new Date().toLocaleDateString('ar-EG'),
+    };
+
+    const updated = [reference, ...customReferences];
+    setCustomReferences(updated);
+    saveCustomReferences(updated);
+    setNewReference({ title: '', url: '', category: 'custom', description: '' });
+    setShowAddModal(false);
+  };
+
+  // حذف مرجع مخصص
+  const handleDeleteCustomReference = (id: string) => {
+    const updated = customReferences.filter((r) => r.id !== id);
+    setCustomReferences(updated);
+    saveCustomReferences(updated);
+  };
+
+  // دمج المراجع الافتراضية مع المخصصة
+  const allSources = React.useMemo(() => {
+    const customAsSources: ReferenceSource[] = customReferences.map((r) => {
+      let sourceType: 'مخططات وزدكس دبليو ZXW' | 'يوتيوب YouTube' | 'تليجرام Telegram' | 'منتديات GSM' | 'دليل صيانة دهب' | 'مخصص' = 'مخصص';
+      let type: 'schematic' | 'video' | 'forum' | 'solution' | 'custom' = 'custom';
+
+      if (r.category === 'schematics') {
+        sourceType = 'مخططات وزدكس دبليو ZXW';
+        type = 'schematic';
+      } else if (r.category === 'videos') {
+        sourceType = 'يوتيوب YouTube';
+        type = 'video';
+      } else if (r.category === 'forums') {
+        sourceType = 'منتديات GSM';
+        type = 'forum';
+      } else if (r.category === 'guides') {
+        sourceType = 'دليل صيانة دهب';
+        type = 'solution';
+      }
+
+      return {
+        source: sourceType,
+        title: r.title,
+        link: r.url,
+        snippet: r.description,
+        type,
+      };
+    });
+
+    return [...(sources || []), ...customAsSources];
+  }, [sources, customReferences]);
+
+  // تصفية المراجع
+  const filteredSources = React.useMemo(() => {
+    let filtered = allSources;
+
+    // البحث
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (s) =>
+          s.title?.toLowerCase().includes(q) ||
+          s.snippet?.toLowerCase().includes(q) ||
+          s.source?.toLowerCase().includes(q)
+      );
+    }
+
+    // الفئة
+    if (selectedCategory !== 'all') {
+      filtered = filtered.filter((s) => {
+        const isSchematic = s.source?.includes('مخططات') || s.source?.toLowerCase().includes('schematic') || s.type === 'schematic';
+        const isForum = s.source?.includes('منتديات') || s.source?.toLowerCase().includes('forum') || s.type === 'forum';
+        const isVideo = s.source?.includes('يوتيوب') || s.source?.toLowerCase().includes('youtube') || s.type === 'video';
+        const isGuide = s.source?.includes('دليل') || s.source?.toLowerCase().includes('guide') || s.type === 'solution';
+        const isCustom = s.source === 'مخصص' || s.type === 'custom';
+
+        if (selectedCategory === 'schematics') return isSchematic;
+        if (selectedCategory === 'forums') return isForum;
+        if (selectedCategory === 'videos') return isVideo;
+        if (selectedCategory === 'guides') return isGuide;
+        if (selectedCategory === 'custom') return isCustom;
+        return true;
+      });
+    }
+
+    return filtered;
+  }, [allSources, searchQuery, selectedCategory]);
+
   if (!sources || sources.length === 0) {
     const quickLinks = [
       { name: 'GSM-Forum', url: 'https://forum.gsmhosting.com/', icon: <MessageSquare className="w-5 h-5" />, desc: 'أكبر مجتمع عالمي لمهندسي الصيانة' },
@@ -106,60 +246,173 @@ export default function SourcesReferences({ sources }: SourcesReferencesProps) {
   }
 
   return (
-    <div className="space-y-3 pt-3">
-      <div className="flex items-center gap-2">
-        <BookOpen className="w-4 h-4 text-dahab-500 dark:text-dahab-400" />
-        <h3 className="font-bold text-sm text-gray-800 dark:text-gray-200">
-          📌 مراجع ومخططات وتجارب فنيين موازية:
-        </h3>
+    <div className="space-y-4 pt-3">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <BookOpen className="w-4 h-4 text-dahab-500 dark:text-dahab-400" />
+          <h3 className="font-bold text-sm text-gray-800 dark:text-gray-200">
+            📌 مراجع ومخططات وتجارب فنيين موازية:
+          </h3>
+          <span className="text-xs px-2 py-0.5 rounded-full bg-dahab-500/15 text-dahab-700 dark:text-dahab-300 font-bold border border-dahab-500/30">
+            {allSources.length}
+          </span>
+        </div>
       </div>
 
+      {/* شريط البحث والفلترة */}
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="ابحث في المراجع والمصادر..."
+              className="w-full pr-9 pl-4 py-2 bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border rounded-xl text-xs text-gray-800 dark:text-gray-200 outline-none focus:border-dahab-500"
+            />
+          </div>
+
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="px-3 py-2 rounded-xl bg-dahab-500 hover:bg-dahab-600 text-slate-950 text-xs font-bold transition flex items-center gap-2 shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            <span>إضافة مرجع</span>
+          </button>
+        </div>
+
+        {/* فلاتر الفئات */}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setSelectedCategory('all')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              selectedCategory === 'all'
+                ? 'bg-dahab-500 text-slate-950'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+            }`}
+          >
+            <Globe className="w-3.5 h-3.5" />
+            الكل ({allSources.length})
+          </button>
+          <button
+            onClick={() => setSelectedCategory('schematics')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              selectedCategory === 'schematics'
+                ? 'bg-dahab-500 text-slate-950'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+            }`}
+          >
+            <Cpu className="w-3.5 h-3.5" />
+            مخططات
+          </button>
+          <button
+            onClick={() => setSelectedCategory('forums')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              selectedCategory === 'forums'
+                ? 'bg-dahab-500 text-slate-950'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+            }`}
+          >
+            <MessageSquare className="w-3.5 h-3.5" />
+            منتديات
+          </button>
+          <button
+            onClick={() => setSelectedCategory('videos')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              selectedCategory === 'videos'
+                ? 'bg-dahab-500 text-slate-950'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+            }`}
+          >
+            <Video className="w-3.5 h-3.5" />
+            فيديوهات
+          </button>
+          <button
+            onClick={() => setSelectedCategory('custom')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              selectedCategory === 'custom'
+                ? 'bg-dahab-500 text-slate-950'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+            }`}
+          >
+            <Tag className="w-3.5 h-3.5" />
+            مخصص ({customReferences.length})
+          </button>
+        </div>
+      </div>
+
+      {/* عرض المراجع */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3" dir="rtl">
-        {sources.map((item, index) => {
-          const isYoutube = item.source.includes('يوتيوب');
-          const isSchematic = item.source.includes('مخططات');
-          const isForum = item.source.includes('منتديات');
+        {filteredSources.map((item, index) => {
+          const isYoutube = item.source.includes('يوتيوب') || item.type === 'video';
+          const isSchematic = item.source.includes('مخططات') || item.type === 'schematic';
+          const isForum = item.source.includes('منتديات') || item.type === 'forum';
+          const isCustom = item.source === 'مخصص' || item.type === 'custom';
 
           return (
-            <a
+            <div
               key={index}
-              href={item.link}
-              target="_blank"
-              rel="noreferrer"
-              className="p-3.5 border border-gray-200 dark:border-gray-800 rounded-xl hover:border-dahab-500/50 dark:hover:border-dahab-500/50 hover:bg-gray-50 dark:hover:bg-gray-900/80 transition bg-white dark:bg-workshop-card block space-y-1.5 shadow-sm group"
+              className="relative p-3.5 border border-gray-200 dark:border-gray-800 rounded-xl hover:border-dahab-500/50 dark:hover:border-dahab-500/50 hover:bg-gray-50 dark:hover:bg-gray-900/80 transition bg-white dark:bg-workshop-card block space-y-1.5 shadow-sm group"
             >
-              <div className="flex items-center justify-between">
-                <span
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-bold rounded ${
-                    isYoutube
-                      ? 'bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400'
-                      : isSchematic
-                      ? 'bg-dahab-100 text-dahab-700 dark:bg-dahab-500/20 dark:text-dahab-300'
-                      : isForum
-                      ? 'bg-sky-100 text-sky-600 dark:bg-sky-500/20 dark:text-sky-400'
-                      : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400'
-                  }`}
+              <a
+                href={item.link}
+                target="_blank"
+                rel="noreferrer"
+                className="block space-y-1.5"
+              >
+                <div className="flex items-center justify-between">
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-bold rounded ${
+                      isYoutube
+                        ? 'bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400'
+                        : isSchematic
+                        ? 'bg-dahab-100 text-dahab-700 dark:bg-dahab-500/20 dark:text-dahab-300'
+                        : isForum
+                        ? 'bg-sky-100 text-sky-600 dark:bg-sky-500/20 dark:text-sky-400'
+                        : isCustom
+                        ? 'bg-purple-100 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400'
+                        : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400'
+                    }`}
+                  >
+                    {isYoutube ? (
+                      <Youtube className="w-3 h-3" />
+                    ) : isSchematic ? (
+                      <Cpu className="w-3 h-3" />
+                    ) : isCustom ? (
+                      <Tag className="w-3 h-3" />
+                    ) : (
+                      <MessageSquare className="w-3 h-3" />
+                    )}
+                    {item.source}
+                  </span>
+
+                  <ExternalLink className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 group-hover:text-dahab-500 dark:group-hover:text-dahab-400 transition" />
+                </div>
+
+                <p className="font-bold text-xs text-gray-700 dark:text-gray-200 group-hover:text-dahab-600 dark:group-hover:text-dahab-300 transition line-clamp-1">
+                  {item.title}
+                </p>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed">
+                  {item.snippet}
+                </p>
+              </a>
+
+              {/* زر الحذف للمراجع المخصصة */}
+              {isCustom && (
+                <button
+                  onClick={() => {
+                    const customRef = customReferences.find(r => r.title === item.title);
+                    if (customRef) handleDeleteCustomReference(customRef.id);
+                  }}
+                  className="absolute top-2 left-2 p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 transition opacity-0 group-hover:opacity-100"
+                  title="حذف المرجع"
                 >
-                  {isYoutube ? (
-                    <Youtube className="w-3 h-3" />
-                  ) : isSchematic ? (
-                    <Cpu className="w-3 h-3" />
-                  ) : (
-                    <MessageSquare className="w-3 h-3" />
-                  )}
-                  {item.source}
-                </span>
-
-                <ExternalLink className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 group-hover:text-dahab-500 dark:group-hover:text-dahab-400 transition" />
-              </div>
-
-              <p className="font-bold text-xs text-gray-700 dark:text-gray-200 group-hover:text-dahab-600 dark:group-hover:text-dahab-300 transition line-clamp-1">
-                {item.title}
-              </p>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed">
-                {item.snippet}
-              </p>
-            </a>
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           );
         })}
       </div>
@@ -208,6 +461,73 @@ export default function SourcesReferences({ sources }: SourcesReferencesProps) {
           </a>
         </div>
       </div>
+
+      {/* Modal إضافة مرجع مخصص */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border rounded-3xl max-w-md w-full shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-black text-gray-900 dark:text-gray-100">إضافة مرجع مخصص</h3>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="p-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">العنوان *</label>
+                <input
+                  type="text"
+                  value={newReference.title}
+                  onChange={(e) => setNewReference({ ...newReference, title: e.target.value })}
+                  placeholder="مثال: دليل صيانة iPhone 14"
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-xs text-gray-900 dark:text-gray-100 outline-none focus:border-dahab-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">الرابط *</label>
+                <input
+                  type="url"
+                  value={newReference.url}
+                  onChange={(e) => setNewReference({ ...newReference, url: e.target.value })}
+                  placeholder="https://example.com"
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-xs text-gray-900 dark:text-gray-100 outline-none focus:border-dahab-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">الوصف</label>
+                <textarea
+                  value={newReference.description}
+                  onChange={(e) => setNewReference({ ...newReference, description: e.target.value })}
+                  placeholder="وصف قصير للمرجع..."
+                  rows={3}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-xs text-gray-900 dark:text-gray-100 outline-none focus:border-dahab-500 resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={handleAddReference}
+                className="flex-1 px-4 py-2 rounded-xl bg-dahab-500 hover:bg-dahab-600 text-slate-950 text-xs font-black transition shadow-sm"
+              >
+                إضافة
+              </button>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="flex-1 px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs font-bold transition"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

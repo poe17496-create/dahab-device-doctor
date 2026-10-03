@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Zap, AlertTriangle, ShieldCheck, Flame, Info, CheckCircle2 } from 'lucide-react';
+import { Zap, AlertTriangle, ShieldCheck, Flame, Info, CheckCircle2, Plus, Trash2, Edit, X, Settings, Save, History } from 'lucide-react';
 import { useDiagnosticContext } from '@/contexts/DiagnosticContext';
 
 interface RailInfo {
+  id: string;
   name: string;
   nominalVoltage: number;
   maxSafeVoltage: number;
@@ -13,10 +14,12 @@ interface RailInfo {
   dangerZone: number;
   firstSuspects: string;
   notes: string;
+  isCustom?: boolean;
 }
 
-const COMMON_RAILS: RailInfo[] = [
+const DEFAULT_RAILS: RailInfo[] = [
   {
+    id: 'rail_1',
     name: 'PP_VDD_MAIN / VPH_PWR / VBUS',
     nominalVoltage: 3.8,
     maxSafeVoltage: 3.8,
@@ -27,6 +30,7 @@ const COMMON_RAILS: RailInfo[] = [
     notes: 'ابدأ بالحقن التدريجي عند 1.2V ثم 1.8V مع مراقبة انصهار الرجينة أو الكاميرا الحرارية.',
   },
   {
+    id: 'rail_2',
     name: 'PP_CPU_CORE / VCORE (فولت المعالج)',
     nominalVoltage: 0.9,
     maxSafeVoltage: 0.95,
@@ -37,6 +41,7 @@ const COMMON_RAILS: RailInfo[] = [
     notes: '⚠️ خط أحمر! لا ترفع الفولت أبداً فوق 0.8V. أي فولتية تتجاوز 1.0V تحرق طبقات المعالج فوراً!',
   },
   {
+    id: 'rail_3',
     name: 'PP_GPU / GFX (معالج الرسوميات)',
     nominalVoltage: 0.85,
     maxSafeVoltage: 0.9,
@@ -47,6 +52,7 @@ const COMMON_RAILS: RailInfo[] = [
     notes: 'الممانعة على هذا المسار منخفضة جداً بطبيعتها (0.010V - 0.050V) ولا تعني شورت بالضرورة.',
   },
   {
+    id: 'rail_4',
     name: 'PP1V8_ALWAYS / VREG_L6_1P8 (فولت 1.8V)',
     nominalVoltage: 1.8,
     maxSafeVoltage: 1.8,
@@ -57,6 +63,7 @@ const COMMON_RAILS: RailInfo[] = [
     notes: 'مسار حيوي جداً يغذي الذواكر ودوائر التوقيت. لا تحقن أكثر من 1.5V.',
   },
   {
+    id: 'rail_5',
     name: 'PP_DRAM / VDD_RAM (LPDDR4 / LPDDR5)',
     nominalVoltage: 1.1,
     maxSafeVoltage: 1.15,
@@ -67,6 +74,7 @@ const COMMON_RAILS: RailInfo[] = [
     notes: 'الرامات شديدة الحساسية للحرارة والفولت الزائد.',
   },
   {
+    id: 'rail_6',
     name: '19V DC-IN (لابتوب وماك بوك)',
     nominalVoltage: 19.5,
     maxSafeVoltage: 19.0,
@@ -77,6 +85,7 @@ const COMMON_RAILS: RailInfo[] = [
     notes: 'ابدأ بحقن 5V ثم ارفعها إلى 8V ثم 12V تدريجياً لمشاهدة المكون الذي يسخن أولاً دون تفجيره.',
   },
   {
+    id: 'rail_7',
     name: '12V / 24V (كروت باور وإنفرتر وشاشات)',
     nominalVoltage: 12.0,
     maxSafeVoltage: 12.0,
@@ -91,7 +100,43 @@ const COMMON_RAILS: RailInfo[] = [
 export default function SafeInjectionCalculator() {
   const { setCalculatorContext } = useDiagnosticContext();
   const [selectedIdx, setSelectedIdx] = useState(0);
-  const rail = COMMON_RAILS[selectedIdx];
+  const [rails, setRails] = useState<RailInfo[]>(DEFAULT_RAILS);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingRail, setEditingRail] = useState<RailInfo | null>(null);
+  const [newRail, setNewRail] = useState({
+    name: '',
+    nominalVoltage: 0,
+    maxSafeVoltage: 0,
+    recommendedVoltage: 0,
+    maxSafeCurrent: 0,
+    dangerZone: 0,
+    firstSuspects: '',
+    notes: '',
+  });
+
+  const rail = rails[selectedIdx];
+
+  // تحميل المسارات المخصصة من localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('dahab_custom_rails');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            setRails([...DEFAULT_RAILS, ...parsed]);
+          }
+        }
+      } catch {}
+    }
+  }, []);
+
+  // حفظ المسارات المخصصة في localStorage
+  const saveCustomRails = (customRails: RailInfo[]) => {
+    try {
+      localStorage.setItem('dahab_custom_rails', JSON.stringify(customRails));
+    } catch {}
+  };
 
   // تحديث الـ Context عند تغيير المسار المختار
   useEffect(() => {
@@ -102,6 +147,102 @@ export default function SafeInjectionCalculator() {
       maxSafeCurrent: rail.maxSafeCurrent,
     });
   }, [selectedIdx, rail, setCalculatorContext]);
+
+  // إضافة مسار مخصص
+  const handleAddRail = () => {
+    if (!newRail.name || newRail.nominalVoltage === 0) {
+      alert('يرجى إدخال اسم المسار والجهد النموذجي');
+      return;
+    }
+
+    const customRail: RailInfo = {
+      id: `custom_${Date.now()}`,
+      name: newRail.name,
+      nominalVoltage: newRail.nominalVoltage,
+      maxSafeVoltage: newRail.maxSafeVoltage || newRail.nominalVoltage * 1.1,
+      recommendedVoltage: newRail.recommendedVoltage || newRail.nominalVoltage * 0.5,
+      maxSafeCurrent: newRail.maxSafeCurrent || 2.0,
+      dangerZone: newRail.dangerZone || newRail.nominalVoltage * 1.2,
+      firstSuspects: newRail.firstSuspects,
+      notes: newRail.notes,
+      isCustom: true,
+    };
+
+    const customRails = rails.filter((r) => r.isCustom);
+    const updatedCustomRails = [customRail, ...customRails];
+    const updatedRails = [...DEFAULT_RAILS, ...updatedCustomRails];
+
+    setRails(updatedRails);
+    saveCustomRails(updatedCustomRails);
+    setNewRail({
+      name: '',
+      nominalVoltage: 0,
+      maxSafeVoltage: 0,
+      recommendedVoltage: 0,
+      maxSafeCurrent: 0,
+      dangerZone: 0,
+      firstSuspects: '',
+      notes: '',
+    });
+    setShowAddModal(false);
+  };
+
+  // حذف مسار مخصص
+  const handleDeleteRail = (id: string) => {
+    if (!id.startsWith('custom_')) return;
+
+    const updated = rails.filter((r) => r.id !== id);
+    const customRails = updated.filter((r) => r.isCustom);
+    setRails(updated);
+    saveCustomRails(customRails);
+    if (selectedIdx >= updated.length) setSelectedIdx(0);
+  };
+
+  // تعديل مسار
+  const handleEditRail = (rail: RailInfo) => {
+    setEditingRail(rail);
+    setNewRail({
+      name: rail.name,
+      nominalVoltage: rail.nominalVoltage,
+      maxSafeVoltage: rail.maxSafeVoltage,
+      recommendedVoltage: rail.recommendedVoltage,
+      maxSafeCurrent: rail.maxSafeCurrent,
+      dangerZone: rail.dangerZone,
+      firstSuspects: rail.firstSuspects,
+      notes: rail.notes,
+    });
+    setShowAddModal(true);
+  };
+
+  // حفظ التعديل
+  const handleSaveEdit = () => {
+    if (!editingRail || !newRail.name || newRail.nominalVoltage === 0) {
+      alert('يرجى إدخال اسم المسار والجهد النموذجي');
+      return;
+    }
+
+    const updated = rails.map((r) =>
+      r.id === editingRail.id
+        ? { ...r, ...newRail }
+        : r
+    );
+
+    const customRails = updated.filter((r) => r.isCustom);
+    setRails(updated);
+    saveCustomRails(customRails);
+    setEditingRail(null);
+    setNewRail({
+      name: '',
+      nominalVoltage: 0,
+      maxSafeVoltage: 0,
+      recommendedVoltage: 0,
+      maxSafeCurrent: 0,
+      dangerZone: 0,
+      firstSuspects: '',
+      notes: '',
+    });
+    setShowAddModal(false);
+  };
 
   return (
     <div className="bg-workshop-card border border-workshop-border rounded-2xl p-5 shadow-2xl space-y-5 animate-fadeIn">
@@ -123,28 +264,68 @@ export default function SafeInjectionCalculator() {
             </p>
           </div>
         </div>
+
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-dahab-500/10 hover:bg-dahab-500/20 text-dahab-400 text-xs font-bold transition"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>إضافة مسار مخصص</span>
+        </button>
       </div>
 
       {/* اختيار المسار */}
       <div className="space-y-2">
         <label className="text-xs font-bold text-gray-300">اختر المسار الكهربائي المشتبه به:</label>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
-          {COMMON_RAILS.map((r, idx) => {
+          {rails.map((r, idx) => {
             const isSelected = selectedIdx === idx;
+            const isCustom = r.isCustom;
             return (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => setSelectedIdx(idx)}
-                className={`p-2.5 rounded-xl border text-right transition flex flex-col justify-between ${
+              <div
+                key={r.id}
+                className={`relative p-2.5 rounded-xl border text-right transition flex flex-col justify-between group ${
                   isSelected
                     ? 'bg-dahab-500/20 border-dahab-500 text-dahab-300 shadow-md'
                     : 'bg-gray-900 border-gray-800 text-gray-400 hover:bg-gray-850 hover:text-gray-200'
                 }`}
               >
-                <span className="font-mono text-xs font-bold line-clamp-1">{r.name}</span>
-                <span className="text-[10px] text-gray-500 mt-1">الجهد النموذجي: {r.nominalVoltage}V</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedIdx(idx)}
+                  className="flex-1 text-right"
+                >
+                  <span className="font-mono text-xs font-bold line-clamp-1 block">{r.name}</span>
+                  <span className="text-[10px] text-gray-500 mt-1 block">الجهد النموذجي: {r.nominalVoltage}V</span>
+                </button>
+
+                {isCustom && (
+                  <div className="absolute top-1 left-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditRail(r);
+                      }}
+                      className="p-1 rounded hover:bg-gray-700 text-gray-400 hover:text-white transition"
+                      title="تعديل"
+                    >
+                      <Edit className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm('هل تريد حذف هذا المسار؟')) {
+                          handleDeleteRail(r.id);
+                        }
+                      }}
+                      className="p-1 rounded hover:bg-rose-500/20 text-gray-400 hover:text-rose-400 transition"
+                      title="حذف"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
@@ -223,6 +404,163 @@ export default function SafeInjectionCalculator() {
           </p>
         </div>
       </div>
+
+      {/* Modal إضافة/تعديل مسار مخصص */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-workshop-card border border-workshop-border rounded-3xl max-w-md w-full shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-black text-gray-200">
+                {editingRail ? 'تعديل المسار' : 'إضافة مسار مخصص'}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowAddModal(false);
+                  setEditingRail(null);
+                  setNewRail({
+                    name: '',
+                    nominalVoltage: 0,
+                    maxSafeVoltage: 0,
+                    recommendedVoltage: 0,
+                    maxSafeCurrent: 0,
+                    dangerZone: 0,
+                    firstSuspects: '',
+                    notes: '',
+                  });
+                }}
+                className="p-1 rounded-lg text-gray-400 hover:text-gray-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-gray-300 mb-1">اسم المسار *</label>
+                <input
+                  type="text"
+                  value={newRail.name}
+                  onChange={(e) => setNewRail({ ...newRail, name: e.target.value })}
+                  placeholder="مثال: PP_5V_USB"
+                  className="w-full px-3 py-2 rounded-xl bg-gray-900 border border-gray-800 text-xs text-gray-200 outline-none focus:border-dahab-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-300 mb-1">الجهد النموذجي (V) *</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={newRail.nominalVoltage}
+                    onChange={(e) => setNewRail({ ...newRail, nominalVoltage: parseFloat(e.target.value) || 0 })}
+                    placeholder="3.8"
+                    className="w-full px-3 py-2 rounded-xl bg-gray-900 border border-gray-800 text-xs text-gray-200 outline-none focus:border-dahab-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-300 mb-1">أقصى فولت مسموح (V)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={newRail.maxSafeVoltage}
+                    onChange={(e) => setNewRail({ ...newRail, maxSafeVoltage: parseFloat(e.target.value) || 0 })}
+                    placeholder="3.8"
+                    className="w-full px-3 py-2 rounded-xl bg-gray-900 border border-gray-800 text-xs text-gray-200 outline-none focus:border-dahab-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-300 mb-1">فولت الحقن المقترح (V)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={newRail.recommendedVoltage}
+                    onChange={(e) => setNewRail({ ...newRail, recommendedVoltage: parseFloat(e.target.value) || 0 })}
+                    placeholder="1.8"
+                    className="w-full px-3 py-2 rounded-xl bg-gray-900 border border-gray-800 text-xs text-gray-200 outline-none focus:border-dahab-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-300 mb-1">أقصى تيار (A)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={newRail.maxSafeCurrent}
+                    onChange={(e) => setNewRail({ ...newRail, maxSafeCurrent: parseFloat(e.target.value) || 0 })}
+                    placeholder="3.0"
+                    className="w-full px-3 py-2 rounded-xl bg-gray-900 border border-gray-800 text-xs text-gray-200 outline-none focus:border-dahab-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-300 mb-1">منطقة الخطر (V)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={newRail.dangerZone}
+                    onChange={(e) => setNewRail({ ...newRail, dangerZone: parseFloat(e.target.value) || 0 })}
+                    placeholder="4.5"
+                    className="w-full px-3 py-2 rounded-xl bg-gray-900 border border-gray-800 text-xs text-gray-200 outline-none focus:border-dahab-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-300 mb-1">المكونات المتوقعة للانصهار</label>
+                <textarea
+                  value={newRail.firstSuspects}
+                  onChange={(e) => setNewRail({ ...newRail, firstSuspects: e.target.value })}
+                  placeholder="المكونات التي تسخن أولاً..."
+                  rows={2}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-900 border border-gray-800 text-xs text-gray-200 outline-none focus:border-dahab-500 resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-300 mb-1">ملاحظات وتوجيهات</label>
+                <textarea
+                  value={newRail.notes}
+                  onChange={(e) => setNewRail({ ...newRail, notes: e.target.value })}
+                  placeholder="تعليمات إضافية..."
+                  rows={2}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-900 border border-gray-800 text-xs text-gray-200 outline-none focus:border-dahab-500 resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={editingRail ? handleSaveEdit : handleAddRail}
+                className="flex-1 px-4 py-2 rounded-xl bg-dahab-500 hover:bg-dahab-600 text-slate-950 text-xs font-black transition shadow-sm"
+              >
+                {editingRail ? 'حفظ التعديل' : 'إضافة'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowAddModal(false);
+                  setEditingRail(null);
+                  setNewRail({
+                    name: '',
+                    nominalVoltage: 0,
+                    maxSafeVoltage: 0,
+                    recommendedVoltage: 0,
+                    maxSafeCurrent: 0,
+                    dangerZone: 0,
+                    firstSuspects: '',
+                    notes: '',
+                  });
+                }}
+                className="flex-1 px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold transition"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

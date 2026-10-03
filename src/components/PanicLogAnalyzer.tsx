@@ -1,19 +1,22 @@
 'use client';
 
-import React, { useState } from 'react';
-import { AlertOctagon, CheckCircle2, FileText, Cpu, Search, Sparkles, Copy, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { AlertOctagon, CheckCircle2, FileText, Cpu, Search, Sparkles, Copy, Check, Download, Plus, Trash2, X, History, Save } from 'lucide-react';
 
 interface PanicSignature {
+  id: string;
   keyword: string;
   component: string;
   affectedDevices: string;
   symptom: string;
   fixSolution: string;
   dangerLevel: 'CRITICAL' | 'HIGH' | 'MEDIUM';
+  isCustom?: boolean;
 }
 
-const KNOWN_PANIC_SIGNATURES: PanicSignature[] = [
+const DEFAULT_SIGNATURES: PanicSignature[] = [
   {
+    id: 'sig_1',
     keyword: 'prs0',
     component: 'حساس الضغط الجوي (Barometer) وفلاتة مدخل الشحن',
     affectedDevices: 'iPhone 7 إلى iPhone 14 Pro Max',
@@ -22,6 +25,7 @@ const KNOWN_PANIC_SIGNATURES: PanicSignature[] = [
     dangerLevel: 'HIGH',
   },
   {
+    id: 'sig_2',
     keyword: 'mic2',
     component: 'المايك الثانوي وفلاتة زر الباور / الفلاش',
     affectedDevices: 'iPhone 11, 11 Pro, 12, 13',
@@ -30,6 +34,7 @@ const KNOWN_PANIC_SIGNATURES: PanicSignature[] = [
     dangerLevel: 'MEDIUM',
   },
   {
+    id: 'sig_3',
     keyword: 'mic1',
     component: 'المايك الأساسي السفلي في فلاتة الشحن',
     affectedDevices: 'جميع موديلات iPhone و iPad',
@@ -38,6 +43,7 @@ const KNOWN_PANIC_SIGNATURES: PanicSignature[] = [
     dangerLevel: 'MEDIUM',
   },
   {
+    id: 'sig_4',
     keyword: 'tg0b',
     component: 'دائرة قياس سعة البطارية (Battery Gas Gauge / I2C Bus)',
     affectedDevices: 'iPhone X, XR, XS, 11, 12, 13, 14',
@@ -46,6 +52,7 @@ const KNOWN_PANIC_SIGNATURES: PanicSignature[] = [
     dangerLevel: 'HIGH',
   },
   {
+    id: 'sig_5',
     keyword: 'aop panic',
     component: 'معالج المستشعرات المستمر (Always-on Processor / FaceID / Proximity)',
     affectedDevices: 'iPhone X حتى iPhone 15 Pro',
@@ -54,6 +61,7 @@ const KNOWN_PANIC_SIGNATURES: PanicSignature[] = [
     dangerLevel: 'HIGH',
   },
   {
+    id: 'sig_6',
     keyword: 'wdt timeout',
     component: 'مؤقت الحماية ومسارات الاتصال البيني (Watchdog Timer / I2C Hang)',
     affectedDevices: 'أجهزة iOS وأندرويد (Snapdragon / Exynos)',
@@ -62,6 +70,7 @@ const KNOWN_PANIC_SIGNATURES: PanicSignature[] = [
     dangerLevel: 'CRITICAL',
   },
   {
+    id: 'sig_7',
     keyword: 'smc_panic',
     component: 'متحكم إدارة النظام في الماك بوك (Apple SMC / T2 Controller)',
     affectedDevices: 'MacBook Pro / MacBook Air (Intel & Apple Silicon)',
@@ -69,24 +78,108 @@ const KNOWN_PANIC_SIGNATURES: PanicSignature[] = [
     fixSolution: 'فحص حساسات الحرارة الموزعة على البوردة ومسار SMBUS الخاص بالبطارية والشاحن.',
     dangerLevel: 'CRITICAL',
   },
+  {
+    id: 'sig_8',
+    keyword: 'kernel_task',
+    component: 'نواة النظام ومسارات الذاكرة (Kernel / Memory Controller)',
+    affectedDevices: 'MacBook Pro / iMac / Mac Pro',
+    symptom: 'توقف مفاجئ مع شاشة رمادية أو إعادة تشغيل مستمرة بدون سبب واضح.',
+    fixSolution: 'فحص شرائح الذاكرة RAM، موسفيتات تغذية المعالج، أو تثبيت نظام macOS نظيف.',
+    dangerLevel: 'CRITICAL',
+  },
+  {
+    id: 'sig_9',
+    keyword: 'thermalmonitord',
+    component: 'نظام مراقبة الحرارة (Thermal Management System)',
+    affectedDevices: 'iPhone و iPad و MacBook',
+    symptom: 'سخونة شديدة ثم إغلاق تلقائي للحماية من الحرارة.',
+    fixSolution: 'فحص أنبوب الحرارة (Heat Pipe)، المعجون الحراري، أو حساسات الحرارة.',
+    dangerLevel: 'HIGH',
+  },
+  {
+    id: 'sig_10',
+    keyword: 'baseband panic',
+    component: 'معالج الاتصالات (Baseband / Modem)',
+    affectedDevices: 'iPhone و iPad مع LTE/5G',
+    symptom: 'فقدان الإشارة أو عدم القدرة على الاتصال بالشبكة بعد الريستارت.',
+    fixSolution: 'فحص آيسي الـ Baseband، مقاومات الطاقة، أو إعادة تثبيت الفيرموير.',
+    dangerLevel: 'HIGH',
+  },
 ];
 
 export default function PanicLogAnalyzer() {
   const [logText, setLogText] = useState('');
   const [analyzed, setAnalyzed] = useState(false);
+  const [signatures, setSignatures] = useState<PanicSignature[]>(DEFAULT_SIGNATURES);
   const [detectedSignatures, setDetectedSignatures] = useState<PanicSignature[]>([]);
   const [copied, setCopied] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newSignature, setNewSignature] = useState({
+    keyword: '',
+    component: '',
+    affectedDevices: '',
+    symptom: '',
+    fixSolution: '',
+    dangerLevel: 'MEDIUM' as 'CRITICAL' | 'HIGH' | 'MEDIUM',
+  });
+  const [savedLogs, setSavedLogs] = useState<Array<{ id: string; date: string; text: string; results: PanicSignature[] }>>([]);
+
+  // تحميل البصمات المخصصة والسجلات المحفوظة من localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const savedSigs = localStorage.getItem('dahab_custom_signatures');
+        if (savedSigs) {
+          const parsed = JSON.parse(savedSigs);
+          if (Array.isArray(parsed)) {
+            setSignatures([...DEFAULT_SIGNATURES, ...parsed]);
+          }
+        }
+
+        const savedLogsData = localStorage.getItem('dahab_saved_panic_logs');
+        if (savedLogsData) {
+          const parsed = JSON.parse(savedLogsData);
+          if (Array.isArray(parsed)) setSavedLogs(parsed);
+        }
+      } catch {}
+    }
+  }, []);
+
+  // حفظ البصمات المخصصة في localStorage
+  const saveCustomSignatures = (customSigs: PanicSignature[]) => {
+    try {
+      localStorage.setItem('dahab_custom_signatures', JSON.stringify(customSigs));
+    } catch {}
+  };
+
+  // حفظ السجلات في localStorage
+  const saveLogs = (logs: typeof savedLogs) => {
+    try {
+      localStorage.setItem('dahab_saved_panic_logs', JSON.stringify(logs));
+    } catch {}
+  };
 
   const handleAnalyze = () => {
     if (!logText.trim()) return;
     const lower = logText.toLowerCase();
 
-    const matched = KNOWN_PANIC_SIGNATURES.filter((sig) =>
+    const matched = signatures.filter((sig) =>
       lower.includes(sig.keyword.toLowerCase())
     );
 
     setDetectedSignatures(matched);
     setAnalyzed(true);
+
+    // حفظ السجل المحلل
+    const newLog = {
+      id: `log_${Date.now()}`,
+      date: new Date().toLocaleDateString('ar-EG'),
+      text: logText,
+      results: matched,
+    };
+    const updatedLogs = [newLog, ...savedLogs].slice(0, 20); // احتفظ بآخر 20 سجل
+    setSavedLogs(updatedLogs);
+    saveLogs(updatedLogs);
   };
 
   const handleClear = () => {
@@ -106,6 +199,89 @@ export default function PanicLogAnalyzer() {
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleExportReport = () => {
+    if (detectedSignatures.length === 0) return;
+    const report = {
+      date: new Date().toISOString(),
+      logText: logText,
+      detectedSignatures: detectedSignatures.map(s => ({
+        keyword: s.keyword,
+        component: s.component,
+        affectedDevices: s.affectedDevices,
+        symptom: s.symptom,
+        fixSolution: s.fixSolution,
+        dangerLevel: s.dangerLevel,
+      })),
+    };
+
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(report, null, 2));
+    const dl = document.createElement('a');
+    dl.setAttribute('href', dataStr);
+    dl.setAttribute('download', `panic_analysis_${Date.now()}.json`);
+    document.body.appendChild(dl);
+    dl.click();
+    dl.remove();
+  };
+
+  // إضافة بصمة مخصصة
+  const handleAddSignature = () => {
+    if (!newSignature.keyword || !newSignature.component) {
+      alert('يرجى إدخال الكلمة المفتاحية والمكون');
+      return;
+    }
+
+    const customSig: PanicSignature = {
+      id: `custom_${Date.now()}`,
+      keyword: newSignature.keyword,
+      component: newSignature.component,
+      affectedDevices: newSignature.affectedDevices,
+      symptom: newSignature.symptom,
+      fixSolution: newSignature.fixSolution,
+      dangerLevel: newSignature.dangerLevel,
+      isCustom: true,
+    };
+
+    const customSigs = signatures.filter((s) => s.isCustom);
+    const updatedCustomSigs = [customSig, ...customSigs];
+    const updatedSignatures = [...DEFAULT_SIGNATURES, ...updatedCustomSigs];
+
+    setSignatures(updatedSignatures);
+    saveCustomSignatures(updatedCustomSigs);
+    setNewSignature({
+      keyword: '',
+      component: '',
+      affectedDevices: '',
+      symptom: '',
+      fixSolution: '',
+      dangerLevel: 'MEDIUM',
+    });
+    setShowAddModal(false);
+  };
+
+  // حذف بصمة مخصصة
+  const handleDeleteSignature = (id: string) => {
+    if (!id.startsWith('custom_')) return;
+
+    const updated = signatures.filter((s) => s.id !== id);
+    const customSigs = updated.filter((s) => s.isCustom);
+    setSignatures(updated);
+    saveCustomSignatures(customSigs);
+  };
+
+  // استرجاع سجل محفوظ
+  const handleRestoreLog = (log: typeof savedLogs[0]) => {
+    setLogText(log.text);
+    setDetectedSignatures(log.results);
+    setAnalyzed(true);
+  };
+
+  // حذف سجل محفوظ
+  const handleDeleteLog = (id: string) => {
+    const updated = savedLogs.filter((l) => l.id !== id);
+    setSavedLogs(updated);
+    saveLogs(updated);
   };
 
   return (
@@ -130,14 +306,32 @@ export default function PanicLogAnalyzer() {
         </div>
 
         {analyzed && (
-          <button
-            onClick={handleCopy}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-xs text-gray-300 font-bold"
-          >
-            {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-            <span>نسخ تقرير البانيك</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleCopy}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-xs text-gray-300 font-bold"
+            >
+              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>نسخ</span>
+            </button>
+
+            <button
+              onClick={handleExportReport}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-xs text-gray-300 font-bold"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>تصدير</span>
+            </button>
+          </div>
         )}
+
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 text-xs font-bold transition"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>إضافة بصمة</span>
+        </button>
       </div>
 
       {/* صندوق إدخال ملف اللوج */}
@@ -205,9 +399,19 @@ Missing sensor(s): Prs0, Mic2 ...`}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {detectedSignatures.map((sig, idx) => (
                 <div
-                  key={idx}
-                  className="p-4 rounded-xl border border-purple-500/30 bg-purple-950/20 hover:border-purple-500/50 transition space-y-2.5"
+                  key={sig.id || idx}
+                  className="p-4 rounded-xl border border-purple-500/30 bg-purple-950/20 hover:border-purple-500/50 transition space-y-2.5 relative group"
                 >
+                  {sig.isCustom && (
+                    <button
+                      onClick={() => handleDeleteSignature(sig.id)}
+                      className="absolute top-2 left-2 p-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 transition opacity-0 group-hover:opacity-100"
+                      title="حذف البصمة"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  )}
+
                   <div className="flex items-center justify-between border-b border-purple-500/20 pb-2">
                     <span className="font-mono font-black text-sm text-purple-300 uppercase">
                       كود الخطأ: {sig.keyword}
@@ -216,10 +420,12 @@ Missing sensor(s): Prs0, Mic2 ...`}
                       className={`text-[10px] px-2 py-0.5 rounded font-black ${
                         sig.dangerLevel === 'CRITICAL'
                           ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                          : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                          : sig.dangerLevel === 'HIGH'
+                          ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                          : 'bg-sky-500/20 text-sky-400 border border-sky-500/30'
                       }`}
                     >
-                      {sig.dangerLevel === 'CRITICAL' ? 'حرج جداً' : 'متكرر دورياً'}
+                      {sig.dangerLevel === 'CRITICAL' ? 'حرج جداً' : sig.dangerLevel === 'HIGH' ? 'متكرر دورياً' : 'متوسط'}
                     </span>
                   </div>
 
@@ -242,6 +448,156 @@ Missing sensor(s): Prs0, Mic2 ...`}
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* سجل التحليلات المحفوظة */}
+      {savedLogs.length > 0 && (
+        <div className="space-y-3 pt-2 border-t border-gray-800">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold text-gray-300 flex items-center gap-1.5">
+              <History className="w-4 h-4 text-sky-400" />
+              <span>سجل التحليلات المحفوظة ({savedLogs.length})</span>
+            </h3>
+          </div>
+
+          <div className="space-y-2 max-h-48 overflow-y-auto">
+            {savedLogs.map((log) => (
+              <div
+                key={log.id}
+                className="p-3 rounded-xl bg-gray-900/60 border border-gray-800 hover:border-purple-500/50 transition flex items-center justify-between gap-3 group"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[10px] text-gray-400">{log.date}</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 font-bold">
+                      {log.results.length} نتائج
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-300 truncate">{log.text.slice(0, 100)}...</p>
+                </div>
+
+                <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition">
+                  <button
+                    onClick={() => handleRestoreLog(log)}
+                    className="p-1.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 transition"
+                    title="استرجاع"
+                  >
+                    <Search className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteLog(log.id)}
+                    className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition"
+                    title="حذف"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Modal إضافة بصمة مخصصة */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-workshop-card border border-workshop-border rounded-3xl max-w-md w-full shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-black text-gray-200">إضافة بصمة بانيك مخصصة</h3>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="p-1 rounded-lg text-gray-400 hover:text-gray-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-gray-300 mb-1">الكلمة المفتاحية *</label>
+                <input
+                  type="text"
+                  value={newSignature.keyword}
+                  onChange={(e) => setNewSignature({ ...newSignature, keyword: e.target.value })}
+                  placeholder="مثال: sensor_name"
+                  className="w-full px-3 py-2 rounded-xl bg-gray-900 border border-gray-800 text-xs text-gray-200 outline-none focus:border-purple-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-300 mb-1">المكون المعطوب *</label>
+                <input
+                  type="text"
+                  value={newSignature.component}
+                  onChange={(e) => setNewSignature({ ...newSignature, component: e.target.value })}
+                  placeholder="مثال: فلاتة الشحن"
+                  className="w-full px-3 py-2 rounded-xl bg-gray-900 border border-gray-800 text-xs text-gray-200 outline-none focus:border-purple-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-300 mb-1">الأجهزة المتأثرة</label>
+                <input
+                  type="text"
+                  value={newSignature.affectedDevices}
+                  onChange={(e) => setNewSignature({ ...newSignature, affectedDevices: e.target.value })}
+                  placeholder="مثال: iPhone 12, 13"
+                  className="w-full px-3 py-2 rounded-xl bg-gray-900 border border-gray-800 text-xs text-gray-200 outline-none focus:border-purple-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-300 mb-1">العرض</label>
+                <textarea
+                  value={newSignature.symptom}
+                  onChange={(e) => setNewSignature({ ...newSignature, symptom: e.target.value })}
+                  placeholder="وصف العرض..."
+                  rows={2}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-900 border border-gray-800 text-xs text-gray-200 outline-none focus:border-purple-500 resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-300 mb-1">الحل المقترح</label>
+                <textarea
+                  value={newSignature.fixSolution}
+                  onChange={(e) => setNewSignature({ ...newSignature, fixSolution: e.target.value })}
+                  placeholder="الحل الفني..."
+                  rows={2}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-900 border border-gray-800 text-xs text-gray-200 outline-none focus:border-purple-500 resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-300 mb-1">مستوى الخطورة</label>
+                <select
+                  value={newSignature.dangerLevel}
+                  onChange={(e) => setNewSignature({ ...newSignature, dangerLevel: e.target.value as 'CRITICAL' | 'HIGH' | 'MEDIUM' })}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-900 border border-gray-800 text-xs text-gray-200 outline-none focus:border-purple-500"
+                >
+                  <option value="MEDIUM">متوسط</option>
+                  <option value="HIGH">عالي</option>
+                  <option value="CRITICAL">حرج جداً</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={handleAddSignature}
+                className="flex-1 px-4 py-2 rounded-xl bg-purple-500 hover:bg-purple-600 text-white text-xs font-black transition shadow-sm"
+              >
+                إضافة
+              </button>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="flex-1 px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold transition"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

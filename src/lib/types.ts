@@ -78,10 +78,10 @@ export interface RepairSession {
 
 export interface ReferenceSource {
   title: string;
-  source: 'مخططات وزدكس دبليو ZXW' | 'يوتيوب YouTube' | 'تليجرام Telegram' | 'منتديات GSM' | 'دليل صيانة دهب';
+  source: 'مخططات وزدكس دبليو ZXW' | 'يوتيوب YouTube' | 'تليجرام Telegram' | 'منتديات GSM' | 'دليل صيانة دهب' | 'مخصص';
   link: string;
   snippet: string;
-  type: 'schematic' | 'video' | 'forum' | 'solution';
+  type: 'schematic' | 'video' | 'forum' | 'solution' | 'custom';
 }
 
 // Repair Status & Feedback Tracker Types
