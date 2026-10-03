@@ -1,17 +1,13 @@
+# Allow all crawlers
 User-agent: *
 Allow: /
-Allow: /ecosystem
-Allow: /login
-Allow: /support
-Allow: /contact
-Allow: /about
-Allow: /privacy
-Allow: /terms
 
-# Block admin routes from indexing
+# Disallow admin areas
 Disallow: /admin
-Disallow: /admin/
-Disallow: /api/
+Disallow: /api/admin
 
-# Sitemap
+# Sitemap location
 Sitemap: https://dahabsoftware.site/sitemap.xml
+
+# Crawl delay (optional)
+Crawl-delay: 1

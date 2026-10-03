@@ -6,7 +6,7 @@ import { DiagnosticProvider } from '@/contexts/DiagnosticContext';
 export const metadata: Metadata = {
   metadataBase: new URL('https://dahabsoftware.site'),
   title: 'Dahab Software | Dahab Device Doctor - خبير تشخيص وصيانة الإلكترونيات',
-  description: 'المنظومة الهندسية الأولى في الشرق الأوسط لتشخيص وفصل أعطال الموبايل واللابتوب وكروت الباور والإلكترونيات الدقيقة.',
+  description: 'المنظومة الهندسية الأولى في الشرق الأوسط لتشخيص وفصل أعطال الموبايل واللابتوب وكروت الباور والإلكترونيات الدقيقة باستخدام الذكاء الاصطناعي.',
   manifest: '/manifest.json',
   icons: {
     icon: '/logo.jpg',
@@ -19,8 +19,8 @@ export const metadata: Metadata = {
     title: 'دهب دكتور',
   },
   openGraph: {
-    title: 'دهب دكتور - خبير تشخيص الإلكترونيات',
-    description: 'المنظومة الهندسية الأولى في الشرق الأوسط لتشخيص وفصل أعطال الموبايل واللابتوب وكروت الباور والإلكترونيات الدقيقة',
+    title: 'دهب دكتور - خبير تشخيص الإلكترونيات بالذكاء الاصطناعي',
+    description: 'المنظومة الهندسية الأولى في الشرق الأوسط لتشخيص وفصل أعطال الموبايل واللابتوب وكروت الباور والإلكترونيات الدقيقة باستخدام الذكاء الاصطناعي المتقدم.',
     url: 'https://dahabsoftware.site',
     siteName: 'دهب دكتور',
     images: [
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
         url: '/logo.jpg',
         width: 512,
         height: 512,
-        alt: 'دهب دكتور',
+        alt: 'دهب دكتور - تشخيص الإلكترونيات',
       },
     ],
     locale: 'ar_SA',
@@ -37,13 +37,47 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'دهب دكتور - خبير تشخيص الإلكترونيات',
-    description: 'المنظومة الهندسية الأولى في الشرق الأوسط لتشخيص وفصل أعطال الموبايل واللابتوب وكروت الباور والإلكترونيات الدقيقة',
+    description: 'المنظومة الهندسية الأولى في الشرق الأوسط لتشخيص وفصل أعطال الموبايل واللابتوب وكروت الباور والإلكترونيات الدقيقة.',
     images: ['/logo.jpg'],
   },
-  keywords: ['تشخيص', 'صيانة', 'موبايل', 'لابتوب', 'إلكترونيات', 'ذكاء اصطناعي', 'صيانة هاردوير', 'صيانة سوفتوير', 'الشرق الأوسط', 'دهب دكتور'],
+  keywords: [
+    'تشخيص أعطال الموبايل',
+    'صيانة iPhone',
+    'صيانة Samsung',
+    'صيانة MacBook',
+    'إصلاح شاشات',
+    'صيانة كروت باور',
+    'ذكاء اصطناعي للصيانة',
+    'تشخيص هاردوير',
+    'تشخيص سوفتوير',
+    'فحص البورد',
+    'تحليل سجلات البانيك',
+    'حاسبة فولت',
+    'صيانة إلكترونيات',
+    'Middle East electronics repair',
+    '手机维修',
+    '电脑维修',
+    'صيانة الشرق الأوسط',
+    'دهب دكتور',
+    'Dahab Device Doctor'
+  ],
   authors: [{ name: 'دهب دكتور' }],
   creator: 'دهب دكتور',
   publisher: 'دهب دكتور',
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+  verification: {
+    google: 'your-google-verification-code',
+  },
 };
 
 export const viewport: Viewport = {
@@ -66,15 +100,36 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/logo.jpg" />
         <link rel="canonical" href="https://dahabsoftware.site" />
+        
+        {/* Google Analytics */}
+        {process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID && (
+          <>
+            <script
+              async
+              src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID}`}
+            />
+            <script
+              dangerouslySetInnerHTML={{
+                __html: `
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', '${process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID}');
+              `,
+              }}
+            />
+          </>
+        )}
+        
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "WebApplication",
-              "name": "ذهب سوفتوير - طبيب الأجهزة",
+              "name": "دهب دكتور - خبير تشخيص الإلكترونيات",
               "url": "https://dahabsoftware.site",
-              "description": "المنظومة الهندسية الأولى في الوطن العربي لتشخيص وفحص أعطال الموبايلات واللابتوب والإلكترونيات الدقيقة",
+              "description": "المنظومة الهندسية الأولى في الشرق الأوسط لتشخيص وفصل أعطال الموبايل واللابتوب وكروت الباور والإلكترونيات الدقيقة باستخدام الذكاء الاصطناعي",
               "applicationCategory": "UtilitiesApplication",
               "operatingSystem": "Web, Android, iOS",
               "offers": {
@@ -84,7 +139,7 @@ export default function RootLayout({
               },
               "author": {
                 "@type": "Organization",
-                "name": "ذهب سوفتوير",
+                "name": "دهب دكتور",
                 "url": "https://dahabsoftware.site"
               }
             })

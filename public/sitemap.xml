@@ -1,70 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:xhtml="http://www.w3.org/1999/xhtml">
-
-  <!-- الصفحة الرئيسية - التشخيص الذكي -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://dahabsoftware.site/</loc>
-    <lastmod>2026-09-29</lastmod>
+    <loc>https://dahabsoftware.site</loc>
+    <lastmod>2026-10-03</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="ar" href="https://dahabsoftware.site/"/>
   </url>
-
-  <!-- صفحة تسجيل الدخول -->
   <url>
-    <loc>https://dahabsoftware.site/login</loc>
-    <lastmod>2026-09-29</lastmod>
+    <loc>https://dahabsoftware.site/about</loc>
+    <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
-
-  <!-- صفحة المنظومة الكاملة -->
-  <url>
-    <loc>https://dahabsoftware.site/ecosystem</loc>
-    <lastmod>2026-09-29</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-
-  <!-- صفحة الدعم الفني -->
-  <url>
-    <loc>https://dahabsoftware.site/support</loc>
-    <lastmod>2026-09-29</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-
-  <!-- صفحة تواصل معنا -->
   <url>
     <loc>https://dahabsoftware.site/contact</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
+    <priority>0.7</priority>
   </url>
-
-  <!-- صفحة عن الموقع -->
   <url>
-    <loc>https://dahabsoftware.site/about</loc>
-    <lastmod>2026-09-29</lastmod>
+    <loc>https://dahabsoftware.site/support</loc>
+    <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
+    <priority>0.7</priority>
   </url>
-
-  <!-- سياسة الخصوصية -->
-  <url>
-    <loc>https://dahabsoftware.site/privacy</loc>
-    <lastmod>2026-09-29</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.4</priority>
-  </url>
-
-  <!-- الشروط والأحكام -->
   <url>
     <loc>https://dahabsoftware.site/terms</loc>
-    <lastmod>2026-09-29</lastmod>
+    <lastmod>2026-10-03</lastmod>
     <changefreq>yearly</changefreq>
-    <priority>0.4</priority>
+    <priority>0.5</priority>
   </url>
-
+  <url>
+    <loc>https://dahabsoftware.site/privacy</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://dahabsoftware.site/ecosystem</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
 </urlset>
