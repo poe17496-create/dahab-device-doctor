@@ -25,20 +25,12 @@ export async function migrateICDatabase() {
     try {
       const { error } = await supabaseAdmin.from('ic_database').insert({
         part_number: ic.partNumber,
-        manufacturer: 'Various',
-        description: ic.function,
-        package_type: 'BGA',
         category: ic.category,
-        pinout: {
-          commonSymptoms: ic.commonSymptoms,
-          diodeReadings: ic.diodeReadings,
-          compatibles: ic.compatibles,
-          deviceFamily: ic.deviceFamily,
-        },
-        specifications: {
-          category: ic.category,
-          deviceFamily: ic.deviceFamily,
-        },
+        device_family: ic.deviceFamily,
+        function: ic.function,
+        compatibles: ic.compatibles,
+        common_symptoms: ic.commonSymptoms,
+        diode_readings: ic.diodeReadings,
       });
 
       if (error) {

@@ -7,6 +7,7 @@ import { checkRateLimit, sanitizeAndCheckTokenDrain } from '@/lib/securityRateLi
 import { withErrorHandling, ErrorCode, withTimeout } from '@/lib/apiErrorHandler';
 import { chatRequestSchema } from '@/lib/apiSchemas';
 import { getCachedResponse, setCachedResponse, generateCacheKey } from '@/lib/cache';
+import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -33,6 +34,39 @@ async function chatHandler(req: NextRequest) {
       { error: `🛡️ تم تجاوز الحد المسموح للطلبات (${rateCheck.resetInSec} ثانية متبقية). يرجى التمهل.` },
       { status: 429 }
     );
+  }
+
+  // 🎯 تتبع الاستخدام اليومي عبر الـ IP
+  if (isSupabaseConfigured && supabaseAdmin) {
+    try {
+      // استخراج الـ IP الحقيقي
+      const forwarded = req.headers.get('x-forwarded-for');
+      const ip = forwarded ? forwarded.split(',')[0].trim() : req.headers.get('x-real-ip') || 'anonymous';
+
+      // التحقق من الاستخدام وزيادة العداد
+      const { data: usageResult, error: usageError } = await supabaseAdmin.rpc('check_and_increment_usage', {
+        p_ip_address: ip
+      });
+
+      if (usageError) {
+        console.error('Usage tracking error:', usageError);
+        // في حالة الخطأ، نسمح بالطلب ولكن نسجل الخطأ
+      } else if (usageResult && !usageResult.allowed) {
+        // تم تجاوز الحد المسموح
+        return NextResponse.json(
+          {
+            error: usageResult.message,
+            currentCount: usageResult.current_count,
+            maxAllowed: usageResult.max_allowed,
+            requiresReset: true
+          },
+          { status: 429 }
+        );
+      }
+    } catch (error) {
+      console.error('Error checking usage:', error);
+      // في حالة الخطأ، نسمح بالطلب لتجنب تعطيل الخدمة
+    }
   }
 
   const body = await req.json();
