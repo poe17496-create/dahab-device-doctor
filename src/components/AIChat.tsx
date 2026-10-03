@@ -64,7 +64,11 @@ const INITIAL_MESSAGE: ChatMessage = {
   timestamp: new Date(),
 };
 
-export default function AIChat() {
+interface AIChatProps {
+  currentUser?: any;
+}
+
+export default function AIChat({ currentUser }: AIChatProps) {
   const { deviceModel, specialty, readings, metrics, boardData, calculatorContext, checklistProgress } = useDiagnosticContext();
 
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
@@ -390,6 +394,12 @@ export default function AIChat() {
         stream: useStreaming,
         diagnosticContext,
       };
+
+      // إضافة بيانات المستخدم المسجل لتجاوز حد الزوار
+      if (currentUser && !currentUser.isGuest && currentUser.username && currentUser.activeSessionToken) {
+        requestBody.username = currentUser.username;
+        requestBody.sessionToken = currentUser.activeSessionToken;
+      }
 
       // إضافة الرسالة فقط إذا كانت موجودة وغير فارغة
       if (textToSend && textToSend.trim().length > 0) {

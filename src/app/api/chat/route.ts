@@ -9,6 +9,7 @@ import { chatRequestSchema } from '@/lib/apiSchemas';
 import { getCachedResponse, setCachedResponse, generateCacheKey } from '@/lib/cache';
 import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
 import { generateUserIdentifier } from '@/lib/userFingerprint';
+import { validateSessionToken } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -37,10 +38,26 @@ async function chatHandler(req: NextRequest) {
     );
   }
 
+  const body = await req.json();
+
+  // التحقق من المستخدم المسجل (skip usage limit for logged-in users)
+  const { username, sessionToken } = body;
+
+  let isUserLoggedIn = false;
+  if (username && sessionToken && isSupabaseConfigured) {
+    try {
+      isUserLoggedIn = await validateSessionToken(username, sessionToken);
+      console.log(`User ${username} login validation: ${isUserLoggedIn}`);
+    } catch (error) {
+      console.error('Error validating session:', error);
+    }
+  }
+
   // 🎯 تتبع الاستخدام اليومي عبر Device Fingerprint المحسن (IP + User Agent + Cookie)
+  // يتم تطبيق الحد فقط على الزوار غير المسجلين
   let needsCookie = false;
   let sessionId = '';
-  if (isSupabaseConfigured && supabaseAdmin) {
+  if (isSupabaseConfigured && supabaseAdmin && !isUserLoggedIn) {
     try {
       const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('Usage check timeout')), 3000)
@@ -81,8 +98,6 @@ async function chatHandler(req: NextRequest) {
       // في حالة الخطأ، نسمح بالطلب لتجنب تعطيل الخدمة
     }
   }
-
-  const body = await req.json();
   
   // التحقق من صحة البيانات باستخدام Zod
   const validatedData = chatRequestSchema.parse(body);

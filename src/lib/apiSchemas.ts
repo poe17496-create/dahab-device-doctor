@@ -10,6 +10,8 @@ export const chatRequestSchema = z.object({
   customKeys: z.any().optional().nullable(),
   stream: z.boolean().optional().default(false),
   diagnosticContext: z.any().optional().nullable(),
+  username: z.string().optional().nullable(),
+  sessionToken: z.string().optional().nullable(),
 }).refine((data) => {
   // يجب أن يكون هناك إما رسالة نصية أو صورة
   const hasMessage = typeof data.message === 'string' && data.message.trim().length > 0;

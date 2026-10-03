@@ -781,7 +781,7 @@ export default function DahabFixAiConsole() {
               )}
               {/* تبويب المساعد الذكي - يأخذ كامل ارتفاع الشاشة في وضع الديسكتوب بدون فراغ سفلي */}
               <div className={`h-[calc(100dvh-150px)] md:h-[calc(100dvh-115px)] lg:h-[calc(100dvh-105px)] ${activeTab === 'ai-chat' ? 'block' : 'hidden'}`}>
-                <AIChat />
+                <AIChat currentUser={currentUser} />
               </div>
             </div>
           </div>
