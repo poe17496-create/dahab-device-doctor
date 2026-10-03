@@ -5,6 +5,7 @@ import { BarChart3, Users, Ticket, Activity, Zap, Shield, Globe, Clock, UserChec
 import { localStorageStats } from '@/lib/localStorage';
 import Link from 'next/link';
 import ProductivityStats from '@/components/ProductivityStats';
+import KeyPoolStats from '@/components/KeyPoolStats';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<any>(null);
@@ -12,7 +13,7 @@ export default function AdminDashboard() {
   const [onlineCount, setOnlineCount] = useState(0);
   const [lockedCount, setLockedCount] = useState(0);
   const [productivityStats, setProductivityStats] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'overview' | 'productivity' | 'users'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'productivity' | 'users' | 'keys'>('overview');
 
   useEffect(() => {
     setStats(localStorageStats.getStats());
@@ -167,6 +168,17 @@ export default function AdminDashboard() {
               <Users className="w-4 h-4" />
               المستخدمين
             </button>
+            <button
+              onClick={() => setActiveTab('keys')}
+              className={`px-6 py-3 rounded-xl text-sm font-bold transition flex items-center gap-2 ${
+                activeTab === 'keys'
+                  ? 'bg-dahab-500 text-slate-950 shadow-lg shadow-dahab-500/20'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+              }`}
+            >
+              <Zap className="w-4 h-4" />
+              مفاتيح AI
+            </button>
           </div>
 
           {/* محتوى التبويبات */}
@@ -283,6 +295,10 @@ export default function AdminDashboard() {
                 </table>
               </div>
             </div>
+          )}
+
+          {activeTab === 'keys' && (
+            <KeyPoolStats />
           )}
         </div>
 

@@ -3,7 +3,7 @@ import OpenAI from 'openai';
 import { DAHAB_SYSTEM_PROMPT } from './promptTemplates';
 import { DiagnosticMetrics, DeviceSpecialty, PowerSupplyReadings } from './types';
 import { enhanceArabicPrompt } from './middleEastFeatures';
-import { getAllActiveKeys } from './apiKeysStorage';
+import { getAllActiveKeys, getNextKeyWithRotation, recordKeyFailure, recordKeySuccess } from './apiKeysStorage';
 
 /**
  * @fileoverview AI Engines Integration
@@ -195,6 +195,7 @@ async function tryCallGemini(
           fullText += chunk.text();
         }
 
+        recordKeySuccess('gemini');
         return {
           text: fullText,
           metrics: extractMetrics(fullText),
@@ -208,6 +209,7 @@ async function tryCallGemini(
       const result = await model.generateContent(contentParts);
       const text = result.response.text();
       if (text && text.trim().length > 0) {
+        recordKeySuccess('gemini');
         return {
           text,
           metrics: extractMetrics(text),
@@ -217,12 +219,22 @@ async function tryCallGemini(
       }
     } catch (err: any) {
       lastError = err;
-      console.warn(`Gemini (${modelName}) failed with key ending in ...${apiKey.slice(-5)}:`, err?.message || err);
+      const errMsg = err?.message || String(err);
+      
+      // Check for rate limit (429) or quota errors
+      if (errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('rate limit')) {
+        console.warn(`Gemini (${modelName}) rate limited with key ...${apiKey.slice(-5)}:`, errMsg);
+        recordKeyFailure('gemini', errMsg, getAllActiveKeys().geminiKeys);
+        throw new Error(`RATE_LIMIT: ${errMsg}`);
+      }
+      
+      console.warn(`Gemini (${modelName}) failed with key ending in ...${apiKey.slice(-5)}:`, errMsg);
       // إذا كان الخطأ متعلق بالموديل، نجرب الموديل التالي
       continue;
     }
   }
 
+  recordKeyFailure('gemini', lastError?.message || 'All models failed', getAllActiveKeys().geminiKeys);
   throw lastError || new Error('فشلت جميع موديلات Gemini لهذا المفتاح');
 }
 
@@ -305,6 +317,7 @@ async function tryCallOpenRouter(
           fullText += chunk.choices[0]?.delta?.content || '';
         }
 
+        recordKeySuccess('openrouter');
         return {
           text: fullText,
           metrics: extractMetrics(fullText),
@@ -323,6 +336,7 @@ async function tryCallOpenRouter(
 
       const text = response.choices[0]?.message?.content || '';
       if (text.trim().length > 0) {
+        recordKeySuccess('openrouter');
         return {
           text,
           metrics: extractMetrics(text),
@@ -332,11 +346,21 @@ async function tryCallOpenRouter(
       }
     } catch (err: any) {
       lastError = err;
-      console.warn(`OpenRouter (${model}) failed:`, err?.message || err);
+      const errMsg = err?.message || String(err);
+      
+      // Check for rate limit (429) or quota errors
+      if (errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('rate limit') || errMsg.includes('credit_balance_exhausted')) {
+        console.warn(`OpenRouter (${model}) rate limited with key ...${apiKey.slice(-5)}:`, errMsg);
+        recordKeyFailure('openrouter', errMsg, getAllActiveKeys().openrouterKeys);
+        throw new Error(`RATE_LIMIT: ${errMsg}`);
+      }
+      
+      console.warn(`OpenRouter (${model}) failed:`, errMsg);
       continue;
     }
   }
 
+  recordKeyFailure('openrouter', lastError?.message || 'All models failed', getAllActiveKeys().openrouterKeys);
   throw lastError || new Error('فشلت استجابة OpenRouter');
 }
 
@@ -541,18 +565,29 @@ export async function callAIEngine(params: {
     }
   });
 
-  // تجربة المزودين حسب الترتيب (Google Gemini ثم OpenRouter)
+  // تجربة المزودين حسب الترتيب (Google Gemini ثم OpenRouter) مع Round-Robin Rotation
   for (const provider of providerOrder) {
     if (provider === 'gemini' && geminiKeys.length > 0) {
-      for (let i = 0; i < geminiKeys.length; i++) {
-        const key = geminiKeys[i];
+      // Use Round-Robin rotation
+      const maxAttempts = geminiKeys.length;
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        const key = getNextKeyWithRotation('gemini', geminiKeys);
+        if (!key) break;
+        
         try {
-          console.log(`Attempting Gemini (Key #${i + 1})...`);
+          console.log(`Attempting Gemini (Round-Robin attempt ${attempt + 1}/${maxAttempts})...`);
           const res = await tryCallGemini(key, payload);
           console.log(`✅ Gemini succeeded with model ${res.modelUsed}`);
           return res;
         } catch (err: any) {
-          const errMsg = `Gemini (Key #${i + 1}): ${err?.message || err}`;
+          const errMsg = `Gemini: ${err?.message || err}`;
+          
+          // If it's a rate limit error, try next key automatically
+          if (errMsg.includes('RATE_LIMIT')) {
+            console.warn(`Rate limit hit, rotating to next key...`);
+            continue;
+          }
+          
           console.error(errMsg);
           errorsLog.push(errMsg);
         }
@@ -560,15 +595,26 @@ export async function callAIEngine(params: {
     }
 
     if (provider === 'openrouter' && openrouterKeys.length > 0) {
-      for (let i = 0; i < openrouterKeys.length; i++) {
-        const key = openrouterKeys[i];
+      // Use Round-Robin rotation
+      const maxAttempts = openrouterKeys.length;
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        const key = getNextKeyWithRotation('openrouter', openrouterKeys);
+        if (!key) break;
+        
         try {
-          console.log(`Attempting OpenRouter (Key #${i + 1})...`);
+          console.log(`Attempting OpenRouter (Round-Robin attempt ${attempt + 1}/${maxAttempts})...`);
           const res = await tryCallOpenRouter(key, payload);
           console.log(`✅ OpenRouter succeeded with model ${res.modelUsed}`);
           return res;
         } catch (err: any) {
-          const errMsg = `OpenRouter (Key #${i + 1}): ${err?.message || err}`;
+          const errMsg = `OpenRouter: ${err?.message || err}`;
+          
+          // If it's a rate limit error, try next key automatically
+          if (errMsg.includes('RATE_LIMIT')) {
+            console.warn(`Rate limit hit, rotating to next key...`);
+            continue;
+          }
+          
           console.error(errMsg);
           errorsLog.push(errMsg);
         }

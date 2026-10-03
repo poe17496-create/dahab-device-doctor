@@ -337,11 +337,13 @@ async function chatHandler(req: NextRequest) {
             }
           }
 
-          // Send completion event
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true, engine: aiResponse.engine, modelUsed: aiResponse.modelUsed })}\n\n`));
+          // Send completion event with engine info
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true, engine: aiResponse.engine, modelUsed: aiResponse.modelUsed, metrics: aiResponse.metrics })}\n\n`));
           controller.close();
         } catch (err) {
-          controller.error(err);
+          // Send error event
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: 'Stream error', message: err instanceof Error ? err.message : 'Unknown error' })}\n\n`));
+          controller.close();
         }
       },
     });

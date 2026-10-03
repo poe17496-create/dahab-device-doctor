@@ -12,6 +12,37 @@ export interface StoredApiKeys {
   updatedAt: string;
 }
 
+/**
+ * Key pool statistics for monitoring and rotation
+ */
+export interface KeyPoolStats {
+  provider: 'deepseek' | 'gemini' | 'openrouter' | 'openai' | 'groq';
+  totalKeys: number;
+  currentIndex: number;
+  successCount: number;
+  failureCount: number;
+  lastUsed: string | null;
+  lastError: string | null;
+}
+
+// Round-Robin indices for key rotation
+const keyRotationIndices: Record<string, number> = {
+  deepseek: 0,
+  gemini: 0,
+  openrouter: 0,
+  openai: 0,
+  groq: 0,
+};
+
+// Key pool statistics
+const keyPoolStats: Record<string, KeyPoolStats> = {
+  deepseek: { provider: 'deepseek', totalKeys: 0, currentIndex: 0, successCount: 0, failureCount: 0, lastUsed: null, lastError: null },
+  gemini: { provider: 'gemini', totalKeys: 0, currentIndex: 0, successCount: 0, failureCount: 0, lastUsed: null, lastError: null },
+  openrouter: { provider: 'openrouter', totalKeys: 0, currentIndex: 0, successCount: 0, failureCount: 0, lastUsed: null, lastError: null },
+  openai: { provider: 'openai', totalKeys: 0, currentIndex: 0, successCount: 0, failureCount: 0, lastUsed: null, lastError: null },
+  groq: { provider: 'groq', totalKeys: 0, currentIndex: 0, successCount: 0, failureCount: 0, lastUsed: null, lastError: null },
+};
+
 const BASE_DIR = process.env.VERCEL ? '/tmp' : process.cwd();
 const DATA_DIR = path.join(BASE_DIR, 'data');
 const KEYS_FILE = path.join(DATA_DIR, 'api_keys.json');
@@ -183,13 +214,103 @@ export function getAllActiveKeys(customKeys?: {
   ];
 
   // إزالة التكرارات
-  return {
-    deepseekKeys: [],
+  const deduplicatedKeys = {
+    deepseekKeys: Array.from(new Set(deepseek)),
     geminiKeys: Array.from(new Set(gemini)),
     openrouterKeys: Array.from(new Set(openrouter)),
-    openaiKeys: [],
-    groqKeys: [],
+    openaiKeys: Array.from(new Set(openai)),
+    groqKeys: Array.from(new Set(groq)),
   };
+
+  // Update key pool stats
+  keyPoolStats.deepseek.totalKeys = deduplicatedKeys.deepseekKeys.length;
+  keyPoolStats.gemini.totalKeys = deduplicatedKeys.geminiKeys.length;
+  keyPoolStats.openrouter.totalKeys = deduplicatedKeys.openrouterKeys.length;
+  keyPoolStats.openai.totalKeys = deduplicatedKeys.openaiKeys.length;
+  keyPoolStats.groq.totalKeys = deduplicatedKeys.groqKeys.length;
+
+  return deduplicatedKeys;
+}
+
+/**
+ * Get next key using Round-Robin rotation with failure tracking
+ * 
+ * @param provider - AI provider name
+ * @param keys - Array of available keys
+ * @returns Next key to use or null if no keys available
+ */
+export function getNextKeyWithRotation(
+  provider: 'deepseek' | 'gemini' | 'openrouter' | 'openai' | 'groq',
+  keys: string[]
+): string | null {
+  if (!keys || keys.length === 0) {
+    return null;
+  }
+
+  const currentIndex = keyRotationIndices[provider] || 0;
+  const key = keys[currentIndex];
+  
+  // Update stats
+  keyPoolStats[provider].currentIndex = currentIndex;
+  keyPoolStats[provider].lastUsed = new Date().toISOString();
+  
+  return key;
+}
+
+/**
+ * Record key failure and rotate to next key
+ * 
+ * @param provider - AI provider name
+ * @param error - Error message
+ * @param keys - Array of available keys
+ */
+export function recordKeyFailure(
+  provider: 'deepseek' | 'gemini' | 'openrouter' | 'openai' | 'groq',
+  error: string,
+  keys: string[]
+): void {
+  const currentStats = keyPoolStats[provider];
+  currentStats.failureCount++;
+  currentStats.lastError = error;
+  
+  // Rotate to next key for next request
+  keyRotationIndices[provider] = (keyRotationIndices[provider] + 1) % Math.max(keys.length, 1);
+}
+
+/**
+ * Record key success
+ * 
+ * @param provider - AI provider name
+ */
+export function recordKeySuccess(
+  provider: 'deepseek' | 'gemini' | 'openrouter' | 'openai' | 'groq'
+): void {
+  keyPoolStats[provider].successCount++;
+  keyPoolStats[provider].lastError = null;
+}
+
+/**
+ * Get key pool statistics for dashboard
+ * 
+ * @returns Array of key pool statistics
+ */
+export function getKeyPoolStats(): KeyPoolStats[] {
+  return Object.values(keyPoolStats);
+}
+
+/**
+ * Reset key rotation indices (useful for manual intervention)
+ * 
+ * @param provider - Optional provider to reset, or reset all if not specified
+ */
+export function resetKeyRotation(provider?: 'deepseek' | 'gemini' | 'openrouter' | 'openai' | 'groq'): void {
+  if (provider) {
+    keyRotationIndices[provider] = 0;
+  } else {
+    Object.keys(keyRotationIndices).forEach((key) => {
+      keyRotationIndices[key] = 0;
+    });
+  }
 }
 
 /**
