@@ -2,7 +2,10 @@
 -- إنشاء جدول boardviews
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS boardviews (
+-- حذف الجدول إذا كان موجود لإعادة إنشائه بالهيكل الصحيح
+DROP TABLE IF EXISTS boardviews CASCADE;
+
+CREATE TABLE boardviews (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   device_name TEXT NOT NULL,
