@@ -12,6 +12,7 @@ export default function AdminDashboard() {
   const [onlineCount, setOnlineCount] = useState(0);
   const [lockedCount, setLockedCount] = useState(0);
   const [productivityStats, setProductivityStats] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'overview' | 'productivity' | 'users'>('overview');
 
   useEffect(() => {
     setStats(localStorageStats.getStats());
@@ -130,143 +131,197 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* إحصائيات الإنتاجية الشخصية */}
+        {/* تبويبات لوحة التحكم */}
         <div className="mb-8">
-          <ProductivityStats stats={productivityStats} />
-        </div>
-
-        {/* جدول المستخدمين مع حالة الاتصال */}
-        <div className="bg-white dark:bg-[#111827] rounded-2xl p-6 shadow-xl mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold flex items-center gap-2">
-              <Users className="w-5 h-5" />
-              حالة المستخدمين والاتصال
-            </h2>
-            <Link
-              href="/admin/online-users"
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium transition-colors"
+          <div className="flex gap-2 mb-6">
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`px-6 py-3 rounded-xl text-sm font-bold transition flex items-center gap-2 ${
+                activeTab === 'overview'
+                  ? 'bg-dahab-500 text-slate-950 shadow-lg shadow-dahab-500/20'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+              }`}
             >
-              <Wifi className="w-4 h-4" />
-              المستخدمين المتصلين
-            </Link>
+              <Activity className="w-4 h-4" />
+              نظرة عامة
+            </button>
+            <button
+              onClick={() => setActiveTab('productivity')}
+              className={`px-6 py-3 rounded-xl text-sm font-bold transition flex items-center gap-2 ${
+                activeTab === 'productivity'
+                  ? 'bg-dahab-500 text-slate-950 shadow-lg shadow-dahab-500/20'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4" />
+              إحصائيات الإنتاجية
+            </button>
+            <button
+              onClick={() => setActiveTab('users')}
+              className={`px-6 py-3 rounded-xl text-sm font-bold transition flex items-center gap-2 ${
+                activeTab === 'users'
+                  ? 'bg-dahab-500 text-slate-950 shadow-lg shadow-dahab-500/20'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              المستخدمين
+            </button>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-700">
-                  <th className="text-right p-3 text-sm font-bold text-gray-900 dark:text-gray-100">المستخدم</th>
-                  <th className="text-right p-3 text-sm font-bold text-gray-900 dark:text-gray-100">الدور</th>
-                  <th className="text-right p-3 text-sm font-bold text-gray-900 dark:text-gray-100">حالة الحساب</th>
-                  <th className="text-right p-3 text-sm font-bold text-gray-900 dark:text-gray-100">الاتصال</th>
-                  <th className="text-right p-3 text-sm font-bold text-gray-900 dark:text-gray-100">آخر ظهور</th>
-                  <th className="text-right p-3 text-sm font-bold text-gray-900 dark:text-gray-100">الجهاز</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((user) => {
-                  const isLocked = user.lockedUntil && new Date(user.lockedUntil) > new Date();
-                  return (
-                    <tr key={user.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#0B0F17]">
-                      <td className="p-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-dahab-500 to-amber-400 flex items-center justify-center text-slate-950 font-bold text-sm">
-                            {user.name?.charAt(0) || user.username?.charAt(0)}
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900 dark:text-gray-100">{user.name || user.username}</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">@{user.username}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="p-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                          user.role === 'admin'
-                            ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
-                            : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                        }`}>
-                          {user.role === 'admin' ? 'مشرف' : 'فني'}
-                        </span>
-                      </td>
-                      <td className="p-3">
-                        <div className="flex items-center gap-2">
-                          {isLocked ? (
-                            <>
-                              <Lock className="w-4 h-4 text-orange-500" />
-                              <span className="text-sm font-medium text-orange-600 dark:text-orange-400">مقفول</span>
-                            </>
-                          ) : (
-                            <>
-                              <Unlock className="w-4 h-4 text-emerald-500" />
-                              <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">مفتوح</span>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                      <td className="p-3">
-                        <div className="flex items-center gap-2">
-                          {user.isOnline ? (
-                            <>
-                              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                              <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">متصل</span>
-                            </>
-                          ) : (
-                            <>
-                              <span className="w-2 h-2 rounded-full bg-gray-400" />
-                              <span className="text-sm font-medium text-gray-500 dark:text-gray-400">غير متصل</span>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                      <td className="p-3 text-sm text-gray-600 dark:text-gray-400">
-                        {user.lastSeenAt ? new Date(user.lastSeenAt).toLocaleDateString('ar-EG', {
-                          day: 'numeric',
-                          month: 'short',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        }) : '-'}
-                      </td>
-                      <td className="p-3 text-sm text-gray-600 dark:text-gray-400">
-                        {user.deviceInfo || '-'}
-                      </td>
+
+          {/* محتوى التبويبات */}
+          {activeTab === 'overview' && (
+            <div className="space-y-8">
+              {/* إحصائيات الإنتاجية الشخصية */}
+              <ProductivityStats stats={productivityStats} />
+            </div>
+          )}
+
+          {activeTab === 'productivity' && (
+            <div>
+              <ProductivityStats stats={productivityStats} />
+            </div>
+          )}
+
+          {activeTab === 'users' && (
+            <div className="bg-white dark:bg-[#111827] rounded-2xl p-6 shadow-xl">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <Users className="w-5 h-5" />
+                  حالة المستخدمين والاتصال
+                </h2>
+                <Link
+                  href="/admin/online-users"
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium transition-colors"
+                >
+                  <Wifi className="w-4 h-4" />
+                  المستخدمين المتصلين
+                </Link>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-200 dark:border-gray-700">
+                      <th className="text-right p-3 text-sm font-bold text-gray-900 dark:text-gray-100">المستخدم</th>
+                      <th className="text-right p-3 text-sm font-bold text-gray-900 dark:text-gray-100">الدور</th>
+                      <th className="text-right p-3 text-sm font-bold text-gray-900 dark:text-gray-100">حالة الحساب</th>
+                      <th className="text-right p-3 text-sm font-bold text-gray-900 dark:text-gray-100">الاتصال</th>
+                      <th className="text-right p-3 text-sm font-bold text-gray-900 dark:text-gray-100">آخر ظهور</th>
+                      <th className="text-right p-3 text-sm font-bold text-gray-900 dark:text-gray-100">الجهاز</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                  </thead>
+                  <tbody>
+                    {users.map((user) => {
+                      const isLocked = user.lockedUntil && new Date(user.lockedUntil) > new Date();
+                      return (
+                        <tr key={user.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#0B0F17]">
+                          <td className="p-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-dahab-500 to-amber-400 flex items-center justify-center text-slate-950 font-bold text-sm">
+                                {user.name?.charAt(0) || user.username?.charAt(0)}
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-900 dark:text-gray-100">{user.name || user.username}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">@{user.username}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-3">
+                            <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                              user.role === 'admin'
+                                ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+                                : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                            }`}>
+                              {user.role === 'admin' ? 'مشرف' : 'فني'}
+                            </span>
+                          </td>
+                          <td className="p-3">
+                            <div className="flex items-center gap-2">
+                              {isLocked ? (
+                                <>
+                                  <Lock className="w-4 h-4 text-orange-500" />
+                                  <span className="text-sm font-medium text-orange-600 dark:text-orange-400">مقفول</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Unlock className="w-4 h-4 text-emerald-500" />
+                                  <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">مفتوح</span>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-3">
+                            <div className="flex items-center gap-2">
+                              {user.isOnline ? (
+                                <>
+                                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                  <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">متصل</span>
+                                </>
+                              ) : (
+                                <>
+                                  <span className="w-2 h-2 rounded-full bg-gray-400" />
+                                  <span className="text-sm font-medium text-gray-500 dark:text-gray-400">غير متصل</span>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-3 text-sm text-gray-600 dark:text-gray-400">
+                            {user.lastSeenAt ? new Date(user.lastSeenAt).toLocaleDateString('ar-EG', {
+                              day: 'numeric',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            }) : '-'}
+                          </td>
+                          <td className="p-3 text-sm text-gray-600 dark:text-gray-400">
+                            {user.deviceInfo || '-'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* التشخيصات حسب المحرك */}
-        <div className="bg-white dark:bg-[#111827] rounded-2xl p-6 shadow-xl mb-8">
-          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-            <BarChart3 className="w-5 h-5" />
-            التشخيصات حسب المحرك
-          </h2>
-          <div className="space-y-3">
-            {Object.entries(stats.diagnosesByEngine).map(([engine, count]) => (
-              <div key={engine} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#0B0F17] rounded-xl">
-                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{engine}</span>
-                <span className="text-sm font-bold text-dahab-600 dark:text-dahab-400">{count as number}</span>
+        {/* إحصائيات الإضافية - تظهر فقط في تبويب نظرة عامة */}
+        {activeTab === 'overview' && (
+          <>
+            {/* التشخيصات حسب المحرك */}
+            <div className="bg-white dark:bg-[#111827] rounded-2xl p-6 shadow-xl mb-8">
+              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <BarChart3 className="w-5 h-5" />
+                التشخيصات حسب المحرك
+              </h2>
+              <div className="space-y-3">
+                {Object.entries(stats.diagnosesByEngine).map(([engine, count]) => (
+                  <div key={engine} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#0B0F17] rounded-xl">
+                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{engine}</span>
+                    <span className="text-sm font-bold text-dahab-600 dark:text-dahab-400">{count as number}</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
 
-        {/* التشخيصات حسب التخصص */}
-        <div className="bg-white dark:bg-[#111827] rounded-2xl p-6 shadow-xl">
-          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-            <Activity className="w-5 h-5" />
-            التشخيصات حسب التخصص
-          </h2>
-          <div className="space-y-3">
-            {Object.entries(stats.diagnosesBySpecialty).map(([specialty, count]) => (
-              <div key={specialty} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#0B0F17] rounded-xl">
-                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{specialty}</span>
-                <span className="text-sm font-bold text-purple-600 dark:text-purple-400">{count as number}</span>
+            {/* التشخيصات حسب التخصص */}
+            <div className="bg-white dark:bg-[#111827] rounded-2xl p-6 shadow-xl">
+              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <Activity className="w-5 h-5" />
+                التشخيصات حسب التخصص
+              </h2>
+              <div className="space-y-3">
+                {Object.entries(stats.diagnosesBySpecialty).map(([specialty, count]) => (
+                  <div key={specialty} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#0B0F17] rounded-xl">
+                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{specialty}</span>
+                    <span className="text-sm font-bold text-purple-600 dark:text-purple-400">{count as number}</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
