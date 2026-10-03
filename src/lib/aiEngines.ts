@@ -5,8 +5,31 @@ import { DiagnosticMetrics, DeviceSpecialty, PowerSupplyReadings } from './types
 import { enhanceArabicPrompt } from './middleEastFeatures';
 import { getAllActiveKeys } from './apiKeysStorage';
 
+/**
+ * @fileoverview AI Engines Integration
+ * 
+ * This module manages multiple AI engines including:
+ * - Google Gemini (primary free engine)
+ * - OpenRouter GLM-5.2 (backup engine)
+ * - Local engine (offline fallback)
+ * 
+ * Features:
+ * - Automatic key rotation
+ * - Engine fallback
+ * - Streaming support
+ * - Image analysis
+ * 
+ * @module aiEngines
+ */
+
+/**
+ * Supported AI engine types
+ */
 export type AIEngine = 'gemini' | 'openrouter' | 'local';
 
+/**
+ * Configuration for an AI engine
+ */
 export interface AIEngineConfig {
   id: AIEngine;
   name: string;
@@ -16,6 +39,9 @@ export interface AIEngineConfig {
   priority: number;
 }
 
+/**
+ * Response from AI engine
+ */
 export interface AIResponse {
   text: string;
   metrics?: DiagnosticMetrics;
@@ -26,7 +52,16 @@ export interface AIResponse {
 }
 
 /**
- * تحليل وتقسيم المفاتيح المدخلة (تدعم مفتاح واحد أو عدة مفاتيح مفصولة بفواصل)
+ * Parse and split input API keys (supports single key or multiple keys separated by commas/newlines)
+ * 
+ * @param envVar - Environment variable containing API keys
+ * @returns Array of valid API keys
+ * 
+ * @example
+ * ```ts
+ * const keys = parseApiKeys(process.env.GEMINI_API_KEY);
+ * console.log(`Found ${keys.length} keys`);
+ * ```
  */
 export function parseApiKeys(envVar: string | undefined): string[] {
   if (!envVar) return [];
@@ -37,7 +72,15 @@ export function parseApiKeys(envVar: string | undefined): string[] {
 }
 
 /**
- * جلب قائمة المحركات وحالتها
+ * Get list of available engines and their status
+ * 
+ * @returns Array of AI engine configurations
+ * 
+ * @example
+ * ```ts
+ * const engines = getAvailableEngines();
+ * const enabledEngines = engines.filter(e => e.enabled);
+ * ```
  */
 export function getAvailableEngines(): AIEngineConfig[] {
   const activeKeys = getAllActiveKeys();
