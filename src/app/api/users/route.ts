@@ -102,13 +102,12 @@ export async function POST(req: NextRequest) {
               }
             }
 
-            // قفل الجهاز الوحيد والتحديث الفوري لطرد أي جهاز قديم
-            if (user.device_id !== currentDeviceId) {
-              await supabaseAdmin
-                .from('users')
-                .update({ device_id: currentDeviceId, updated_at: new Date().toISOString() })
-                .eq('id', user.id);
-            }
+            // نظام جلسة واحدة نشطة (Single Active Session)
+            // إذا فتح من جهاز جديد، يغلق الجهاز القديم تلقائياً بدون رسالة خطأ
+            await supabaseAdmin
+              .from('users')
+              .update({ device_id: currentDeviceId, updated_at: new Date().toISOString() })
+              .eq('id', user.id);
 
             // استخدام device_id كـ sessionToken (القيمة الموحدة في Supabase)
             const sessionToken = currentDeviceId;

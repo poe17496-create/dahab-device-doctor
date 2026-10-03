@@ -220,7 +220,7 @@ export async function addUser(
         role: newUser.role,
         specialty: newUser.specialty,
         is_active: newUser.active,
-        device_id: newUser.deviceInfo,
+        device_id: null, // ترك device_id null حتى يسجل الدخول لأول مرة
         expires_at: newUser.expiresAt,
         price: newUser.price,
       });
@@ -491,19 +491,9 @@ export async function verifyLogin(
     return { user: null, error: 'انتهت فترة اشتراك الحساب' };
   }
 
-  // قفل الجهاز الوحيد
-  if (user.deviceInfo && user.deviceInfo !== deviceInfo && user.isOnline) {
-    const timeSinceLastSeen = user.lastSeenAt
-      ? Date.now() - new Date(user.lastSeenAt).getTime()
-      : Infinity;
-
-    if (timeSinceLastSeen < 5 * 60 * 1000) {
-      return {
-        user: null,
-        error: '⚠️ هذا الحساب مسجل الدخول حالياً من جهاز آخر.',
-      };
-    }
-  }
+  // نظام جلسة واحدة نشطة (Single Active Session)
+  // إذا فتح من جهاز جديد، يغلق الجهاز القديم تلقائياً بدون رسالة خطأ
+  // لا يوجد فحص قفل - السماح بالتسجيل من أي جهاز مع تحديث deviceInfo
 
   // توليد session token جديد أو استخدام deviceInfo الموجود
   // للتوافق مع Supabase، نستخدم deviceInfo كـ sessionToken الموحد

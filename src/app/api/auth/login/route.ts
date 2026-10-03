@@ -72,29 +72,15 @@ export async function POST(req: NextRequest) {
             }
           }
 
-          // نظام قفل الجهاز الوحيد والتنقل اللحظي (Single Device Lock)
-          if ((user as any).device_id !== effectiveDeviceId) {
-            // إخطار المستخدم الجديد بأن شخص آخر يعمل الآن
-            if ((user as any).device_id) {
-              return NextResponse.json(
-                {
-                  success: false,
-                  message: '⚠️ هذا الحساب مسجل الدخول حالياً من جهاز آخر. يرجى التأكد من أنك قمت بتسجيل الخروج من الجهاز الآخر أولاً، أو انتظر حتى يخرج المستخدم الآخر.',
-                  requireLogout: true,
-                },
-                { status: 409 }
-              );
-            }
-
-            // تحديث معرف الجهاز للجهاز الجديد فوراً لطرد الجهاز القديم في نفس اللحظة
-            await supabaseAdmin
-              .from('users')
-              .update({
-                device_id: effectiveDeviceId,
-                updated_at: new Date().toISOString(),
-              } as any)
-              .eq('id', user.id);
-          }
+          // نظام جلسة واحدة نشطة (Single Active Session)
+          // إذا فتح من جهاز جديد، يغلق الجهاز القديم تلقائياً بدون رسالة خطأ
+          await supabaseAdmin
+            .from('users')
+            .update({
+              device_id: effectiveDeviceId,
+              updated_at: new Date().toISOString(),
+            } as any)
+            .eq('id', user.id);
 
           return NextResponse.json({
             success: true,
