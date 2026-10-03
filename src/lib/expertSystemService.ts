@@ -35,6 +35,7 @@ interface ComponentRelationship {
 
 /**
  * Fetch relevant case studies based on device and symptoms
+ * Added timeout to prevent hanging
  */
 export async function getRelevantCaseStudies(
   deviceBrand: string,
@@ -42,13 +43,19 @@ export async function getRelevantCaseStudies(
   symptoms: string[]
 ): Promise<CaseStudy[]> {
   try {
-    const { data, error } = await supabaseAdmin
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Supabase timeout')), 5000)
+    );
+
+    const queryPromise = supabaseAdmin
       .from('case_studies')
       .select('*')
       .eq('status', 'verified')
       .or(`device_brand.ilike.%${deviceBrand}%,device_model.ilike.%${deviceModel}%`)
       .order('success_rate', { ascending: false })
       .limit(10);
+
+    const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
 
     if (error) {
       console.error('Error fetching case studies:', error);
@@ -75,12 +82,17 @@ export async function getRelevantCaseStudies(
 
 /**
  * Fetch engineering references for a component
+ * Added timeout to prevent hanging
  */
 export async function getEngineeringReferences(
   partNumber: string,
   manufacturer?: string
 ): Promise<EngineeringReference[]> {
   try {
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Supabase timeout')), 5000)
+    );
+
     let query = supabaseAdmin
       .from('engineering_references')
       .select('*')
@@ -94,7 +106,7 @@ export async function getEngineeringReferences(
       query = query.ilike('manufacturer', `%${manufacturer}%`);
     }
 
-    const { data, error } = await query;
+    const { data, error } = await Promise.race([query, timeoutPromise]);
 
     if (error) {
       console.error('Error fetching engineering references:', error);
@@ -110,6 +122,7 @@ export async function getEngineeringReferences(
 
 /**
  * Search engineering references by category and tags
+ * Added timeout to prevent hanging
  */
 export async function searchEngineeringReferences(
   category?: string,
@@ -117,6 +130,10 @@ export async function searchEngineeringReferences(
   deviceBrand?: string
 ): Promise<EngineeringReference[]> {
   try {
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Supabase timeout')), 5000)
+    );
+
     let query = supabaseAdmin
       .from('engineering_references')
       .select('*')
@@ -131,7 +148,7 @@ export async function searchEngineeringReferences(
       query = query.ilike('manufacturer', `%${deviceBrand}%`);
     }
 
-    const { data, error } = await query;
+    const { data, error } = await Promise.race([query, timeoutPromise]);
 
     if (error) {
       console.error('Error searching engineering references:', error);
@@ -179,13 +196,18 @@ export function extractComponentsFromText(text: string): string[] {
 
 /**
  * Get schematic references for a device
+ * Added timeout to prevent hanging
  */
 export async function getSchematicReferences(
   deviceBrand: string,
   deviceModel: string
 ): Promise<EngineeringReference[]> {
   try {
-    const { data, error } = await supabaseAdmin
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Supabase timeout')), 5000)
+    );
+
+    const queryPromise = supabaseAdmin
       .from('engineering_references')
       .select('*')
       .eq('reference_type', 'technical_manual')
@@ -193,6 +215,8 @@ export async function getSchematicReferences(
       .ilike('title', `%${deviceModel}%`)
       .order('reliability_score', { ascending: false })
       .limit(5);
+
+    const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
 
     if (error) {
       console.error('Error fetching schematic references:', error);
@@ -246,6 +270,7 @@ export async function getComponentRelationships(
 
 /**
  * Build enhanced AI prompt with expert system data
+ * Made optional with timeout to prevent blocking
  */
 export async function buildExpertSystemPrompt(
   deviceBrand: string,
@@ -253,118 +278,142 @@ export async function buildExpertSystemPrompt(
   symptoms: string[],
   userQuery: string
 ): Promise<string> {
-  // Extract components from user query
-  const extractedComponents = extractComponentsFromText(userQuery);
+  try {
+    // Extract components from user query
+    const extractedComponents = extractComponentsFromText(userQuery);
 
-  // Fetch relevant data in parallel
-  const [caseStudies, references, schematicRefs, componentRefs] = await Promise.all([
-    getRelevantCaseStudies(deviceBrand, deviceModel, symptoms),
-    searchEngineeringReferences(undefined, extractedComponents, deviceBrand),
-    getSchematicReferences(deviceBrand, deviceModel),
-    // Get references for extracted components
-    ...extractedComponents.slice(0, 3).map(comp => getEngineeringReferences(comp))
-  ]);
+    // Add overall timeout for all Supabase queries
+    const timeoutPromise = new Promise<{ error: string }>((resolve) =>
+      setTimeout(() => resolve({ error: 'Expert system timeout' }), 8000)
+    );
 
-  // Flatten component references
-  const allComponentRefs = componentRefs.flat();
+    // Fetch relevant data in parallel with timeout
+    const dataPromise = Promise.all([
+      getRelevantCaseStudies(deviceBrand, deviceModel, symptoms),
+      searchEngineeringReferences(undefined, extractedComponents, deviceBrand),
+      getSchematicReferences(deviceBrand, deviceModel),
+      // Get references for extracted components (limit to 2 to speed up)
+      ...extractedComponents.slice(0, 2).map(comp => getEngineeringReferences(comp))
+    ]);
 
-  let prompt = `أنت خبير هندسي متخصص في إصلاح الأجهزة الإلكترونية.\n\n`;
-  prompt += `الجهاز: ${deviceBrand} ${deviceModel}\n`;
-  prompt += `الأعراض: ${symptoms.join(', ')}\n`;
-  prompt += `سؤال المستخدم: ${userQuery}\n`;
-  if (extractedComponents.length > 0) {
-    prompt += `المكونات المكتشفة: ${extractedComponents.join(', ')}\n`;
-  }
-  prompt += `\n`;
+    const result = await Promise.race([dataPromise, timeoutPromise]);
 
-  // Add schematic references context
-  if (schematicRefs.length > 0) {
-    prompt += `=== مخططات هندسية موثقة (Schematics) ===\n`;
-    schematicRefs.forEach((ref, index) => {
-      prompt += `\nالمخطط ${index + 1}: ${ref.title}\n`;
-      prompt += `- النوع: ${ref.reference_type}\n`;
-      prompt += `- الشركة المصنعة: ${ref.manufacturer}\n`;
-      if (ref.url) {
-        prompt += `- الرابط: ${ref.url}\n`;
-      }
-      prompt += `- درجة الموثوقية: ${ref.reliability_score}%\n`;
-    });
+    let caseStudies: CaseStudy[] = [];
+    let references: EngineeringReference[] = [];
+    let schematicRefs: EngineeringReference[] = [];
+    let componentRefs: EngineeringReference[][] = [];
+
+    if ('error' in result) {
+      console.warn('Expert system data fetch timed out, using basic prompt');
+    } else {
+      [caseStudies, references, schematicRefs, ...componentRefs] = result;
+    }
+
+    // Flatten component references
+    const allComponentRefs = componentRefs.flat();
+
+    let prompt = `أنت خبير هندسي متخصص في إصلاح الأجهزة الإلكترونية.\n\n`;
+    prompt += `الجهاز: ${deviceBrand} ${deviceModel}\n`;
+    prompt += `الأعراض: ${symptoms.join(', ')}\n`;
+    prompt += `سؤال المستخدم: ${userQuery}\n`;
+    if (extractedComponents.length > 0) {
+      prompt += `المكونات المكتشفة: ${extractedComponents.join(', ')}\n`;
+    }
     prompt += `\n`;
+
+    // Add schematic references context
+    if (schematicRefs.length > 0) {
+      prompt += `=== مخططات هندسية موثقة (Schematics) ===\n`;
+      schematicRefs.forEach((ref, index) => {
+        prompt += `\nالمخطط ${index + 1}: ${ref.title}\n`;
+        prompt += `- النوع: ${ref.reference_type}\n`;
+        prompt += `- الشركة المصنعة: ${ref.manufacturer}\n`;
+        if (ref.url) {
+          prompt += `- الرابط: ${ref.url}\n`;
+        }
+        prompt += `- درجة الموثوقية: ${ref.reliability_score}%\n`;
+      });
+      prompt += `\n`;
+    }
+
+    // Add case studies context
+    if (caseStudies.length > 0) {
+      prompt += `=== حالات عملية مشابهة (Case Studies) ===\n`;
+      caseStudies.forEach((cs, index) => {
+        prompt += `\nالحالة ${index + 1}: ${cs.title}\n`;
+        prompt += `- العطل: ${cs.fault_description}\n`;
+        prompt += `- التشخيص: ${cs.diagnosis}\n`;
+        prompt += `- الحل: ${cs.solution}\n`;
+        prompt += `- الصعوبة: ${cs.difficulty_level}\n`;
+        if (cs.related_ics && cs.related_ics.length > 0) {
+          prompt += `- الأيسيهات المرتبطة: ${cs.related_ics.join(', ')}\n`;
+        }
+      });
+      prompt += `\n`;
+    }
+
+    // Add component-specific engineering references
+    if (allComponentRefs.length > 0) {
+      prompt += `=== مراجع هندسية للمكونات المكتشفة (Component Datasheets) ===\n`;
+      allComponentRefs.forEach((ref, index) => {
+        prompt += `\nالمرجع ${index + 1}: ${ref.title}\n`;
+        prompt += `- النوع: ${ref.reference_type}\n`;
+        prompt += `- الشركة المصنعة: ${ref.manufacturer}\n`;
+        if (ref.part_number) {
+          prompt += `- رقم القطعة: ${ref.part_number}\n`;
+        }
+        if (ref.url) {
+          prompt += `- الرابط: ${ref.url}\n`;
+        }
+        prompt += `- درجة الموثوقية: ${ref.reliability_score}%\n`;
+      });
+      prompt += `\n`;
+    }
+
+    // Add general engineering references
+    if (references.length > 0) {
+      prompt += `=== مراجع هندسية عامة (General Engineering References) ===\n`;
+      references.forEach((ref, index) => {
+        prompt += `\nالمرجع ${index + 1}: ${ref.title}\n`;
+        prompt += `- النوع: ${ref.reference_type}\n`;
+        prompt += `- الشركة المصنعة: ${ref.manufacturer}\n`;
+        if (ref.part_number) {
+          prompt += `- رقم القطعة: ${ref.part_number}\n`;
+        }
+        if (ref.url) {
+          prompt += `- الرابط: ${ref.url}\n`;
+        }
+        prompt += `- درجة الموثوقية: ${ref.reliability_score}%\n`;
+      });
+      prompt += `\n`;
+    }
+
+    prompt += `=== تعليمات التحليل الذكي ===\n`;
+    prompt += `1. استخدم المخططات الهندسية والمراجع الرسمية كمرجع أساسي.\n`;
+    prompt += `2. استفد من الحالات العملية المشابهة لفهم الأعطال الشائعة.\n`;
+    prompt += `3. اقرأ المخططات الهندسية بعناية وتتبع مسارات الطاقة والإشارة.\n`;
+    prompt += `4. قدم تشخيصاً دقيقاً مع الاستناد إلى البيانات الموثقة.\n`;
+    prompt += `5. اذكر الأيسيهات والمكونات المرتبطة بالعطل.\n`;
+    prompt += `6. اشرح خطوات الإصلاح بشكل مفصل مع الترتيب الصحيح.\n`;
+    prompt += `7. حدد مخاطر أو تحذيرات هامة يجب الانتباه لها.\n`;
+    prompt += `8. استخدم المراجع الهندسية لدعم إجاباتك.\n`;
+    prompt += `9. إذا كان هناك مخطط هندسي، اقرأه واستخرج المكونات والمسارات.\n`;
+    prompt += `10. قم بتحليل عميق يربط بين المخططات والخبرات والمراجع.\n\n`;
+
+    prompt += `=== مستوى التحليل ===\n`;
+    prompt += `- تحليل المخططات: قراءة المخططات الهندسية وتحديد المكونات\n`;
+    prompt += `- تحليل المراجع: استخدام Datasheets والمراجع الرسمية\n`;
+    prompt += `- تحليل الخبرات: الاستفادة من حالات الصيانة الموثقة\n`;
+    prompt += `- تحليل شامل: دمج كل المصادر للوصول للتشخيص الأدق\n\n`;
+
+    prompt += `الرجاء تقديم إجابة مفصلة ومهنية باللغة العربية.`;
+
+    return prompt;
+  } catch (error) {
+    console.error('Error in buildExpertSystemPrompt:', error);
+    // Return basic prompt if everything fails
+    return `أنت خبير هندسي متخصص في إصلاح الأجهزة الإلكترونية.\n\nالجهاز: ${deviceBrand} ${deviceModel}\nالأعراض: ${symptoms.join(', ')}\nسؤال المستخدم: ${userQuery}\n\nالرجاء تقديم إجابة مفصلة ومهنية باللغة العربية.`;
   }
-
-  // Add case studies context
-  if (caseStudies.length > 0) {
-    prompt += `=== حالات عملية مشابهة (Case Studies) ===\n`;
-    caseStudies.forEach((cs, index) => {
-      prompt += `\nالحالة ${index + 1}: ${cs.title}\n`;
-      prompt += `- العطل: ${cs.fault_description}\n`;
-      prompt += `- التشخيص: ${cs.diagnosis}\n`;
-      prompt += `- الحل: ${cs.solution}\n`;
-      prompt += `- الصعوبة: ${cs.difficulty_level}\n`;
-      if (cs.related_ics && cs.related_ics.length > 0) {
-        prompt += `- الأيسيهات المرتبطة: ${cs.related_ics.join(', ')}\n`;
-      }
-    });
-    prompt += `\n`;
-  }
-
-  // Add component-specific engineering references
-  if (allComponentRefs.length > 0) {
-    prompt += `=== مراجع هندسية للمكونات المكتشفة (Component Datasheets) ===\n`;
-    allComponentRefs.forEach((ref, index) => {
-      prompt += `\nالمرجع ${index + 1}: ${ref.title}\n`;
-      prompt += `- النوع: ${ref.reference_type}\n`;
-      prompt += `- الشركة المصنعة: ${ref.manufacturer}\n`;
-      if (ref.part_number) {
-        prompt += `- رقم القطعة: ${ref.part_number}\n`;
-      }
-      if (ref.url) {
-        prompt += `- الرابط: ${ref.url}\n`;
-      }
-      prompt += `- درجة الموثوقية: ${ref.reliability_score}%\n`;
-    });
-    prompt += `\n`;
-  }
-
-  // Add general engineering references
-  if (references.length > 0) {
-    prompt += `=== مراجع هندسية عامة (General Engineering References) ===\n`;
-    references.forEach((ref, index) => {
-      prompt += `\nالمرجع ${index + 1}: ${ref.title}\n`;
-      prompt += `- النوع: ${ref.reference_type}\n`;
-      prompt += `- الشركة المصنعة: ${ref.manufacturer}\n`;
-      if (ref.part_number) {
-        prompt += `- رقم القطعة: ${ref.part_number}\n`;
-      }
-      if (ref.url) {
-        prompt += `- الرابط: ${ref.url}\n`;
-      }
-      prompt += `- درجة الموثوقية: ${ref.reliability_score}%\n`;
-    });
-    prompt += `\n`;
-  }
-
-  prompt += `=== تعليمات التحليل الذكي ===\n`;
-  prompt += `1. استخدم المخططات الهندسية والمراجع الرسمية كمرجع أساسي.\n`;
-  prompt += `2. استفد من الحالات العملية المشابهة لفهم الأعطال الشائعة.\n`;
-  prompt += `3. اقرأ المخططات الهندسية بعناية وتتبع مسارات الطاقة والإشارة.\n`;
-  prompt += `4. قدم تشخيصاً دقيقاً مع الاستناد إلى البيانات الموثقة.\n`;
-  prompt += `5. اذكر الأيسيهات والمكونات المرتبطة بالعطل.\n`;
-  prompt += `6. اشرح خطوات الإصلاح بشكل مفصل مع الترتيب الصحيح.\n`;
-  prompt += `7. حدد مخاطر أو تحذيرات هامة يجب الانتباه لها.\n`;
-  prompt += `8. استخدم المراجع الهندسية لدعم إجاباتك.\n`;
-  prompt += `9. إذا كان هناك مخطط هندسي، اقرأه واستخرج المكونات والمسارات.\n`;
-  prompt += `10. قم بتحليل عميق يربط بين المخططات والخبرات والمراجع.\n\n`;
-
-  prompt += `=== مستوى التحليل ===\n`;
-  prompt += `- تحليل المخططات: قراءة المخططات الهندسية وتحديد المكونات\n`;
-  prompt += `- تحليل المراجع: استخدام Datasheets والمراجع الرسمية\n`;
-  prompt += `- تحليل الخبرات: الاستفادة من حالات الصيانة الموثقة\n`;
-  prompt += `- تحليل شامل: دمج كل المصادر للوصول للتشخيص الأدق\n\n`;
-
-  prompt += `الرجاء تقديم إجابة مفصلة ومهنية باللغة العربية.`;
-
-  return prompt;
 }
 
 /**

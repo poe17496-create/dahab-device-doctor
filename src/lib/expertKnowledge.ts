@@ -56,20 +56,27 @@ let hardwareMatrixCache: HardwareMatrixItem[] | null = null;
 let allBoardsCache: BoardData[] | null = null;
 
 // تحميل مصفوفة المخططات الضخمة من ملف hardwareSchematicsMatrix.json
+// Added loading flag to prevent blocking
+let hardwareMatrixLoading = false;
 function loadHardwareMatrix(): HardwareMatrixItem[] {
   if (hardwareMatrixCache) return hardwareMatrixCache;
+  if (hardwareMatrixLoading) return []; // Return empty while loading
+
+  hardwareMatrixLoading = true;
   try {
     const filePath = path.join(process.cwd(), 'src', 'lib', 'hardwareSchematicsMatrix.json');
     if (fs.existsSync(filePath)) {
       const data = fs.readFileSync(filePath, 'utf-8');
       hardwareMatrixCache = JSON.parse(data);
+      hardwareMatrixLoading = false;
       return hardwareMatrixCache || [];
     }
   } catch (error) {
     console.error('Error loading hardwareSchematicsMatrix.json:', error);
   }
+  hardwareMatrixLoading = false;
   hardwareMatrixCache = [];
-  return hardwareMatrixCache;
+  return [];
 }
 
 // تجميع البوردات المحفوظة في الذاكرة لتسريع البحث
@@ -101,20 +108,27 @@ function getAllBoardPresets(): BoardData[] {
 }
 
 // تحميل أنماط الصيانة من ملف JSON مع كاش سريع في الذاكرة
+// Added loading flag to prevent blocking
+let patternsLoading = false;
 function loadPatterns(): ExpertPattern[] {
   if (patternsCache) return patternsCache;
+  if (patternsLoading) return []; // Return empty while loading
+
+  patternsLoading = true;
   try {
     const filePath = path.join(process.cwd(), 'expert_patterns.json');
     if (fs.existsSync(filePath)) {
       const data = fs.readFileSync(filePath, 'utf-8');
       patternsCache = JSON.parse(data);
+      patternsLoading = false;
       return patternsCache || [];
     }
   } catch (error) {
     console.error('Error loading expert_patterns.json:', error);
   }
+  patternsLoading = false;
   patternsCache = [];
-  return patternsCache;
+  return [];
 }
 
 // بحث متقدم وسريع في الأنماط المرجعية

@@ -36,17 +36,23 @@ async function chatHandler(req: NextRequest) {
     );
   }
 
-  // 🎯 تتبع الاستخدام اليومي عبر الـ IP
+  // 🎯 تتبع الاستخدام اليومي عبر الـ IP (مع timeout قصير)
   if (isSupabaseConfigured && supabaseAdmin) {
     try {
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Usage check timeout')), 3000)
+      );
+
       // استخراج الـ IP الحقيقي
       const forwarded = req.headers.get('x-forwarded-for');
       const ip = forwarded ? forwarded.split(',')[0].trim() : req.headers.get('x-real-ip') || 'anonymous';
 
-      // التحقق من الاستخدام وزيادة العداد
-      const { data: usageResult, error: usageError } = await supabaseAdmin.rpc('check_and_increment_usage', {
+      // التحقق من الاستخدام وزيادة العداد مع timeout
+      const usageCheckPromise = supabaseAdmin.rpc('check_and_increment_usage', {
         p_ip_address: ip
       });
+
+      const { data: usageResult, error: usageError } = await Promise.race([usageCheckPromise, timeoutPromise]);
 
       if (usageError) {
         console.error('Usage tracking error:', usageError);
@@ -309,7 +315,7 @@ async function chatHandler(req: NextRequest) {
       stream,
       customKeys,
     }),
-    120000, // 2 minutes timeout
+    60000, // 1 minute timeout (reduced from 2 minutes)
     'انتهت مهلة طلب الذكاء الاصطناعي'
   );
 
