@@ -17,7 +17,10 @@ import {
   ChevronUp,
   Mic,
   MicOff,
+  HardDrive,
 } from 'lucide-react';
+import BoardviewSelector from './BoardviewSelector';
+import { BoardData } from './InteractiveBoardviewSimulator';
 
 interface DiagnosticFormProps {
   specialty: DeviceSpecialty;
@@ -35,6 +38,8 @@ interface DiagnosticFormProps {
   guestUsageRemaining?: number;
   loadingMessage?: string | null;
   validationError?: string | null;
+  boardData?: BoardData;
+  setBoardData?: (data: BoardData) => void;
 }
 
 const SPECIALTY_OPTIONS: { id: DeviceSpecialty; label: string; icon: any; hint: string }[] = [
@@ -239,6 +244,8 @@ export default function DiagnosticForm({
   guestUsageRemaining,
   loadingMessage,
   validationError,
+  boardData,
+  setBoardData,
 }: DiagnosticFormProps) {
   const [showAdvancedReadings, setShowAdvancedReadings] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -538,37 +545,25 @@ export default function DiagnosticForm({
         </div>
       </div>
 
-      {/* 1. اختيار التخصص الدقيق (يفلتر بناءً على الفئة) */}
+      {/* 1. اختيار التخصص الدقيق (قائمة منسدلة مبسطة) */}
       <div className="space-y-2 animate-fadeIn">
         <label className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
           <Sliders className="w-4 h-4 text-dahab-500" />
-          <span>حدد تخصص الدائرة الإلكترونية بدقة:</span>
+          <span>نوع الجهاز:</span>
         </label>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-          {filteredSpecialties.map((item) => {
-            const isSelected = specialty === item.id;
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setSpecialty(item.id)}
-                className={`p-3 rounded-2xl border text-right transition-all flex flex-col justify-between ${
-                  isSelected
-                    ? 'bg-dahab-500/15 border-dahab-500 text-dahab-800 dark:text-dahab-300 shadow-sm'
-                    : 'bg-gray-50 hover:bg-gray-100 border-gray-200 text-gray-700 dark:bg-gray-900/60 dark:border-gray-800 dark:text-gray-400 dark:hover:bg-gray-850 dark:hover:text-gray-200'
-                }`}
-              >
-                <div className="font-bold text-xs flex items-center gap-2">
-                  <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-dahab-600 dark:text-dahab-400' : 'text-gray-400'}`} />
-                  <span className={isSelected ? 'text-dahab-600 dark:text-dahab-400' : ''}>
-                    {item.label}
-                  </span>
-                </div>
-                <div className="text-[10px] text-gray-500 mt-1 line-clamp-1">{item.hint}</div>
-              </button>
-            );
-          })}
+        <div className="relative">
+          <select
+            value={specialty}
+            onChange={(e) => setSpecialty(e.target.value as DeviceSpecialty)}
+            className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-dahab-500 focus:ring-1 focus:ring-dahab-500 transition shadow-inner appearance-none cursor-pointer"
+          >
+            {filteredSpecialties.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
         </div>
       </div>
 
@@ -599,6 +594,23 @@ export default function DiagnosticForm({
             ))}
           </div>
         </div>
+
+        {/* اختيار البوردفيو (Boardview Selector) */}
+        {setBoardData && (
+          <div className="space-y-2 pt-2">
+            <label className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+              <HardDrive className="w-4 h-4 text-dahab-500" />
+              <span>اختر البوردفيو (اختياري - لتحسين دقة التشخيص):</span>
+            </label>
+            <BoardviewSelector
+              onSelectBoard={(board) => {
+                setBoardData(board);
+                setDeviceModel(board.deviceModel || board.title);
+              }}
+              currentBoard={boardData}
+            />
+          </div>
+        )}
 
         {/* زر إظهار لوحة أجهزة المعمل */}
         <div className="pt-2">

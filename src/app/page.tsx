@@ -66,6 +66,7 @@ export default function DahabFixAiConsole() {
     setMetrics: ctxSetMetrics,
     boardData: ctxBoardData,
     setBoardData: ctxSetBoardData,
+    recordDiagnosis,
   } = diagnosticContext;
 
   const [activeTab, setActiveTab] = useState<MasterTab>('diagnosis');
@@ -104,6 +105,7 @@ export default function DahabFixAiConsole() {
   const [currentTicketId, setCurrentTicketId] = useState<string>('');
   const [showCommonFaultsLibrary, setShowCommonFaultsLibrary] = useState(false);
   const [highlightedComponent, setHighlightedComponent] = useState<string | null>(null);
+  const [diagnosisStartTime, setDiagnosisStartTime] = useState<number | null>(null);
 
   const toggleDesktopMode = () => {
     setIsDesktopMode(prev => {
@@ -392,6 +394,7 @@ export default function DahabFixAiConsole() {
     setOutput('');
     setMetrics(undefined);
     setSources([]);
+    setDiagnosisStartTime(Date.now());
 
     // توليد معرف تذكرة فريد
     const ticketId = `DDD-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -494,6 +497,15 @@ export default function DahabFixAiConsole() {
     } finally {
       setLoading(false);
       setLoadingMessage(null);
+
+      // Record diagnosis time for productivity stats
+      if (diagnosisStartTime) {
+        const minutesSpent = Math.round((Date.now() - diagnosisStartTime) / 60000);
+        if (minutesSpent > 0) {
+          recordDiagnosis(minutesSpent);
+        }
+        setDiagnosisStartTime(null);
+      }
     }
   };
 
@@ -631,6 +643,8 @@ export default function DahabFixAiConsole() {
                     onDiagnose={handleDiagnose}
                     loadingMessage={loadingMessage}
                     validationError={validationError}
+                    boardData={ctxBoardData}
+                    setBoardData={ctxSetBoardData}
                   />
 
                   {metrics && (

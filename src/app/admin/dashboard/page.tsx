@@ -4,12 +4,15 @@ import React, { useEffect, useState } from 'react';
 import { BarChart3, Users, Ticket, Activity, Zap, Shield, Globe, Clock, UserCheck, UserX, Lock, Unlock, Wifi } from 'lucide-react';
 import { localStorageStats } from '@/lib/localStorage';
 import Link from 'next/link';
+import ProductivityStats from '@/components/ProductivityStats';
+import { useDiagnosticContext } from '@/contexts/DiagnosticContext';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<any>(null);
   const [users, setUsers] = useState<any[]>([]);
   const [onlineCount, setOnlineCount] = useState(0);
   const [lockedCount, setLockedCount] = useState(0);
+  const { getProductivityStats } = useDiagnosticContext();
 
   useEffect(() => {
     setStats(localStorageStats.getStats());
@@ -116,6 +119,11 @@ export default function AdminDashboard() {
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400">المحركات النشطة</p>
           </div>
+        </div>
+
+        {/* إحصائيات الإنتاجية الشخصية */}
+        <div className="mb-8">
+          <ProductivityStats stats={getProductivityStats()} />
         </div>
 
         {/* جدول المستخدمين مع حالة الاتصال */}

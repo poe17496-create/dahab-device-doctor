@@ -142,23 +142,40 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'محتوى البوردة غير متوفر' }, { status: 400 });
     }
 
-    // الحفظ في Supabase
-    const { error } = await supabaseAdmin.from('boardviews').insert([
-      {
-        id: finalBoardData.id,
-        user_id: null, // يمكن إضافة user_id لاحقاً
-        device_name: finalBoardData.title,
-        model: finalBoardData.deviceModel,
-        brand: category || 'custom',
-        category: category || 'mobile',
-        description: finalBoardData.title,
-        specifications: finalBoardData,
-      },
-    ]);
+    // الحفظ في Supabase أو محلياً
+    if (isSupabaseConfigured && supabaseAdmin) {
+      const { error } = await supabaseAdmin.from('boardviews').insert([
+        {
+          id: finalBoardData.id,
+          user_id: null, // يمكن إضافة user_id لاحقاً
+          device_name: finalBoardData.title,
+          model: finalBoardData.deviceModel,
+          brand: category || 'custom',
+          category: category || 'mobile',
+          description: finalBoardData.title,
+          specifications: finalBoardData,
+        },
+      ]);
 
-    if (error) {
-      console.error('Error saving boardview:', error);
-      return NextResponse.json({ error: 'فشل في حفظ البوردفيو', details: error.message }, { status: 500 });
+      if (error) {
+        console.error('Error saving boardview to Supabase:', error);
+        // Cannot use localStorage in server-side API route
+        return NextResponse.json({
+          success: false,
+          message: 'فشل في حفظ البوردة في Supabase',
+          board: finalBoardData,
+          savedLocally: false,
+          error: error.message,
+        }, { status: 500 });
+      }
+    } else {
+      // Supabase not configured - cannot save to localStorage in server-side route
+      return NextResponse.json({
+        success: false,
+        message: 'Supabase غير مُهيأ - لا يمكن حفظ البوردة بدون تكوين قاعدة البيانات',
+        board: finalBoardData,
+        savedLocally: false,
+      }, { status: 500 });
     }
 
     return NextResponse.json({
