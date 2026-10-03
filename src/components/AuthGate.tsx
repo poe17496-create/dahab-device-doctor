@@ -63,6 +63,7 @@ export default function AuthGate({ onAuthenticated, onGuestAccess }: AuthGatePro
       diagnosesCount: 1,
       expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
       createdAt: new Date().toISOString(),
+      isGuest: false, // صريحاً غير زائر
     });
 
     const isDirectDahab = username.trim() === 'D3V1N_X9_ADMIN' && password.trim() === 'X7#K9@mP2$Qw8!Rz5*Ln3';
@@ -92,6 +93,7 @@ export default function AuthGate({ onAuthenticated, onGuestAccess }: AuthGatePro
       if (!res.ok) {
         if (isDirectDahab) {
           const u = buildAdminUser();
+          u.isGuest = false; // صريحاً غير زائر
           localStorage.setItem('dahab_current_user', JSON.stringify(u));
           localStorage.setItem('dahab_session_token', `admin_token_${Date.now()}`);
           onAuthenticated(u);
@@ -106,12 +108,18 @@ export default function AuthGate({ onAuthenticated, onGuestAccess }: AuthGatePro
         return;
       }
 
-      localStorage.setItem('dahab_current_user', JSON.stringify(data.user));
+      // إضافة isGuest: false صريحاً للمستخدم المسجل
+      const authenticatedUser = {
+        ...data.user,
+        isGuest: false,
+      };
+      localStorage.setItem('dahab_current_user', JSON.stringify(authenticatedUser));
       if (data.sessionToken) localStorage.setItem('dahab_session_token', data.sessionToken);
-      onAuthenticated(data.user);
+      onAuthenticated(authenticatedUser);
     } catch {
       if (isDirectDahab) {
         const u = buildAdminUser();
+        u.isGuest = false; // صريحاً غير زائر
         localStorage.setItem('dahab_current_user', JSON.stringify(u));
         localStorage.setItem('dahab_session_token', `admin_token_${Date.now()}`);
         onAuthenticated(u);

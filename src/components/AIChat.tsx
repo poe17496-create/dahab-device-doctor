@@ -314,7 +314,7 @@ export default function AIChat({ currentUser }: AIChatProps) {
     await new Promise(resolve => setTimeout(resolve, 200));
 
     // فحص رصيد التجارب الموحد للزائر - فقط إذا لم يكن مستخدم مسجل
-    const isGuestUser = currentUser?.isGuest || !currentUser || currentUser.isGuest === true;
+    const isGuestUser = currentUser?.isGuest === true || !currentUser || currentUser.role === 'guest';
     console.log('[Mobile Debug] Is guest user:', isGuestUser, 'Current user:', currentUser);
 
     if (isGuestUser) {
