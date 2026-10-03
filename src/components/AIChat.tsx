@@ -385,10 +385,10 @@ export default function AIChat({ currentUser }: AIChatProps) {
         checklistProgress: checklistProgress || null,
       };
 
-      // كشف الموبايل - تمكين streaming للموبايل لضمان سرعة الرد
+      // كشف الموبايل - تعطيل streaming نهائياً للموبايل
       const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      // تمكين streaming للموبايل والكمبيوتر لضمان نفس السرعة والذكاء
-      const useStreaming = true;
+      // تعطيل streaming للموبايل - استخدام non-streaming فقط
+      const useStreaming = !isMobile;
 
       console.log('[Mobile Debug] Is mobile device:', isMobile);
       console.log('[Mobile Debug] Using streaming:', useStreaming);
