@@ -380,10 +380,10 @@ export default function AIChat({ currentUser }: AIChatProps) {
         checklistProgress: checklistProgress || null,
       };
 
-      // كشف الموبايل - تمكين streaming للموبايل أيضاً للسرعة
+      // كشف الموبايل - تعطيل streaming للموبايل مؤقتاً لحل مشكلة عدم ظهور الرد
       const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      // تمكين streaming للموبايل أيضاً لتحسين السرعة
-      const useStreaming = true;
+      // تعطيل streaming للموبايل لضمان استلام الرد
+      const useStreaming = !isMobile;
 
       console.log('[Mobile Debug] Is mobile device:', isMobile);
       console.log('[Mobile Debug] Using streaming:', useStreaming);
@@ -452,6 +452,12 @@ export default function AIChat({ currentUser }: AIChatProps) {
         const jsonData = await res.json();
         fullText = jsonData.message || jsonData.text || jsonData.response || '';
         console.log('[Mobile Debug] Non-streaming response length:', fullText.length);
+
+        // معالجة حالة عدم وجود رد في non-streaming mode
+        if (!fullText) {
+          console.error('[Mobile Debug] Empty response in non-streaming mode!');
+          fullText = '⚠️ خطأ: الخادم أرجع رد فارغ. يرجى المحاولة مرة أخرى.';
+        }
       } else {
         // قراءة الـ stream - يعمل على الكمبيوتر والموبايل
         const reader = res.body?.getReader();
@@ -469,9 +475,25 @@ export default function AIChat({ currentUser }: AIChatProps) {
         }
 
         if (reader) {
+          // إضافة timeout لمنع التعليق الدائم على الموبايل
+          const streamTimeout = setTimeout(() => {
+            console.error('[Mobile Debug] Stream timeout after 30 seconds!');
+            if (!fullText) {
+              fullText = '⚠️ انتهت مهلة الاستجابة. يرجى المحاولة مرة أخرى.\n\nإذا استمرت المشكلة، قد يكون هناك ضعف في اتصال الإنترنت.';
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantId ? { ...msg, content: fullText } : msg
+                )
+              );
+            }
+          }, 30000); // 30 ثانية timeout
+
           while (true) {
             const { done, value } = await reader.read();
-            if (done) break;
+            if (done) {
+              clearTimeout(streamTimeout);
+              break;
+            }
 
             const chunk = decoder.decode(value, { stream: true });
             rawBuffer += chunk;
@@ -510,6 +532,7 @@ export default function AIChat({ currentUser }: AIChatProps) {
             }
           }
 
+          clearTimeout(streamTimeout);
           console.log('[Mobile Debug] Stream finished, total chunks:', streamChunkCount);
           console.log('[Mobile Debug] Final fullText length:', fullText.length);
 
@@ -545,7 +568,7 @@ export default function AIChat({ currentUser }: AIChatProps) {
         // إذا لم يتم استلام أي نص من الـ stream، أظهر خطأ واضح
         if (!fullText) {
           console.error('[Mobile Debug] No content received from stream!');
-          fullText = '⚠️ خطأ: لم يتم استلام أي رد من الخادم. يرجى المحاولة مرة أخرى.';
+          fullText = '⚠️ خطأ: لم يتم استلام أي رد من الخادم. يرجى المحاولة مرة أخرى.\n\nإذا استمرت المشكلة، جرب إغلاق الصفحة وفتحها مجدداً.';
         }
       }
 
