@@ -110,6 +110,9 @@ export async function POST(req: NextRequest) {
                 .eq('id', user.id);
             }
 
+            // استخدام device_id كـ sessionToken (القيمة الموحدة في Supabase)
+            const sessionToken = currentDeviceId;
+
             return NextResponse.json({
               user: {
                 id: String(user.id || user.username),
@@ -118,8 +121,9 @@ export async function POST(req: NextRequest) {
                 role: user.role || (user.username === 'D3V1N_X9_ADMIN' ? 'admin' : 'technician'),
                 active: true,
                 expiresAt: user.expires_at || undefined,
+                activeSessionToken: sessionToken, // إضافة activeSessionToken لتوحيد البيانات
               },
-              sessionToken: currentDeviceId,
+              sessionToken: sessionToken,
               message: 'تم تسجيل الدخول بنجاح',
             });
           }

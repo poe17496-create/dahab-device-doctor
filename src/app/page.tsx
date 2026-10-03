@@ -159,8 +159,16 @@ export default function DahabFixAiConsole() {
             }
             setGuestTrialsRemaining(remaining);
           } else {
-            // مستخدم مسجل - تأكد من isGuest: false
+            // مستخدم مسجل - تأكد من isGuest: false وإضافة activeSessionToken إذا لم يكن موجوداً
             u.isGuest = false;
+            // استرجاع sessionToken من localStorage إذا لم يكن موجوداً في user object
+            if (!u.activeSessionToken) {
+              const sessionToken = localStorage.getItem('dahab_session_token');
+              if (sessionToken) {
+                u.activeSessionToken = sessionToken;
+                console.log('[Page] Restored sessionToken from localStorage for user:', u.username);
+              }
+            }
             localStorage.setItem('dahab_current_user', JSON.stringify(u));
           }
           setCurrentUser(u);

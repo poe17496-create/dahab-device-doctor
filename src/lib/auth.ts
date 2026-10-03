@@ -505,17 +505,18 @@ export async function verifyLogin(
     }
   }
 
-  // توليد session token جديد
-  const newSessionToken = `token_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-  user.activeSessionToken = newSessionToken;
+  // توليد session token جديد أو استخدام deviceInfo الموجود
+  // للتوافق مع Supabase، نستخدم deviceInfo كـ sessionToken الموحد
+  const sessionToken = deviceInfo || `token_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  user.activeSessionToken = sessionToken;
+  user.deviceInfo = sessionToken; // توحيد deviceInfo مع activeSessionToken
   user.lastLoginAt = new Date().toISOString();
   user.lastSeenAt = new Date().toISOString();
   user.isOnline = true;
-  if (deviceInfo) user.deviceInfo = deviceInfo;
 
   if (isSupabaseConfigured && supabaseAdmin) {
     await supabaseAdmin.from('users').update({
-      device_id: deviceInfo,
+      device_id: sessionToken, // حفظ كـ device_id في Supabase
       updated_at: new Date().toISOString(),
     }).eq('id', user.id);
   }
@@ -525,10 +526,33 @@ export async function verifyLogin(
 }
 
 export async function validateSessionToken(username: string, sessionToken: string): Promise<boolean> {
+  if (!username || !sessionToken) {
+    console.log('[Auth] Missing username or sessionToken');
+    return false;
+  }
+
   const users = await getAllUsers();
   const user = users.find(
     (u) => u.username.toLowerCase() === username.toLowerCase().trim() && u.active
   );
-  if (!user) return false;
-  return user.activeSessionToken === sessionToken;
+
+  if (!user) {
+    console.log('[Auth] User not found or inactive:', username);
+    return false;
+  }
+
+  // التحقق من التوكن - استخدم device_id كـ session token كما هو مخزن في Supabase
+  const isValid = user.activeSessionToken === sessionToken || user.deviceInfo === sessionToken;
+
+  console.log('[Auth] Session validation:', {
+    username,
+    isValid,
+    hasActiveSessionToken: !!user.activeSessionToken,
+    hasDeviceInfo: !!user.deviceInfo,
+    providedToken: sessionToken.substring(0, 10) + '...',
+    storedToken: user.activeSessionToken?.substring(0, 10) + '...',
+    storedDeviceInfo: user.deviceInfo?.substring(0, 10) + '...'
+  });
+
+  return isValid;
 }

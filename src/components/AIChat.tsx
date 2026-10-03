@@ -314,10 +314,13 @@ export default function AIChat({ currentUser }: AIChatProps) {
     await new Promise(resolve => setTimeout(resolve, 200));
 
     // فحص رصيد التجارب الموحد للزائر - فقط إذا لم يكن مستخدم مسجل
-    const isGuestUser = !currentUser || currentUser.isGuest === true;
+    // تم تحسين الشرط: المستخدم غير مسجل فقط إذا كان صريحاً زائر أو null بدون بيانات تسجيل دخول
+    const isGuestUser = !currentUser || currentUser.isGuest === true || currentUser.role === 'guest';
     console.log('[Mobile Debug] Is guest user:', isGuestUser, 'Current user:', currentUser);
     console.log('[Mobile Debug] User isGuest value:', currentUser?.isGuest);
     console.log('[Mobile Debug] User role:', currentUser?.role);
+    console.log('[Mobile Debug] Has username:', !!currentUser?.username);
+    console.log('[Mobile Debug] Has sessionToken:', !!currentUser?.activeSessionToken);
 
     if (isGuestUser) {
       const trial = consumeGuestTrial('ai-chat');
@@ -405,9 +408,19 @@ export default function AIChat({ currentUser }: AIChatProps) {
       };
 
       // إضافة بيانات المستخدم المسجل لتجاوز حد الزوار
-      if (currentUser && !currentUser.isGuest && currentUser.username && currentUser.activeSessionToken) {
+      // شرط محسّن: يجب أن يكون مستخدم مسجل (ليس زائر) ويملك username و sessionToken
+      if (currentUser && currentUser.username && currentUser.activeSessionToken && currentUser.isGuest !== true && currentUser.role !== 'guest') {
         requestBody.username = currentUser.username;
         requestBody.sessionToken = currentUser.activeSessionToken;
+        console.log('[Mobile Debug] Sending authenticated user data:', { username: currentUser.username, hasToken: !!currentUser.activeSessionToken });
+      } else {
+        console.log('[Mobile Debug] Not sending user auth data - conditions not met:', {
+          hasUser: !!currentUser,
+          hasUsername: !!currentUser?.username,
+          hasToken: !!currentUser?.activeSessionToken,
+          isGuest: currentUser?.isGuest,
+          role: currentUser?.role
+        });
       }
 
       // إضافة الرسالة فقط إذا كانت موجودة وغير فارغة

@@ -94,8 +94,10 @@ export default function AuthGate({ onAuthenticated, onGuestAccess }: AuthGatePro
         if (isDirectDahab) {
           const u = buildAdminUser();
           u.isGuest = false; // صريحاً غير زائر
+          u.activeSessionToken = `admin_token_${Date.now()}`; // إضافة activeSessionToken
           localStorage.setItem('dahab_current_user', JSON.stringify(u));
-          localStorage.setItem('dahab_session_token', `admin_token_${Date.now()}`);
+          localStorage.setItem('dahab_session_token', u.activeSessionToken);
+          console.log('[AuthGate] Direct admin login:', { username: u.username, hasSessionToken: !!u.activeSessionToken });
           onAuthenticated(u);
           return;
         }
@@ -112,16 +114,20 @@ export default function AuthGate({ onAuthenticated, onGuestAccess }: AuthGatePro
       const authenticatedUser = {
         ...data.user,
         isGuest: false,
+        activeSessionToken: data.sessionToken || data.user.activeSessionToken, // التأكد من وجود activeSessionToken
       };
       localStorage.setItem('dahab_current_user', JSON.stringify(authenticatedUser));
       if (data.sessionToken) localStorage.setItem('dahab_session_token', data.sessionToken);
+      console.log('[AuthGate] User authenticated:', { username: authenticatedUser.username, hasSessionToken: !!authenticatedUser.activeSessionToken });
       onAuthenticated(authenticatedUser);
     } catch {
       if (isDirectDahab) {
         const u = buildAdminUser();
         u.isGuest = false; // صريحاً غير زائر
+        u.activeSessionToken = `admin_token_${Date.now()}`; // إضافة activeSessionToken
         localStorage.setItem('dahab_current_user', JSON.stringify(u));
-        localStorage.setItem('dahab_session_token', `admin_token_${Date.now()}`);
+        localStorage.setItem('dahab_session_token', u.activeSessionToken);
+        console.log('[AuthGate] Direct admin login (catch):', { username: u.username, hasSessionToken: !!u.activeSessionToken });
         onAuthenticated(u);
       } else {
         setError('حدث خطأ في الاتصال بالخادم، يرجى المحاولة مرة أخرى.');

@@ -47,17 +47,23 @@ async function chatHandler(req: NextRequest) {
   if (username && sessionToken && isSupabaseConfigured) {
     try {
       isUserLoggedIn = await validateSessionToken(username, sessionToken);
-      console.log(`User ${username} login validation: ${isUserLoggedIn}`);
+      console.log(`[Chat API] User ${username} login validation: ${isUserLoggedIn}`);
+      console.log(`[Chat API] Provided sessionToken: ${sessionToken.substring(0, 15)}...`);
     } catch (error) {
-      console.error('Error validating session:', error);
+      console.error('[Chat API] Error validating session:', error);
     }
+  } else {
+    console.log('[Chat API] No auth credentials provided:', { hasUsername: !!username, hasSessionToken: !!sessionToken, isSupabaseConfigured });
   }
 
   // 🎯 تتبع الاستخدام اليومي عبر Device Fingerprint المحسن (IP + User Agent + Cookie)
   // يتم تطبيق الحد فقط على الزوار غير المسجلين
   let needsCookie = false;
   let sessionId = '';
+  console.log(`[Chat API] Checking usage limit - isUserLoggedIn: ${isUserLoggedIn}, isSupabaseConfigured: ${isSupabaseConfigured}`);
+
   if (isSupabaseConfigured && supabaseAdmin && !isUserLoggedIn) {
+    console.log('[Chat API] Applying guest usage limit (user not authenticated)');
     try {
       const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('Usage check timeout')), 3000)
@@ -75,10 +81,11 @@ async function chatHandler(req: NextRequest) {
       const { data: usageResult, error: usageError } = await Promise.race([usageCheckPromise, timeoutPromise]);
 
       if (usageError) {
-        console.error('Usage tracking error:', usageError);
+        console.error('[Chat API] Usage tracking error:', usageError);
         // في حالة الخطأ، نسمح بالطلب ولكن نسجل الخطأ
       } else if (usageResult && !usageResult.allowed) {
         // تم تجاوز الحد المسموح
+        console.log('[Chat API] Guest limit exceeded:', usageResult);
         return NextResponse.json(
           {
             error: usageResult.message,
@@ -94,9 +101,11 @@ async function chatHandler(req: NextRequest) {
       const existingCookie = req.headers.get('cookie') || '';
       needsCookie = !existingCookie.includes('dahab_session=');
     } catch (error) {
-      console.error('Error checking usage:', error);
+      console.error('[Chat API] Error checking usage:', error);
       // في حالة الخطأ، نسمح بالطلب لتجنب تعطيل الخدمة
     }
+  } else if (isUserLoggedIn) {
+    console.log('[Chat API] Skipping usage limit - user is authenticated');
   }
   
   // التحقق من صحة البيانات باستخدام Zod
