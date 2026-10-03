@@ -1600,22 +1600,27 @@ export default function InteractiveBoardviewSimulator() {
       }`}
     >
       {/* 1. الشريط العلوي: العنوان والموديلات وأزرار التحكم */}
-      <div className="p-4 bg-gray-50 dark:bg-gray-900/80 border-b border-gray-200 dark:border-gray-800 flex flex-wrap items-center justify-between gap-3">
+      <div className="p-4 bg-gradient-to-r from-gray-50 via-white to-gray-50 dark:from-gray-900/90 dark:via-gray-900 dark:to-gray-900/90 border-b border-gray-200 dark:border-gray-800 flex flex-wrap items-center justify-between gap-3 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-dahab-500 to-amber-600 flex items-center justify-center text-slate-950 font-black shadow-lg shadow-dahab-500/20">
-            <Cpu className="w-5 h-5" />
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-dahab-500 via-amber-500 to-orange-500 flex items-center justify-center text-slate-950 font-black shadow-xl shadow-dahab-500/30 animate-pulse-slow">
+            <Cpu className="w-6 h-6" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-base font-black text-gray-900 dark:text-gray-100">
-                عارض البوردفيو الفيكتوري التفاعلي (Vector BoardView Canvas)
+              <h2 className="text-lg font-black bg-gradient-to-r from-dahab-600 to-amber-600 bg-clip-text text-transparent">
+                محاكي البوردفيو الاحترافي
               </h2>
-              <span className="text-[10px] px-2.5 py-0.5 rounded-full font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                ZXW & OpenBoardView Engine 60FPS
+              <span className="text-[10px] px-2.5 py-0.5 rounded-full font-bold bg-gradient-to-r from-emerald-500/10 to-green-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                <Activity className="w-3 h-3" />
+                60FPS Engine
+              </span>
+              <span className="text-[10px] px-2.5 py-0.5 rounded-full font-bold bg-gradient-to-r from-blue-500/10 to-indigo-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30 flex items-center gap-1">
+                <Sparkles className="w-3 h-3" />
+                AI-Powered
               </span>
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              تكبير وتصغير فائق النعومة، تتبع المسارات الحية، محاذاة البنات، وقراءة ملفات .brd و .fz
+            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+              {boardData.title} - {boardData.deviceModel}
             </p>
           </div>
         </div>

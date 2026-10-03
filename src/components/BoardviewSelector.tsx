@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Search, ChevronDown, X, Smartphone, Laptop, Monitor, HardDrive } from 'lucide-react';
 import { BoardData } from './InteractiveBoardviewSimulator';
 
@@ -14,9 +14,18 @@ type Category = 'all' | 'mobile' | 'laptop' | 'desktop' | 'other';
 export default function BoardviewSelector({ onSelectBoard, currentBoard }: BoardviewSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<Category>('all');
   const [boards, setBoards] = useState<BoardData[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Debounce search query for better performance
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 150); // 150ms delay for instant feel but better performance
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // جلب البوردات
   useEffect(() => {
@@ -42,14 +51,61 @@ export default function BoardviewSelector({ onSelectBoard, currentBoard }: Board
 
   // تصفية البوردات
   const filteredBoards = boards.filter((board) => {
-    const matchesSearch = board.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        board.deviceModel.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = board.title.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+                        board.deviceModel.toLowerCase().includes(debouncedSearch.toLowerCase());
 
-    const matchesCategory = selectedCategory === 'all' ||
-                           (selectedCategory === 'mobile' && board.deviceModel.toLowerCase().includes('iphone')) ||
-                           (selectedCategory === 'mobile' && board.deviceModel.toLowerCase().includes('samsung')) ||
-                           (selectedCategory === 'laptop' && board.deviceModel.toLowerCase().includes('macbook')) ||
-                           (selectedCategory === 'desktop' && board.deviceModel.toLowerCase().includes('imac'));
+    const modelLower = board.deviceModel.toLowerCase();
+    const titleLower = board.title.toLowerCase();
+
+    let matchesCategory = selectedCategory === 'all';
+
+    if (!matchesCategory) {
+      switch (selectedCategory) {
+        case 'mobile':
+          // موبايل: iPhone, Samsung, Xiaomi, Huawei, Pixel, Oppo, Realme
+          matchesCategory =
+            modelLower.includes('iphone') ||
+            modelLower.includes('samsung') ||
+            modelLower.includes('galaxy') ||
+            modelLower.includes('xiaomi') ||
+            modelLower.includes('redmi') ||
+            modelLower.includes('huawei') ||
+            modelLower.includes('pixel') ||
+            modelLower.includes('oppo') ||
+            modelLower.includes('realme') ||
+            titleLower.includes('iphone') ||
+            titleLower.includes('samsung');
+          break;
+        case 'laptop':
+          // لابتوب: MacBook, Dell, HP, Lenovo, ThinkPad, ASUS, Acer, MSI
+          matchesCategory =
+            modelLower.includes('macbook') ||
+            modelLower.includes('dell') ||
+            modelLower.includes('hp') ||
+            modelLower.includes('lenovo') ||
+            modelLower.includes('thinkpad') ||
+            modelLower.includes('asus') ||
+            modelLower.includes('acer') ||
+            modelLower.includes('msi') ||
+            modelLower.includes('surface') ||
+            titleLower.includes('macbook') ||
+            titleLower.includes('laptop');
+          break;
+        case 'desktop':
+          // ديسكتوب: PC, Desktop, iMac, Motherboard, GPU
+          matchesCategory =
+            modelLower.includes('imac') ||
+            modelLower.includes('desktop') ||
+            modelLower.includes('pc') ||
+            modelLower.includes('motherboard') ||
+            modelLower.includes('gpu') ||
+            modelLower.includes('rtx') ||
+            modelLower.includes('geforce') ||
+            titleLower.includes('desktop') ||
+            titleLower.includes('imac');
+          break;
+      }
+    }
 
     return matchesSearch && matchesCategory;
   });

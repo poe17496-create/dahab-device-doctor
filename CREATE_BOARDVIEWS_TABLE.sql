@@ -34,13 +34,13 @@ ALTER TABLE boardviews ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Public read access for boardviews" ON boardviews;
 CREATE POLICY "Public read access for boardviews" ON boardviews FOR SELECT USING (true);
 
--- إنشاء policy للكتابة للمستخدمين المسجلين
+-- إنشاء policy للكتابة (تسمح للمستخدمين المسجلين أو عبر service role)
 DROP POLICY IF EXISTS "Users can insert boardviews" ON boardviews;
-CREATE POLICY "Users can insert boardviews" ON boardviews FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Users can insert boardviews" ON boardviews FOR INSERT WITH CHECK (true);
 
 -- إنشاء policy للحذف للمستخدمين المسجلين
 DROP POLICY IF EXISTS "Users can delete own boardviews" ON boardviews;
-CREATE POLICY "Users can delete own boardviews" ON boardviews FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own boardviews" ON boardviews FOR DELETE USING (auth.uid() = user_id OR user_id IS NULL);
 
 -- إنشاء trigger للتحديث التلقائي لـ updated_at
 CREATE OR REPLACE FUNCTION handle_updated_at()

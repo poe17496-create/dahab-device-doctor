@@ -5,17 +5,26 @@ import { BarChart3, Users, Ticket, Activity, Zap, Shield, Globe, Clock, UserChec
 import { localStorageStats } from '@/lib/localStorage';
 import Link from 'next/link';
 import ProductivityStats from '@/components/ProductivityStats';
-import { useDiagnosticContext } from '@/contexts/DiagnosticContext';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<any>(null);
   const [users, setUsers] = useState<any[]>([]);
   const [onlineCount, setOnlineCount] = useState(0);
   const [lockedCount, setLockedCount] = useState(0);
-  const { getProductivityStats } = useDiagnosticContext();
+  const [productivityStats, setProductivityStats] = useState<any[]>([]);
 
   useEffect(() => {
     setStats(localStorageStats.getStats());
+
+    // Load productivity stats from localStorage
+    const saved = localStorage.getItem('dahab_productivity_stats');
+    if (saved) {
+      try {
+        setProductivityStats(JSON.parse(saved));
+      } catch (e) {
+        console.error('Failed to load productivity stats:', e);
+      }
+    }
 
     // جلب بيانات المستخدمين مع حالة الاتصال
     const fetchUsers = async () => {
@@ -123,7 +132,7 @@ export default function AdminDashboard() {
 
         {/* إحصائيات الإنتاجية الشخصية */}
         <div className="mb-8">
-          <ProductivityStats stats={getProductivityStats()} />
+          <ProductivityStats stats={productivityStats} />
         </div>
 
         {/* جدول المستخدمين مع حالة الاتصال */}

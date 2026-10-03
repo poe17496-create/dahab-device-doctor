@@ -3,6 +3,15 @@ import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
 import { getAllBoardviews } from '@/lib/dataServices';
 import { BoardData } from '@/components/InteractiveBoardviewSimulator';
 
+// دالة لتوليد UUID بسيط
+function generateUUID(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 export const dynamic = 'force-dynamic';
 
 // 1. GET: جلب جميع البوردات من Supabase أو local fallback
@@ -35,7 +44,7 @@ export async function POST(req: NextRequest) {
     if (boardData && boardData.parts && boardData.nets) {
       finalBoardData = {
         ...boardData,
-        id: boardData.id || `custom_board_${Date.now()}`,
+        id: boardData.id.startsWith('custom_') ? generateUUID() : boardData.id,
         title: title || boardData.title || deviceModel,
         deviceModel: deviceModel || boardData.deviceModel || title,
       };
@@ -46,7 +55,7 @@ export async function POST(req: NextRequest) {
         if (parsed.parts && parsed.nets) {
           finalBoardData = {
             ...parsed,
-            id: parsed.id || `custom_board_${Date.now()}`,
+            id: parsed.id.startsWith('custom_') ? generateUUID() : parsed.id,
             title: title || parsed.title || deviceModel,
             deviceModel: deviceModel || parsed.deviceModel || title,
           };
@@ -110,7 +119,7 @@ export async function POST(req: NextRequest) {
         });
 
         finalBoardData = {
-          id: `custom_board_${Date.now()}`,
+          id: generateUUID(),
           title: title || fileName || deviceModel,
           deviceModel: deviceModel || title || 'جهاز مخصص',
           width: 220,
