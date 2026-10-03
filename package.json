@@ -11,6 +11,8 @@
     "test:watch": "vitest --watch",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "migrate": "tsx scripts/migrate.ts"
   },
   "dependencies": {
@@ -20,12 +22,14 @@
     "@supabase/supabase-js": "^2.117.2",
     "@types/bcryptjs": "^2.4.6",
     "bcryptjs": "^3.0.3",
+    "cloudinary": "^2.11.0",
     "clsx": "^2.1.1",
     "deepmerge-ts": "^8.0.2",
     "lucide-react": "^0.460.0",
     "mysql2": "^3.24.5",
     "next": "^14.2.18",
     "next-auth": "^4.24.15",
+    "next-cloudinary": "^6.19.3",
     "openai": "^7.23.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -33,6 +37,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@testing-library/jest-dom": "^6.6.5",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.7",
