@@ -88,8 +88,9 @@ export default function KonvaBoardview({
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       style={{ cursor: 'grab' }}
+      listening={true}
     >
-      <Layer>
+      <Layer listening={false}>
         {/* Board Background - Dark workshop theme */}
         <Rect
           x={0}
@@ -97,10 +98,11 @@ export default function KonvaBoardview({
           width={boardData.width}
           height={boardData.height}
           fill="#0a0f1d"
+          listening={false}
         />
 
-        {/* Grid Lines */}
-        {showGrid && (
+        {/* Grid Lines - Simplified for performance */}
+        {showGrid && scale > 0.5 && (
           <>
             {[...Array(Math.ceil(boardData.height / 20))].map((_, i) => (
               <Line
@@ -108,6 +110,7 @@ export default function KonvaBoardview({
                 points={[0, i * 20, boardData.width, i * 20]}
                 stroke="rgba(51, 65, 85, 0.25)"
                 strokeWidth={0.5}
+                listening={false}
               />
             ))}
             {[...Array(Math.ceil(boardData.width / 20))].map((_, i) => (
@@ -116,6 +119,7 @@ export default function KonvaBoardview({
                 points={[i * 20, 0, i * 20, boardData.height]}
                 stroke="rgba(51, 65, 85, 0.25)"
                 strokeWidth={0.5}
+                listening={false}
               />
             ))}
           </>
@@ -133,6 +137,7 @@ export default function KonvaBoardview({
           cornerRadius={12}
           shadowColor="#10b981"
           shadowBlur={8}
+          listening={false}
         />
 
         {/* Flight Lines (Animated) */}
@@ -223,6 +228,7 @@ export default function KonvaBoardview({
                 }
                 strokeWidth={isSelected ? 2 : 1}
                 cornerRadius={2}
+                listening={false}
               />
 
               {/* Pin 1 Dot for ICs */}
@@ -232,6 +238,7 @@ export default function KonvaBoardview({
                   y={-part.height / 2 + 2}
                   radius={0.8}
                   fill="#f8fafc"
+                  listening={false}
                 />
               )}
 
@@ -247,11 +254,12 @@ export default function KonvaBoardview({
                   fontFamily="monospace"
                   align="center"
                   verticalAlign="middle"
+                  listening={false}
                 />
               )}
 
-              {/* Pins */}
-              {part.pins.map((pin) => {
+              {/* Pins - Only render when zoom is sufficient */}
+              {scale > 0.8 && part.pins.map((pin) => {
                 const pinWorldX = part.x + pin.x;
                 const pinWorldY = part.y + pin.y;
                 const isConnectedToActiveNet = pin.netId === selectedNetId;
@@ -265,6 +273,7 @@ export default function KonvaBoardview({
                     y={pin.y}
                     onMouseEnter={() => onPinHover?.(pin, part)}
                     onMouseLeave={() => onPinHover?.(null, null)}
+                    listening={true}
                   >
                     {/* Pin Circle/Rect */}
                     {pin.shape === 'rect' ? (
@@ -290,6 +299,7 @@ export default function KonvaBoardview({
                         strokeWidth={isConnectedToActiveNet ? 0.8 : 0.4}
                         shadowColor={isConnectedToActiveNet ? activeNet?.color : undefined}
                         shadowBlur={isConnectedToActiveNet ? 12 : 0}
+                        listening={false}
                       />
                     ) : (
                       <Circle
@@ -311,12 +321,13 @@ export default function KonvaBoardview({
                         strokeWidth={isConnectedToActiveNet ? 0.8 : 0.4}
                         shadowColor={isConnectedToActiveNet ? activeNet?.color : undefined}
                         shadowBlur={isConnectedToActiveNet ? 12 : 0}
+                        listening={false}
                       />
                     )}
 
                     {/* Pin 1 Indicator */}
                     {pin.isPin1 && (
-                      <Circle radius={pin.radius * 0.4} fill="#ffffff" />
+                      <Circle radius={pin.radius * 0.4} fill="#ffffff" listening={false} />
                     )}
 
                     {/* Pin Number */}
@@ -327,6 +338,7 @@ export default function KonvaBoardview({
                         text={pin.pinNumber}
                         fontSize={2}
                         fill="#94a3b8"
+                        listening={false}
                       />
                     )}
                   </Group>

@@ -26,12 +26,14 @@ interface PixiBoardviewViewerProps {
   width?: number;
   height?: number;
   initialBoardData?: ParsedBoardData | null;
+  onSearchOnline?: (query: string) => void;
 }
 
 export default function PixiBoardviewViewer({
   width = 1200,
   height = 800,
   initialBoardData = null,
+  onSearchOnline,
 }: PixiBoardviewViewerProps) {
   const [boardData, setBoardData] = useState<ParsedBoardData | null>(initialBoardData);
   const [highlightedNetId, setHighlightedNetId] = useState<string | null>(null);
@@ -94,23 +96,36 @@ export default function PixiBoardviewViewer({
     if (matchingNet) {
       setHighlightedNetId(matchingNet.id);
       console.log('Found net:', matchingNet.name);
-    } else {
-      // Search for matching part
-      const matchingPart = boardData.parts.find(
-        part => part.name.toLowerCase().includes(query) || part.id.toLowerCase().includes(query)
-      );
-
-      if (matchingPart) {
-        setSelectedPart(matchingPart);
-        setHighlightedNetId(null);
-        console.log('Found part:', matchingPart.name);
-      } else {
-        setHighlightedNetId(null);
-        setSelectedPart(null);
-        console.log('No match found for:', query);
-      }
+      return;
     }
-  }, [boardData, searchQuery]);
+    
+    // Search for matching part
+    const matchingPart = boardData.parts.find(
+      part => part.name.toLowerCase().includes(query) || part.id.toLowerCase().includes(query)
+    );
+
+    if (matchingPart) {
+      setSelectedPart(matchingPart);
+      setHighlightedNetId(null);
+      console.log('Found part:', matchingPart.name);
+      return;
+    }
+    
+    // Search in device model/title
+    if (boardData.title.toLowerCase().includes(query) || boardData.deviceModel.toLowerCase().includes(query)) {
+      console.log('Board matches search query');
+      return;
+    }
+    
+    // If no match found, trigger online search
+    if (onSearchOnline) {
+      onSearchOnline(searchQuery);
+    }
+    
+    setHighlightedNetId(null);
+    setSelectedPart(null);
+    console.log('No match found for:', query);
+  }, [boardData, searchQuery, onSearchOnline]);
 
   const handlePartClick = useCallback((part: ParsedBoardPart) => {
     setSelectedPart(part);

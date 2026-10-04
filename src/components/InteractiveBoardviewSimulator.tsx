@@ -57,6 +57,9 @@ const KonvaBoardview = dynamic(() => import('./KonvaBoardview'), { ssr: false })
 // Dynamic import for PixiBoardviewViewer to avoid SSR issues
 const PixiBoardviewViewer = dynamic(() => import('./PixiBoardviewViewer'), { ssr: false });
 
+// Dynamic import for BoardviewModal to avoid SSR issues
+const BoardviewModal = dynamic(() => import('./BoardviewModal'), { ssr: false });
+
 import { convertBoardDataToParsed } from '@/lib/boardviewParser';
 
 // ==========================================
@@ -632,6 +635,7 @@ export default function InteractiveBoardviewSimulator() {
   const [showPinNumbers, setShowPinNumbers] = useState(false);
   const [highContrastMode, setHighContrastMode] = useState(false);
   const [usePixiRenderer, setUsePixiRenderer] = useState(true); // تفعيل PixiJS افتراضياً
+  const [showModal, setShowModal] = useState(false);
 
   // بوردات ومخططات السحابة المرفوعة
   const [cloudBoards, setCloudBoards] = useState<BoardData[]>([]);
@@ -1519,7 +1523,7 @@ export default function InteractiveBoardviewSimulator() {
   };
 
   // اختيار الموديل من القائمة الشاملة لجميع الهواتف واللابتوبات
-  const handleSelectPreset = (id: string) => {
+  const handleSelectPreset = async (id: string) => {
     // التحقق من رصيد التجارب الموحد للزائر عند تبديل البوردة
     const trial = consumeGuestTrial('boardview');
     if (!trial.success) {
@@ -1585,7 +1589,53 @@ export default function InteractiveBoardviewSimulator() {
           nextBoard = buildRtx3060GpuBoard();
           break;
         default:
-          nextBoard = IPHONE_15_PRO_MAX_BOARD;
+          // If not found in presets, try to fetch from online API
+          try {
+            const res = await fetch('/api/admin/schematics-search', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ query: id }),
+            });
+            const data = await res.json();
+            if (res.ok && data.results && data.results.length > 0) {
+              const item = data.results[0];
+              nextBoard = {
+                id: `online_${id}`,
+                title: item.name || `Online: ${id}`,
+                deviceModel: item.device || id,
+                width: 210,
+                height: 190,
+                layersCount: 8,
+                nets: {
+                  net_gnd: { id: 'net_gnd', name: 'GND', voltage: '0V', diodeMode: '0.000V', color: '#64748b', isGround: true, description: 'Ground' },
+                  net_main: { id: 'net_main', name: 'MAIN_POWER', voltage: '3.8V', diodeMode: '0.380V', color: '#f59e0b', isPower: true, description: 'Main power' },
+                },
+                parts: (item.keyICs || ['U100_MAIN', 'U200_CPU']).map((icName: string, idx: number) => ({
+                  id: `IC_${idx + 1}`,
+                  name: icName,
+                  packageType: 'BGA' as const,
+                  side: 'TOP' as const,
+                  x: 60 + (idx % 3) * 45,
+                  y: 70 + Math.floor(idx / 3) * 45,
+                  width: 24,
+                  height: 24,
+                  rotation: 0,
+                  role: 'IC from online source',
+                  commonFault: 'Check power rails',
+                  pins: [
+                    { id: `pin_${idx}_1`, partId: `IC_${idx + 1}`, pinNumber: '1', netId: 'net_main', x: -4, y: -4, radius: 0.9, diodeValue: '0.380V', isPin1: true },
+                    { id: `pin_${idx}_2`, partId: `IC_${idx + 1}`, pinNumber: '2', netId: 'net_gnd', x: 4, y: -4, radius: 0.9, diodeValue: '0.000V' },
+                    { id: `pin_${idx}_3`, partId: `IC_${idx + 1}`, pinNumber: '3', netId: 'net_gnd', x: 0, y: 4, radius: 0.9, diodeValue: '0.000V' },
+                  ],
+                })),
+              };
+            } else {
+              nextBoard = IPHONE_15_PRO_MAX_BOARD;
+            }
+          } catch (error) {
+            console.error('Failed to fetch from online API:', error);
+            nextBoard = IPHONE_15_PRO_MAX_BOARD;
+          }
       }
     }
 
@@ -1597,6 +1647,8 @@ export default function InteractiveBoardviewSimulator() {
       if (nextBoard.parts.length > 0) {
         setSelectedPartId(nextBoard.parts[0].id);
       }
+      // Keep PixiJS renderer active when switching boards
+      setUsePixiRenderer(true);
       handleResetView();
     }
   };
@@ -1729,6 +1781,16 @@ export default function InteractiveBoardviewSimulator() {
           >
             <Upload className="w-4 h-4 text-emerald-500" />
             <span>{isSavingToCloud ? 'جاري الحفظ...' : 'حفظ سحابي ☁️'}</span>
+          </button>
+
+          {/* زر فتح في وضع ملء الشاشة */}
+          <button
+            onClick={() => setShowModal(true)}
+            className="px-3 py-2 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border border-blue-500/30"
+            title="فتح البوردة في وضع ملء الشاشة"
+          >
+            <Maximize2 className="w-4 h-4 text-blue-500" />
+            <span>ملء الشاشة</span>
           </button>
 
           {/* تبديل وجه البوردة TOP / BOTTOM */}
@@ -2059,6 +2121,11 @@ export default function InteractiveBoardviewSimulator() {
               width={containerRef.current?.clientWidth || 1000}
               height={containerRef.current?.clientHeight || 800}
               initialBoardData={convertBoardDataToParsed(boardData)}
+              onSearchOnline={(query) => {
+                setOnlineQuery(query);
+                setShowOnlineSearchBox(true);
+                handleSearchOnlineSchematic();
+              }}
             />
           ) : (
             <KonvaBoardview
@@ -2380,6 +2447,16 @@ export default function InteractiveBoardviewSimulator() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* مودال عرض البوردة في وضع ملء الشاشة */}
+      {showModal && (
+        <BoardviewModal
+          isOpen={showModal}
+          onClose={() => setShowModal(false)}
+          boardData={convertBoardDataToParsed(boardData)}
+          title={boardData.title}
+        />
       )}
     </div>
   );
