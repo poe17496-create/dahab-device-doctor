@@ -24,7 +24,7 @@ const nextConfig = {
       },
     ],
   },
-  // Webpack configuration to handle konva
+  // Webpack configuration to handle canvas (needed for PixiJS)
   webpack: (config) => {
     config.externals = [...(config.externals || []), { canvas: 'canvas' }];
     return config;

@@ -19,7 +19,7 @@ export default function BoardviewDemoPage() {
                 Interactive Boardview Demo
               </h1>
               <p className="text-slate-400 text-sm">
-                High-performance PCB visualization with react-konva - Full board library
+                High-performance PCB visualization with WebGL (PixiJS) - Full board library
               </p>
             </div>
           </div>
@@ -51,7 +51,7 @@ export default function BoardviewDemoPage() {
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
             <h3 className="text-lg font-bold text-green-400 mb-3">⚡ High Performance</h3>
             <p className="text-slate-400 text-sm">
-              Powered by react-konva HTML5 Canvas for smooth rendering of thousands of components.
+              Powered by WebGL (PixiJS) for smooth rendering of thousands of components.
             </p>
           </div>
         </div>

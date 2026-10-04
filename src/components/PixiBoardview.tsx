@@ -63,7 +63,7 @@ export default function PixiBoardview({
         const part = filteredParts.find((p: ParsedBoardPart) => p.id === pin.partId);
         return part !== undefined;
       });
-      console.log('PixiBoardview: Filtered to', filteredParts.length, 'parts for side', selectedSide);
+      console.log('PixiBoardview: Filtered to', filteredParts.length, 'parts', filteredPins.length, 'pins for side', selectedSide);
       setRenderData({
         ...data,
         parts: filteredParts,
@@ -81,9 +81,9 @@ export default function PixiBoardview({
       width,
       height,
       backgroundColor: 0x0a0f1d, // Match Konva background
-      antialias: false, // Disable for better performance
-      resolution: 1, // Use 1 for better performance
-      autoDensity: false, // Disable for better performance
+      antialias: true, // Enable for better quality
+      resolution: window.devicePixelRatio || 2, // High resolution for sharp rendering
+      autoDensity: true, // Enable for crisp rendering on high-DPI displays
       backgroundAlpha: 1,
       preserveDrawingBuffer: false,
       powerPreference: 'high-performance',
@@ -126,10 +126,10 @@ export default function PixiBoardview({
       const viewport = viewportRef.current;
       // Center the board in the viewport
       viewport.moveCenter(boardData.width / 2, boardData.height / 2);
-      // Set zoom to fit with better scale
+      // Set zoom to fit with better scale - improved for full board visibility
       const scaleX = width / boardData.width;
       const scaleY = height / boardData.height;
-      const zoom = Math.min(scaleX, scaleY) * 2.5; // Increased from 0.8 to 2.5 for better visibility
+      const zoom = Math.min(scaleX, scaleY) * 0.85; // Optimized for full board visibility
       viewport.setZoom(zoom);
       console.log('PixiBoardview: Set zoom to', zoom, 'for board', boardData.width, 'x', boardData.height);
     }
@@ -172,7 +172,7 @@ export default function PixiBoardview({
     // Draw Grid Lines
     if (showGrid && renderData.board.width > 0 && renderData.board.height > 0) {
       const gridGraphics = new Graphics();
-      gridGraphics.lineStyle(0.5, 0x334155, 0.25);
+      gridGraphics.lineStyle(0.8, 0x334155, 0.35);
 
       const gridSize = 20;
       for (let x = 0; x <= renderData.board.width; x += gridSize) {
@@ -189,24 +189,24 @@ export default function PixiBoardview({
       if (showCoordinates) {
         for (let x = 0; x <= renderData.board.width; x += 100) {
           const coordText = new PixiText(`${x}`, {
-            fontSize: 8,
+            fontSize: 9,
             fill: 0x94a3b8,
-            fontFamily: 'monospace',
+            fontFamily: 'Arial, sans-serif',
           });
           coordText.x = x;
           coordText.y = 5;
-          coordText.alpha = 0.5;
+          coordText.alpha = 0.6;
           viewport.addChild(coordText);
         }
         for (let y = 0; y <= renderData.board.height; y += 100) {
           const coordText = new PixiText(`${y}`, {
-            fontSize: 8,
+            fontSize: 9,
             fill: 0x94a3b8,
-            fontFamily: 'monospace',
+            fontFamily: 'Arial, sans-serif',
           });
           coordText.x = 5;
           coordText.y = y;
-          coordText.alpha = 0.5;
+          coordText.alpha = 0.6;
           viewport.addChild(coordText);
         }
       }
@@ -222,8 +222,8 @@ export default function PixiBoardview({
           16
         ) || 0x4a9eff;
 
-        // Draw glow effect
-        flightGraphics.lineStyle(5, netColor, 0.27);
+        // Draw glow effect (stronger for better visibility)
+        flightGraphics.lineStyle(6, netColor, 0.35);
         for (let i = 0; i < connectedPins.length - 1; i++) {
           const p1 = connectedPins[i];
           const p2 = connectedPins[i + 1];
@@ -232,9 +232,9 @@ export default function PixiBoardview({
         }
         viewport.addChild(flightGraphics);
 
-        // Draw animated line (PixiJS doesn't support lineDash directly, use solid line)
+        // Draw main line (thicker for better visibility)
         const animatedLineGraphics = new Graphics();
-        animatedLineGraphics.lineStyle(1.8, netColor, 1);
+        animatedLineGraphics.lineStyle(2.5, netColor, 1);
         for (let i = 0; i < connectedPins.length - 1; i++) {
           const p1 = connectedPins[i];
           const p2 = connectedPins[i + 1];
@@ -245,18 +245,25 @@ export default function PixiBoardview({
       }
     }
 
-    // Draw parts (no limit - render all parts)
+    // Draw parts (no limit - render all parts with improved visibility)
     const partsToRender = renderData.parts;
     console.log('Rendering', partsToRender.length, 'parts in PixiJS');
     partsToRender.forEach((part: ParsedBoardPart) => {
       const partGraphics = new Graphics();
       const isSelected = selectedPart?.id === part.id;
       const isDimmed = highlightedNetId !== null;
-      const alpha = isDimmed ? 0.2 : 0.7;
+      const alpha = isDimmed ? 0.25 : 0.8;
       const color = isSelected ? 0xff6b6b : 0x1e3a5f; // Dark blue for components
 
+      // Glow effect for selected part
+      if (isSelected) {
+        partGraphics.beginFill(color, 0.2);
+        partGraphics.drawCircle(part.x, part.y, Math.max(part.width, part.height) * 0.7);
+        partGraphics.endFill();
+      }
+
       partGraphics.beginFill(color, alpha);
-      partGraphics.lineStyle(1, 0x10b981, 1); // Green border like Konva
+      partGraphics.lineStyle(1.5, 0x10b981, 1); // Green border like Konva
       partGraphics.drawRect(
         part.x - part.width / 2,
         part.y - part.height / 2,
@@ -289,42 +296,50 @@ export default function PixiBoardview({
       // Component Label
       if (showLabels && part.name) {
         const labelText = new PixiText(part.name.split(' ')[0], {
-          fontSize: 12,
+          fontSize: 13,
           fill: isSelected ? 0xf59e0b : 0xcbd5e1,
           fontWeight: 'bold',
-          fontFamily: 'monospace',
+          fontFamily: 'Arial, sans-serif',
+          letterSpacing: 0.5,
         });
         labelText.anchor.set(0.5, 0);
         labelText.x = part.x;
-        labelText.y = part.y + part.height / 2 + 5;
+        labelText.y = part.y + part.height / 2 + 6;
         viewport.addChild(labelText);
       }
 
       // Component Dimensions
       if (showMeasurements) {
         const dimText = new PixiText(`${part.width}x${part.height}`, {
-          fontSize: 10,
+          fontSize: 11,
           fill: 0x94a3b8,
-          fontFamily: 'monospace',
+          fontFamily: 'Arial, sans-serif',
         });
         dimText.anchor.set(0.5, 0);
         dimText.x = part.x;
-        dimText.y = part.y + part.height / 2 + 12;
-        dimText.alpha = 0.7;
+        dimText.y = part.y + part.height / 2 + 14;
+        dimText.alpha = 0.8;
         viewport.addChild(dimText);
       }
     });
 
-    // Draw pins (render all pins)
+    // Draw pins (render all pins with improved visibility)
     renderData.pins.forEach((pin: ParsedBoardPin & { absoluteX: number; absoluteY: number; netColor: string }) => {
         const pinGraphics = new Graphics();
         const isHighlighted = highlightedNetId === pin.netId;
         const isDimmed = highlightedNetId !== null && highlightedNetId !== pin.netId;
-        const alpha = isDimmed ? 0.1 : isHighlighted ? 1 : 0.6;
+        const alpha = isDimmed ? 0.15 : isHighlighted ? 1 : 0.7;
         const color = isHighlighted ? 0xff0000 : parseInt(pin.netColor.replace('#', ''), 16) || 0x4a9eff;
 
+        // Glow effect for highlighted pins
+        if (isHighlighted) {
+          pinGraphics.beginFill(color, 0.3);
+          pinGraphics.drawCircle(pin.absoluteX, pin.absoluteY, pin.radius * 2);
+          pinGraphics.endFill();
+        }
+
         pinGraphics.beginFill(color, alpha);
-        pinGraphics.lineStyle(isHighlighted ? 2 : 1, color, alpha);
+        pinGraphics.lineStyle(isHighlighted ? 2.5 : 1.5, color, alpha);
 
         if (pin.shape === 'rect') {
           pinGraphics.drawRect(pin.absoluteX - pin.radius, pin.absoluteY - pin.radius, pin.radius * 2, pin.radius * 2);

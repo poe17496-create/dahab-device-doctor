@@ -51,9 +51,6 @@ import { consumeGuestTrial } from '@/lib/guestUsage';
 import { useDiagnosticContext } from '@/contexts/DiagnosticContext';
 import dynamic from 'next/dynamic';
 
-// Dynamic import for KonvaBoardview to avoid SSR issues
-const KonvaBoardview = dynamic(() => import('./KonvaBoardview'), { ssr: false });
-
 // Dynamic import for PixiBoardviewViewer to avoid SSR issues
 const PixiBoardviewViewer = dynamic(() => import('./PixiBoardviewViewer'), { ssr: false });
 
@@ -1293,7 +1290,6 @@ export default function InteractiveBoardviewSimulator() {
   const [showCoordinates, setShowCoordinates] = useState(false);
   const [showMeasurements, setShowMeasurements] = useState(false);
   const [highContrastMode, setHighContrastMode] = useState(false);
-  const [usePixiRenderer, setUsePixiRenderer] = useState(false); // react-konva افتراضياً (أخف وأسرع)
   const [showModal, setShowModal] = useState(false);
 
   // بوردات ومخططات السحابة المرفوعة
@@ -2234,20 +2230,6 @@ export default function InteractiveBoardviewSimulator() {
             </button>
           </div>
 
-          {/* تبديل محرك العرض react-konva / PixiJS WebGL */}
-          <button
-            onClick={() => setUsePixiRenderer(!usePixiRenderer)}
-            className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
-              usePixiRenderer
-                ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30'
-                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700'
-            }`}
-            title={usePixiRenderer ? 'تبديل إلى react-konva (أخف وأسرع)' : 'تبديل إلى PixiJS WebGL (أداء أعلى)'}
-          >
-            <Sparkles className="w-4 h-4" />
-            <span>{usePixiRenderer ? 'WebGL (PixiJS)' : 'Konva'}</span>
-          </button>
-
           {/* ميزات العرض */}
           <div className="flex items-center gap-1">
             <button
@@ -2559,69 +2541,34 @@ export default function InteractiveBoardviewSimulator() {
           className="flex-1 lg:col-span-8 xl:col-span-9 relative bg-[#0a0f1d] overflow-hidden select-none"
           style={{ minHeight: 0 }}
         >
-          {usePixiRenderer ? (
-            <PixiBoardviewViewer
-              width={canvasContainerRef.current?.clientWidth || 1000}
-              height={canvasContainerRef.current?.clientHeight || 800}
-              initialBoardData={parsedBoardData}
-              selectedNetId={selectedNetId}
-              selectedSide={selectedSide}
-              showGrid={showGrid}
-              showLabels={showComponentLabels}
-              showPinNumbers={showPinNumbers}
-              showDiodeOverlay={showDiodeOverlay}
-              showCoordinates={showCoordinates}
-              showMeasurements={showMeasurements}
-              onPartClick={(part) => {
-                // تحويل من ParsedBoardPart إلى BoardPart إذا لزم الأمر
-                console.log('Part clicked in Pixi:', part);
-                const boardPart = boardData.parts.find((p) => p.id === part.id);
-                if (boardPart) {
-                  zoomToPart(boardPart);
-                }
-              }}
-              onPinClick={(pin) => {
-                console.log('Pin clicked in Pixi:', pin);
-                const boardPart = boardData.parts.find((p) => p.id === pin.partId);
-                if (boardPart) {
-                  setSelectedPartId(boardPart.id);
-                  setSelectedNetId(pin.netId);
-                }
-              }}
-            />
-          ) : (
-            <KonvaBoardview
-              boardData={boardData}
-              scale={zoom}
-              position={pan}
-              selectedNetId={selectedNetId}
-              selectedPartId={selectedPartId}
-              selectedSide={selectedSide}
-              showGrid={showGrid}
-              showFlightLines={showFlightLines}
-              showComponentLabels={showComponentLabels}
-              showPinNumbers={showPinNumbers}
-              showDiodeOverlay={showDiodeOverlay}
-              showCoordinates={showCoordinates}
-              showMeasurements={showMeasurements}
-              onWheel={handleWheel}
-              onDragStart={() => setIsDragging(true)}
-              onDragEnd={(e) => {
-                setIsDragging(false);
-                setPan({ x: e.target.x(), y: e.target.y() });
-              }}
-              containerWidth={canvasContainerRef.current?.clientWidth || 1000}
-              containerHeight={canvasContainerRef.current?.clientHeight || 800}
-              onPartClick={zoomToPart}
-              onPinHover={(pin, part) => {
-                if (pin && part) {
-                  setHoveredPin({ pin, part });
-                } else {
-                  setHoveredPin(null);
-                }
-              }}
-            />
-          )}
+          <PixiBoardviewViewer
+            width={canvasContainerRef.current?.clientWidth || 1000}
+            height={canvasContainerRef.current?.clientHeight || 800}
+            initialBoardData={parsedBoardData}
+            selectedNetId={selectedNetId}
+            selectedSide={selectedSide}
+            showGrid={showGrid}
+            showLabels={showComponentLabels}
+            showPinNumbers={showPinNumbers}
+            showDiodeOverlay={showDiodeOverlay}
+            showCoordinates={showCoordinates}
+            showMeasurements={showMeasurements}
+            onPartClick={(part) => {
+              console.log('Part clicked in Pixi:', part);
+              const boardPart = boardData.parts.find((p) => p.id === part.id);
+              if (boardPart) {
+                zoomToPart(boardPart);
+              }
+            }}
+            onPinClick={(pin) => {
+              console.log('Pin clicked in Pixi:', pin);
+              const boardPart = boardData.parts.find((p) => p.id === pin.partId);
+              if (boardPart) {
+                setSelectedPartId(boardPart.id);
+                setSelectedNetId(pin.netId);
+              }
+            }}
+          />
 
           {/* أزرار التكبير والتصغير العائمة */}
           <div className="absolute bottom-4 left-4 flex items-center gap-1.5 bg-gray-900/90 p-1.5 rounded-2xl border border-gray-800 shadow-2xl backdrop-blur-md">
