@@ -42,13 +42,13 @@ export default function PixiBoardviewViewer({
   const [boardData, setBoardData] = useState<ParsedBoardData | null>(initialBoardData);
   const [highlightedNetId, setHighlightedNetId] = useState<string | null>(selectedNetId || null);
 
-  // Update board data when initialBoardData changes (use ID to detect actual board change)
+  // Update board data when initialBoardData changes
   useEffect(() => {
     if (initialBoardData) {
       console.log('PixiBoardviewViewer: Setting board data', initialBoardData.id, initialBoardData.parts.length);
       setBoardData(initialBoardData);
     }
-  }, [initialBoardData?.id, initialBoardData]);
+  }, [initialBoardData]); // React to full initialBoardData changes
 
   // Update highlighted net when selectedNetId changes
   useEffect(() => {
@@ -64,11 +64,6 @@ export default function PixiBoardviewViewer({
   const handlePinClick = useCallback((pin: ParsedBoardPin) => {
     onPinClick?.(pin);
   }, [onPinClick]);
-
-  // محرك عرض WebGL فقط - بدون أي واجهة UI
-  if (!boardData) {
-    return null;
-  }
 
   // محرك عرض WebGL فقط - بدون أي واجهة UI
   if (!boardData) {

@@ -72,7 +72,7 @@ export default function PixiBoardview({
         pins: filteredPins,
       });
     }
-  }, [boardData, selectedSide]);
+  }, [boardData, selectedSide, showGrid, showLabels, showPinNumbers, showDiodeOverlay, showCoordinates, showMeasurements]); // Add all display options to dependencies
 
   // Initialize PixiJS application
   useEffect(() => {
@@ -93,12 +93,12 @@ export default function PixiBoardview({
 
     appRef.current = app;
 
-    // Create viewport
+    // Create viewport with initial dimensions
     const viewport = new Viewport({
       screenWidth: width,
       screenHeight: height,
-      worldWidth: (boardData?.width || 2000) * 2, // Larger world to allow panning
-      worldHeight: (boardData?.height || 2000) * 2,
+      worldWidth: 4000, // Initial large world
+      worldHeight: 4000,
       events: app.renderer.events,
     });
 
@@ -120,7 +120,17 @@ export default function PixiBoardview({
     return () => {
       app.destroy(true, { children: true });
     };
-  }, [width, height, boardData?.width, boardData?.height]);
+  }, [width, height]); // Only recreate on canvas size change
+
+  // Update viewport world dimensions when board data changes
+  useEffect(() => {
+    if (viewportRef.current && boardData) {
+      const viewport = viewportRef.current;
+      viewport.worldWidth = boardData.width * 2;
+      viewport.worldHeight = boardData.height * 2;
+      console.log('PixiBoardview: Updated world dimensions to', viewport.worldWidth, 'x', viewport.worldHeight);
+    }
+  }, [boardData?.width, boardData?.height]);
 
   // Fit board to view when board data changes
   useEffect(() => {
@@ -251,12 +261,22 @@ export default function PixiBoardview({
     // Draw parts (no limit - render all parts with improved visibility)
     const partsToRender = renderData.parts;
     console.log('Rendering', partsToRender.length, 'parts in PixiJS');
+    console.log('Parts details:', partsToRender.map((p: any) => ({
+      id: p.id,
+      x: p.x,
+      y: p.y,
+      width: p.width,
+      height: p.height,
+      side: p.side
+    })));
     partsToRender.forEach((part: ParsedBoardPart) => {
       const partGraphics = new Graphics();
       const isSelected = selectedPart?.id === part.id;
       const isDimmed = highlightedNetId !== null;
       const alpha = isDimmed ? 0.25 : 0.8;
       const color = isSelected ? 0xff6b6b : 0x1e3a5f; // Dark blue for components
+
+      console.log('Drawing part:', part.id, 'at', part.x, part.y, 'size', part.width, 'x', part.height);
 
       // Glow effect for selected part
       if (isSelected) {
