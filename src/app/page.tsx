@@ -11,7 +11,6 @@ import SourcesReferences from '@/components/SourcesReferences';
 import PanicLogAnalyzer from '@/components/PanicLogAnalyzer';
 import SafeInjectionCalculator from '@/components/SafeInjectionCalculator';
 import InteractiveBoardviewSimulator from '@/components/InteractiveBoardviewSimulator';
-import InteractiveBoardview from '@/components/InteractiveBoardview';
 import ICEncyclopediaTab from '@/components/ICEncyclopediaTab';
 import SchematicIntegrationReport from '@/components/SchematicIntegrationReport';
 import NavigationSidebar from '@/components/NavigationSidebar';

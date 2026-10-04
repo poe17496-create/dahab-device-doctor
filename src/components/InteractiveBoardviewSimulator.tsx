@@ -49,6 +49,10 @@ import {
 } from '@/lib/boardviewPresets';
 import { consumeGuestTrial } from '@/lib/guestUsage';
 import { useDiagnosticContext } from '@/contexts/DiagnosticContext';
+import dynamic from 'next/dynamic';
+
+// Dynamic import for KonvaBoardview to avoid SSR issues
+const KonvaBoardview = dynamic(() => import('./KonvaBoardview'), { ssr: false });
 
 // ==========================================
 // 1. تعريف واجهات ونماذج بيانات البوردفيو
@@ -1141,20 +1145,18 @@ export default function InteractiveBoardviewSimulator() {
   };
 
   // التكبير والتصغير بعجلة الماوس (Mouse Wheel Zoom Centered)
-  const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+  const handleWheel = (e: any) => {
+    e.evt.preventDefault();
 
-    const zoomFactor = e.deltaY < 0 ? 1.15 : 0.85;
+    const pointer = e.target.getPointerPosition();
+    if (!pointer) return;
+
+    const zoomFactor = e.evt.deltaY < 0 ? 1.15 : 0.85;
     const newZoom = Math.min(Math.max(zoom * zoomFactor, 0.6), 8.0);
 
     // الحفاظ على نقطة الماوس ثابتة أثناء التكبير
-    const newPanX = mouseX - (mouseX - pan.x) * (newZoom / zoom);
-    const newPanY = mouseY - (mouseY - pan.y) * (newZoom / zoom);
+    const newPanX = pointer.x - (pointer.x - pan.x) * (newZoom / zoom);
+    const newPanY = pointer.y - (pointer.y - pan.y) * (newZoom / zoom);
 
     setZoom(newZoom);
     setPan({ x: newPanX, y: newPanY });
@@ -1164,7 +1166,7 @@ export default function InteractiveBoardviewSimulator() {
   // 5b. معالجات اللمس للموبايل والتابلت (Touch Handlers)
   // ==========================================
 
-  const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+  const handleTouchStart = (e: any) => {
     e.preventDefault();
     if (e.touches.length === 1) {
       // سحب بإصبع واحد
@@ -1183,7 +1185,7 @@ export default function InteractiveBoardviewSimulator() {
     }
   };
 
-  const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+  const handleTouchMove = (e: any) => {
     e.preventDefault();
     if (e.touches.length === 1 && isDragging) {
       // سحب
@@ -2032,19 +2034,33 @@ export default function InteractiveBoardviewSimulator() {
       <div className="flex-1 flex flex-col lg:grid lg:grid-cols-12 relative min-h-0 overflow-hidden">
         {/* منطقة الكانفاس التفاعلي — يملأ كامل الشاشة على الموبايل */}
         <div className="flex-1 lg:col-span-8 xl:col-span-9 relative bg-[#0a0f1d] overflow-hidden select-none" style={{ minHeight: 0 }}>
-          <canvas
-            ref={canvasRef}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            onClick={handleCanvasClick}
+          <KonvaBoardview
+            boardData={boardData}
+            scale={zoom}
+            position={pan}
+            selectedNetId={selectedNetId}
+            selectedPartId={selectedPartId}
+            selectedSide={selectedSide}
+            showGrid={showGrid}
+            showFlightLines={showFlightLines}
+            showComponentLabels={showComponentLabels}
+            showPinNumbers={showPinNumbers}
             onWheel={handleWheel}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            className="w-full h-full cursor-crosshair block"
-            style={{ touchAction: 'none' }}
+            onDragStart={() => setIsDragging(true)}
+            onDragEnd={(e) => {
+              setIsDragging(false);
+              setPan({ x: e.target.x(), y: e.target.y() });
+            }}
+            containerWidth={containerRef.current?.clientWidth || 1000}
+            containerHeight={containerRef.current?.clientHeight || 800}
+            onPartClick={zoomToPart}
+            onPinHover={(pin, part) => {
+              if (pin && part) {
+                setHoveredPin({ pin, part });
+              } else {
+                setHoveredPin(null);
+              }
+            }}
           />
 
           {/* أزرار التكبير والتصغير العائمة */}

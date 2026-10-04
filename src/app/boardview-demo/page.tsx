@@ -1,34 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import InteractiveBoardview, { BoardData, fetchBoardviewData } from '@/components/InteractiveBoardview';
+import InteractiveBoardviewSimulator from '@/components/InteractiveBoardviewSimulator';
 import { Cpu, Smartphone, Monitor } from 'lucide-react';
 
 export default function BoardviewDemoPage() {
-  const [selectedDevice, setSelectedDevice] = useState<string>('iphone_13_pro');
-  const [boardData, setBoardData] = useState<BoardData | undefined>();
-  const [highlightedNet, setHighlightedNet] = useState<string | undefined>(undefined);
-  const [viewMode, setViewMode] = useState<'logical' | 'physical'>('physical');
-
-  const devices = [
-    { id: 'iphone_13_pro', name: 'iPhone 13 Pro', icon: Smartphone },
-    { id: 'samsung_s23', name: 'Samsung Galaxy S23', icon: Smartphone },
-    { id: 'macbook_pro', name: 'MacBook Pro 2021', icon: Monitor },
-  ];
-
-  const handleDeviceChange = async (deviceId: string) => {
-    setSelectedDevice(deviceId);
-    setHighlightedNet(undefined);
-
-    // Fetch board data from API
-    const data = await fetchBoardviewData(deviceId);
-    setBoardData(data || undefined);
-  };
-
-  const handleNetSelect = (netName: string) => {
-    setHighlightedNet(netName);
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
       {/* Header */}
@@ -43,45 +19,17 @@ export default function BoardviewDemoPage() {
                 Interactive Boardview Demo
               </h1>
               <p className="text-slate-400 text-sm">
-                High-performance PCB visualization with react-konva
+                High-performance PCB visualization with react-konva - Full board library
               </p>
             </div>
-          </div>
-
-          {/* Device Selector */}
-          <div className="flex gap-4 flex-wrap">
-            {devices.map((device) => {
-              const Icon = device.icon;
-              return (
-                <button
-                  key={device.id}
-                  onClick={() => handleDeviceChange(device.id)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all ${
-                    selectedDevice === device.id
-                      ? 'bg-blue-600/20 border-blue-500 text-blue-300'
-                      : 'bg-slate-800 border-slate-700 hover:border-slate-600 text-slate-300'
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  <span className="font-semibold">{device.name}</span>
-                </button>
-              );
-            })}
           </div>
         </div>
       </div>
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto p-6">
-        <div className="bg-slate-800/50 border border-slate-700 rounded-2xl overflow-hidden h-[calc(100vh-250px)]">
-          <InteractiveBoardview
-            boardData={boardData}
-            deviceModel={selectedDevice}
-            onNetSelect={handleNetSelect}
-            initialNetHighlight={highlightedNet}
-            viewMode={viewMode}
-            onViewModeChange={setViewMode}
-          />
+        <div className="bg-slate-800/50 border border-slate-700 rounded-2xl overflow-hidden h-[calc(100vh-200px)]">
+          <InteractiveBoardviewSimulator />
         </div>
       </div>
 
