@@ -1320,7 +1320,7 @@ export const BOARD_CATEGORIES = [
   {
     name: '📱 هواتف سامسونج جالاكسي (Samsung Galaxy)',
     boards: [
-      { id: 'samsung_s24_ultra', title: 'Samsung Galaxy S24 Ultra (Snapdragon 8 Gen 3)' },
+      { id: 'samsung_s24_ultra', title: 'Samsung Galaxy S24 Ultra (Snapdragon 8 Gen 3) - كاملة' },
       { id: 'samsung_s24_plus', title: 'Samsung Galaxy S24 Plus' },
       { id: 'samsung_s24', title: 'Samsung Galaxy S24' },
       { id: 'samsung_s23_ultra', title: 'Samsung Galaxy S23 Ultra (Snapdragon 8 Gen 2)' },
@@ -1370,7 +1370,7 @@ export const BOARD_CATEGORIES = [
     boards: [
       { id: 'dell_xps_15_9530', title: 'Dell XPS 15 9530 (Alienware M18 R1 / 19V B+)' },
       { id: 'dell_xps_13_9320', title: 'Dell XPS 13 9320 (Circuit 7.0 / 19V)' },
-      { id: 'dell_latitude_5420', title: 'Dell Latitude 5420 (ISL95855 / 19V B+)' },
+      { id: 'dell_latitude_5420', title: 'Dell Latitude 5420 (11th Gen) - كاملة' },
       { id: 'dell_inspiron_3521', title: 'Dell Inspiron 3521 (Compal LA-9104P BQ24725)' },
       { id: 'dell_inspiron_5520', title: 'Dell Inspiron 15 5520 (Compal LA-9104P)' },
       { id: 'dell_g15_5520', title: 'Dell G15 5520 (Circuit 7.0 / 19V)' },

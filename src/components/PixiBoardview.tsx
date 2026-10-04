@@ -106,10 +106,10 @@ export default function PixiBoardview({
       .wheel()
       .decelerate()
       .clampZoom({
-        minWidth: 100,
-        maxWidth: 5000,
-        minHeight: 100,
-        maxHeight: 5000,
+        scaleX: 0.1,
+        scaleY: 0.1,
+        maxScale: 10,
+        minScale: 0.1,
       });
 
     app.stage.addChild(viewport);
@@ -126,11 +126,12 @@ export default function PixiBoardview({
       const viewport = viewportRef.current;
       // Center the board in the viewport
       viewport.moveCenter(boardData.width / 2, boardData.height / 2);
-      // Set zoom to fit
+      // Set zoom to fit with better scale
       const scaleX = width / boardData.width;
       const scaleY = height / boardData.height;
-      const zoom = Math.min(scaleX, scaleY) * 0.8;
+      const zoom = Math.min(scaleX, scaleY) * 2.5; // Increased from 0.8 to 2.5 for better visibility
       viewport.setZoom(zoom);
+      console.log('PixiBoardview: Set zoom to', zoom, 'for board', boardData.width, 'x', boardData.height);
     }
   }, [boardData, width, height]);
 

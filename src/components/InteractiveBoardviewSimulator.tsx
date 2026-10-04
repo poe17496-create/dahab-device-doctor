@@ -604,6 +604,519 @@ const MACBOOK_M_SERIES_BOARD: BoardData = (() => {
   };
 })();
 
+// --- Preset 3: Samsung Galaxy S24 Ultra Logic Board ---
+const SAMSUNG_S24_ULTRA_BOARD: BoardData = (() => {
+  const nets: Record<string, BoardNet> = {
+    net_gnd: {
+      id: 'net_gnd',
+      name: 'GND (System Ground)',
+      voltage: '0.00V',
+      diodeMode: '0.000V',
+      color: '#64748b',
+      description: 'أرضي الشاسيه العام للهاتف',
+      isGround: true,
+      safeInjectionVoltage: 'لا يحقن',
+    },
+    net_vbat_main: {
+      id: 'net_vbat_main',
+      name: 'VBAT_MAIN (Battery Main)',
+      voltage: '3.7V - 4.4V',
+      diodeMode: '0.380V - 0.450V',
+      color: '#f59e0b',
+      description: 'خط البطارية الرئيسي إلى PMIC',
+      isPower: true,
+      safeInjectionVoltage: '3.8V (حد أقصى 2A)',
+    },
+    net_vbus: {
+      id: 'net_vbus',
+      name: 'VBUS_USB_C (5V - 9V)',
+      voltage: '5.0V / 9.0V',
+      diodeMode: '0.520V - 0.580V',
+      color: '#10b981',
+      description: 'دخل شاحن USB-C',
+      isPower: true,
+      safeInjectionVoltage: '5.0V (حد أقصى 1.5A)',
+    },
+    net_vdd_cpu: {
+      id: 'net_vdd_cpu',
+      name: 'VDD_CPU (Snapdragon 8 Gen 3)',
+      voltage: '0.75V - 0.95V',
+      diodeMode: '0.015V - 0.035V',
+      color: '#38bdf8',
+      description: 'تغذية المعالج Snapdragon 8 Gen 3',
+      isPower: true,
+      safeInjectionVoltage: '0.8V فقط!',
+    },
+    net_vdd_emmc: {
+      id: 'net_vdd_emmc',
+      name: 'VDD_EMMC/UFS (Storage)',
+      voltage: '1.80V - 2.95V',
+      diodeMode: '0.320V - 0.380V',
+      color: '#a855f7',
+      description: 'تغذية ذاكرة UFS 4.0',
+      isPower: true,
+      safeInjectionVoltage: '1.8V (حد أقصى 1A)',
+    },
+    net_1v8: {
+      id: 'net_1v8',
+      name: 'PP1V8_ALWAYS',
+      voltage: '1.80V',
+      diodeMode: '0.340V - 0.390V',
+      color: '#ec4899',
+      description: 'فولت الإقلاع الدائم',
+      isPower: true,
+      safeInjectionVoltage: '1.8V (حد أقصى 1A)',
+    },
+  };
+
+  const parts: BoardPart[] = [];
+
+  // Snapdragon 8 Gen 3 SoC
+  const cpuPins: BoardPin[] = [];
+  for (let r = 0; r < 12; r++) {
+    for (let c = 0; c < 12; c++) {
+      let netId = 'net_gnd';
+      let diode = '0.000V';
+      if ((r >= 3 && r <= 6) && (c >= 3 && c <= 6)) {
+        netId = 'net_vdd_cpu';
+        diode = '0.022V';
+      } else if (r === 0 || c === 0) {
+        netId = 'net_1v8';
+        diode = '0.360V';
+      }
+      cpuPins.push({
+        id: `cpu_pin_${r}_${c}`,
+        partId: 'U1000_CPU',
+        pinNumber: `${String.fromCharCode(65 + r)}${c + 1}`,
+        netId,
+        x: (c - 5.5) * 2.0,
+        y: (r - 5.5) * 2.0,
+        radius: 0.6,
+        diodeValue: diode,
+        isPin1: r === 0 && c === 0,
+      });
+    }
+  }
+
+  parts.push({
+    id: 'U1000_CPU',
+    name: 'Snapdragon 8 Gen 3 (U1000)',
+    packageType: 'BGA',
+    side: 'TOP',
+    x: 130,
+    y: 110,
+    width: 32,
+    height: 32,
+    rotation: 0,
+    role: 'المعالج الرئيسي للهاتف',
+    commonFault: 'سخونة شديدة بعد تحديث النظام أو شورت على خطوط VCORE',
+    pins: cpuPins,
+  });
+
+  // PMIC S2MPS51
+  parts.push({
+    id: 'U2000_PMIC',
+    name: 'PMIC S2MPS51 (U2000)',
+    packageType: 'BGA',
+    side: 'TOP',
+    x: 80,
+    y: 110,
+    width: 22,
+    height: 22,
+    rotation: 0,
+    role: 'إدارة الطاقة الرئيسية',
+    commonFault: 'سحب تيار 0.05A متجمد بعد الضغط على زر الباور',
+    pins: [
+      { id: 'pmic_p1', partId: 'U2000_PMIC', pinNumber: '1', netId: 'net_vbat_main', x: -6, y: -6, radius: 0.8, diodeValue: '0.410V', isPin1: true },
+      { id: 'pmic_p2', partId: 'U2000_PMIC', pinNumber: '2', netId: 'net_vbus', x: 6, y: -6, radius: 0.8, diodeValue: '0.550V' },
+      { id: 'pmic_p3', partId: 'U2000_PMIC', pinNumber: '3', netId: 'net_gnd', x: 0, y: 0, radius: 0.8, diodeValue: '0.000V' },
+      { id: 'pmic_p4', partId: 'U2000_PMIC', pinNumber: '4', netId: 'net_vdd_cpu', x: -6, y: 6, radius: 0.8, diodeValue: '0.025V' },
+      { id: 'pmic_p5', partId: 'U2000_PMIC', pinNumber: '5', netId: 'net_1v8', x: 6, y: 6, radius: 0.8, diodeValue: '0.360V' },
+    ],
+  });
+
+  // UFS 4.0 Storage
+  parts.push({
+    id: 'U3000_UFS',
+    name: 'UFS 4.0 512GB (U3000)',
+    packageType: 'BGA',
+    side: 'TOP',
+    x: 170,
+    y: 110,
+    width: 20,
+    height: 18,
+    rotation: 0,
+    role: 'ذاكرة التخزين السريعة',
+    commonFault: 'تلف بسبب سقوط أو دخول سوائل - خطأ 4013',
+    pins: [
+      { id: 'ufs_p1', partId: 'U3000_UFS', pinNumber: '1', netId: 'net_vdd_emmc', x: -5, y: -4, radius: 0.7, diodeValue: '0.350V', isPin1: true },
+      { id: 'ufs_p2', partId: 'U3000_UFS', pinNumber: '2', netId: 'net_1v8', x: 5, y: -4, radius: 0.7, diodeValue: '0.360V' },
+      { id: 'ufs_p3', partId: 'U3000_UFS', pinNumber: '3', netId: 'net_gnd', x: 0, y: 0, radius: 0.7, diodeValue: '0.000V' },
+    ],
+  });
+
+  // Charging IC
+  parts.push({
+    id: 'U4000_CHG',
+    name: 'Charging IC (U4000)',
+    packageType: 'QFN',
+    side: 'TOP',
+    x: 80,
+    y: 160,
+    width: 16,
+    height: 16,
+    rotation: 0,
+    role: 'إدارة الشحن والـ USB-C',
+    commonFault: 'سخونة قبل تشغيل الهاتف (Short Before Power)',
+    pins: [
+      { id: 'chg_p1', partId: 'U4000_CHG', pinNumber: '1', netId: 'net_vbus', x: -5, y: -5, radius: 0.8, diodeValue: '0.550V', isPin1: true },
+      { id: 'chg_p2', partId: 'U4000_CHG', pinNumber: '2', netId: 'net_vbat_main', x: 5, y: -5, radius: 0.8, diodeValue: '0.410V' },
+      { id: 'chg_p3', partId: 'U4000_CHG', pinNumber: '3', netId: 'net_gnd', x: 0, y: 0, radius: 0.8, diodeValue: '0.000V' },
+    ],
+  });
+
+  // Capacitors (Bypass caps)
+  const caps = [
+    { id: 'C2001', x: 95, y: 90, net: 'net_vbat_main', diode: '0.410V' },
+    { id: 'C2002', x: 95, y: 100, net: 'net_vbat_main', diode: '0.410V' },
+    { id: 'C2003', x: 95, y: 120, net: 'net_vdd_cpu', diode: '0.025V' },
+    { id: 'C2004', x: 95, y: 130, net: 'net_1v8', diode: '0.360V' },
+    { id: 'C2005', x: 145, y: 90, net: 'net_vdd_cpu', diode: '0.025V' },
+    { id: 'C2006', x: 155, y: 90, net: 'net_vdd_cpu', diode: '0.025V' },
+  ];
+
+  caps.forEach((cap) => {
+    parts.push({
+      id: cap.id,
+      name: `${cap.id} (مكثف)`,
+      packageType: '0402',
+      side: 'TOP',
+      x: cap.x,
+      y: cap.y,
+      width: 4,
+      height: 2.5,
+      rotation: 0,
+      role: `مكثف تنعيم على ${cap.net}`,
+      commonFault: 'انهيار عازلية وشورت على الأرضي',
+      pins: [
+        { id: `${cap.id}_p1`, partId: cap.id, pinNumber: '1', netId: cap.net, x: -1.2, y: 0, radius: 0.6, shape: 'rect', diodeValue: cap.diode },
+        { id: `${cap.id}_p2`, partId: cap.id, pinNumber: '2', netId: 'net_gnd', x: 1.2, y: 0, radius: 0.6, shape: 'rect', diodeValue: '0.000V' },
+      ],
+    });
+  });
+
+  // Test Points
+  const testPoints = [
+    { id: 'TP_VBAT', name: 'TP_VBAT', x: 100, y: 150, net: 'net_vbat_main', diode: '0.410V' },
+    { id: 'TP_VBUS', name: 'TP_VBUS', x: 50, y: 160, net: 'net_vbus', diode: '0.550V' },
+    { id: 'TP_CPU', name: 'TP_CPU', x: 145, y: 95, net: 'net_vdd_cpu', diode: '0.025V' },
+  ];
+
+  testPoints.forEach((tp) => {
+    parts.push({
+      id: tp.id,
+      name: tp.name,
+      packageType: 'TEST_POINT',
+      side: 'TOP',
+      x: tp.x,
+      y: tp.y,
+      width: 3,
+      height: 3,
+      rotation: 0,
+      role: 'نقطة فحص',
+      commonFault: 'تآكل أو تلف',
+      pins: [
+        { id: `${tp.id}_pin`, partId: tp.id, pinNumber: 'TP', netId: tp.net, x: 0, y: 0, radius: 1, diodeValue: tp.diode },
+      ],
+    });
+  });
+
+  return {
+    id: 'samsung_s24_ultra',
+    title: 'Samsung Galaxy S24 Ultra Logic Board',
+    deviceModel: 'Samsung Galaxy S24 Ultra (SM-S928B)',
+    width: 200,
+    height: 210,
+    layersCount: 10,
+    nets,
+    parts,
+    outlinePoints: [
+      { x: 15, y: 35 },
+      { x: 185, y: 35 },
+      { x: 185, y: 180 },
+      { x: 40, y: 180 },
+      { x: 40, y: 165 },
+      { x: 15, y: 165 },
+    ],
+  };
+})();
+
+// --- Preset 4: Dell Latitude 5420 Logic Board ---
+const DELL_LATITUDE_5420_BOARD: BoardData = (() => {
+  const nets: Record<string, BoardNet> = {
+    net_gnd: {
+      id: 'net_gnd',
+      name: 'GND (System Ground)',
+      voltage: '0.00V',
+      diodeMode: '0.000V',
+      color: '#64748b',
+      description: 'أرضي الشاسيه العام لللابتوب',
+      isGround: true,
+      safeInjectionVoltage: 'لا يحقن',
+    },
+    net_ppdcin: {
+      id: 'net_ppdcin',
+      name: 'PPDCIN_CHARGING (19.5V)',
+      voltage: '19.0V - 19.5V',
+      diodeMode: '0.420V - 0.480V',
+      color: '#f59e0b',
+      description: 'دخل الشاحن 19.5V من كونكتور DC-IN',
+      isPower: true,
+      safeInjectionVoltage: '19.0V (حد أقصى 3A)',
+    },
+    net_ppvccsa: {
+      id: 'net_ppvccsa',
+      name: 'PPVCCSA_CPU (System Agent)',
+      voltage: '0.95V - 1.05V',
+      diodeMode: '0.015V - 0.030V',
+      color: '#38bdf8',
+      description: 'تغذية System Agent للمعالج Intel',
+      isPower: true,
+      safeInjectionVoltage: '1.0V فقط!',
+    },
+    net_pp3v3_s5: {
+      id: 'net_pp3v3_s5',
+      name: 'PP3V3_S5 (Always On)',
+      voltage: '3.30V',
+      diodeMode: '0.340V - 0.380V',
+      color: '#10b981',
+      description: 'فولت الإقلاع الدائم 3.3V',
+      isPower: true,
+      safeInjectionVoltage: '3.3V (حد أقصى 1A)',
+    },
+    net_pp5v_s5: {
+      id: 'net_pp5v_s5',
+      name: 'PP5V_S5 (Always On)',
+      voltage: '5.00V',
+      diodeMode: '0.410V - 0.460V',
+      color: '#a855f7',
+      description: 'فولت الإقلاع الدائم 5V',
+      isPower: true,
+      safeInjectionVoltage: '5.0V (حد أقصى 1A)',
+    },
+    net_ppvccio: {
+      id: 'net_ppvccio',
+      name: 'PPVCCIO_CPU (IO)',
+      voltage: '0.95V - 1.05V',
+      diodeMode: '0.018V - 0.035V',
+      color: '#ec4899',
+      description: 'تغذية IO للمعالج',
+      isPower: true,
+      safeInjectionVoltage: '1.0V فقط!',
+    },
+  };
+
+  const parts: BoardPart[] = [];
+
+  // Intel CPU (i5/i7 11th Gen)
+  const cpuPins: BoardPin[] = [];
+  for (let r = 0; r < 14; r++) {
+    for (let c = 0; c < 14; c++) {
+      let netId = 'net_gnd';
+      let diode = '0.000V';
+      if ((r >= 4 && r <= 8) && (c >= 4 && c <= 8)) {
+        netId = 'net_ppvccsa';
+        diode = '0.022V';
+      } else if ((r >= 9 && r <= 11) && (c >= 4 && c <= 8)) {
+        netId = 'net_ppvccio';
+        diode = '0.025V';
+      } else if (r === 0 || c === 0) {
+        netId = 'net_pp3v3_s5';
+        diode = '0.360V';
+      }
+      cpuPins.push({
+        id: `cpu_pin_${r}_${c}`,
+        partId: 'U1000_CPU',
+        pinNumber: `${String.fromCharCode(65 + r)}${c + 1}`,
+        netId,
+        x: (c - 6.5) * 1.8,
+        y: (r - 6.5) * 1.8,
+        radius: 0.55,
+        diodeValue: diode,
+        isPin1: r === 0 && c === 0,
+      });
+    }
+  }
+
+  parts.push({
+    id: 'U1000_CPU',
+    name: 'Intel Core i5/i7 11th Gen (U1000)',
+    packageType: 'BGA',
+    side: 'TOP',
+    x: 120,
+    y: 100,
+    width: 40,
+    height: 40,
+    rotation: 0,
+    role: 'المعالج الرئيسي لللابتوب',
+    commonFault: 'سخونة شديدة أو شورت على خطوط VCORE',
+    pins: cpuPins,
+  });
+
+  // PCH (Platform Controller Hub)
+  parts.push({
+    id: 'U2000_PCH',
+    name: 'Intel PCH (U2000)',
+    packageType: 'BGA',
+    side: 'TOP',
+    x: 80,
+    y: 100,
+    width: 24,
+    height: 24,
+    rotation: 0,
+    role: 'وحدة التحكم المنصة',
+    commonFault: 'تلف بسبب دخول سوائل أو ارتفاع حرارة',
+    pins: [
+      { id: 'pch_p1', partId: 'U2000_PCH', pinNumber: '1', netId: 'net_pp3v3_s5', x: -8, y: -8, radius: 0.7, diodeValue: '0.360V', isPin1: true },
+      { id: 'pch_p2', partId: 'U2000_PCH', pinNumber: '2', netId: 'net_pp5v_s5', x: 8, y: -8, radius: 0.7, diodeValue: '0.430V' },
+      { id: 'pch_p3', partId: 'U2000_PCH', pinNumber: '3', netId: 'net_gnd', x: 0, y: 0, radius: 0.7, diodeValue: '0.000V' },
+    ],
+  });
+
+  // Charging IC (BQ24780)
+  parts.push({
+    id: 'U3000_CHG',
+    name: 'Charging IC BQ24780 (U3000)',
+    packageType: 'QFN',
+    side: 'TOP',
+    x: 60,
+    y: 150,
+    width: 18,
+    height: 18,
+    rotation: 0,
+    role: 'إدارة الشحن وتوليد 19.5V',
+    commonFault: 'عدم الشحن أو شحن بطيء جداً',
+    pins: [
+      { id: 'chg_p1', partId: 'U3000_CHG', pinNumber: '1', netId: 'net_ppdcin', x: -6, y: -6, radius: 0.8, diodeValue: '0.450V', isPin1: true },
+      { id: 'chg_p2', partId: 'U3000_CHG', pinNumber: '2', netId: 'net_gnd', x: 6, y: -6, radius: 0.8, diodeValue: '0.000V' },
+      { id: 'chg_p3', partId: 'U3000_CHG', pinNumber: '3', netId: 'net_pp5v_s5', x: -6, y: 6, radius: 0.8, diodeValue: '0.430V' },
+      { id: 'chg_p4', partId: 'U3000_CHG', pinNumber: '4', netId: 'net_pp3v3_s5', x: 6, y: 6, radius: 0.8, diodeValue: '0.360V' },
+    ],
+  });
+
+  // VRM Controllers for CPU
+  parts.push({
+    id: 'U4000_VRM',
+    name: 'CPU VRM Controller (U4000)',
+    packageType: 'QFN',
+    side: 'TOP',
+    x: 160,
+    y: 80,
+    width: 16,
+    height: 16,
+    rotation: 0,
+    role: 'تحكم في فولت المعالج',
+    commonFault: 'سخونة شديدة وفشل في التشغيل',
+    pins: [
+      { id: 'vrm_p1', partId: 'U4000_VRM', pinNumber: '1', netId: 'net_ppdcin', x: -5, y: -5, radius: 0.8, diodeValue: '0.450V', isPin1: true },
+      { id: 'vrm_p2', partId: 'U4000_VRM', pinNumber: '2', netId: 'net_ppvccsa', x: 5, y: -5, radius: 0.8, diodeValue: '0.022V' },
+      { id: 'vrm_p3', partId: 'U4000_VRM', pinNumber: '3', netId: 'net_gnd', x: 0, y: 0, radius: 0.8, diodeValue: '0.000V' },
+    ],
+  });
+
+  // DC-IN Connector
+  parts.push({
+    id: 'J5000_DCIN',
+    name: 'DC-IN Jack (J5000)',
+    packageType: 'CONNECTOR',
+    side: 'TOP',
+    x: 30,
+    y: 150,
+    width: 12,
+    height: 20,
+    rotation: 0,
+    role: 'كونكتور الشاحن 19.5V',
+    commonFault: 'تلف البنات بسبب شد الكابل أو دخول سوائل',
+    pins: [
+      { id: 'dcin_1', partId: 'J5000_DCIN', pinNumber: '1', netId: 'net_ppdcin', x: 0, y: -6, radius: 0.8, diodeValue: '0.450V' },
+      { id: 'dcin_2', partId: 'J5000_DCIN', pinNumber: '2', netId: 'net_gnd', x: 0, y: 0, radius: 0.8, diodeValue: '0.000V' },
+      { id: 'dcin_3', partId: 'J5000_DCIN', pinNumber: '3', netId: 'net_gnd', x: 0, y: 6, radius: 0.8, diodeValue: '0.000V' },
+    ],
+  });
+
+  // Capacitors
+  const caps = [
+    { id: 'C3001', x: 75, y: 130, net: 'net_ppdcin', diode: '0.450V' },
+    { id: 'C3002', x: 75, y: 140, net: 'net_ppdcin', diode: '0.450V' },
+    { id: 'C4001', x: 145, y: 70, net: 'net_ppvccsa', diode: '0.022V' },
+    { id: 'C4002', x: 175, y: 70, net: 'net_ppvccsa', diode: '0.022V' },
+    { id: 'C4003', x: 145, y: 90, net: 'net_ppvccio', diode: '0.025V' },
+  ];
+
+  caps.forEach((cap) => {
+    parts.push({
+      id: cap.id,
+      name: `${cap.id} (مكثف)`,
+      packageType: '0402',
+      side: 'TOP',
+      x: cap.x,
+      y: cap.y,
+      width: 5,
+      height: 3,
+      rotation: 0,
+      role: `مكثف تنعيم على ${cap.net}`,
+      commonFault: 'انهيار عازلية وشورت',
+      pins: [
+        { id: `${cap.id}_p1`, partId: cap.id, pinNumber: '1', netId: cap.net, x: -1.5, y: 0, radius: 0.6, shape: 'rect', diodeValue: cap.diode },
+        { id: `${cap.id}_p2`, partId: cap.id, pinNumber: '2', netId: 'net_gnd', x: 1.5, y: 0, radius: 0.6, shape: 'rect', diodeValue: '0.000V' },
+      ],
+    });
+  });
+
+  // Test Points
+  const testPoints = [
+    { id: 'TP_DCIN', name: 'TP_DCIN', x: 45, y: 150, net: 'net_ppdcin', diode: '0.450V' },
+    { id: 'TP_3V3', name: 'TP_3V3', x: 90, y: 80, net: 'net_pp3v3_s5', diode: '0.360V' },
+    { id: 'TP_VCCSA', name: 'TP_VCCSA', x: 145, y: 75, net: 'net_ppvccsa', diode: '0.022V' },
+  ];
+
+  testPoints.forEach((tp) => {
+    parts.push({
+      id: tp.id,
+      name: tp.name,
+      packageType: 'TEST_POINT',
+      side: 'TOP',
+      x: tp.x,
+      y: tp.y,
+      width: 3.5,
+      height: 3.5,
+      rotation: 0,
+      role: 'نقطة فحص',
+      commonFault: 'تآكل',
+      pins: [
+        { id: `${tp.id}_pin`, partId: tp.id, pinNumber: 'TP', netId: tp.net, x: 0, y: 0, radius: 1.1, diodeValue: tp.diode },
+      ],
+    });
+  });
+
+  return {
+    id: 'dell_latitude_5420',
+    title: 'Dell Latitude 5420 Logic Board',
+    deviceModel: 'Dell Latitude 5420 (11th Gen)',
+    width: 220,
+    height: 200,
+    layersCount: 8,
+    nets,
+    parts,
+    outlinePoints: [
+      { x: 20, y: 25 },
+      { x: 200, y: 25 },
+      { x: 200, y: 180 },
+      { x: 20, y: 180 },
+    ],
+  };
+})();
+
 // ==========================================
 // 3. المكون الرئيسي: InteractiveBoardviewSimulator
 // ==========================================
@@ -1097,36 +1610,123 @@ export default function InteractiveBoardviewSimulator() {
       const data = await res.json();
       if (res.ok && data.results && data.results.length > 0) {
         const item = data.results[0];
-        const newCloudBoard: BoardData = {
-          id: `custom_board_${Date.now()}`,
-          title: item.name || `مخطط ${item.device}`,
-          deviceModel: item.device || onlineQuery.trim(),
-          width: 210,
-          height: 190,
-          layersCount: 8,
-          nets: {
-            net_gnd: { id: 'net_gnd', name: 'GND (أرضي الشاسيه)', voltage: '0.00V', diodeMode: '0.000V', color: '#64748b', isGround: true, description: 'أرضي الشاسيه العام' },
-            net_main: { id: 'net_main', name: 'MAIN_POWER_BUS', voltage: '3.8V - 19.5V', diodeMode: '0.420V', color: '#f59e0b', isPower: true, description: 'شريان الباور الرئيسي' },
-            net_cpu_vcore: { id: 'net_cpu_vcore', name: 'CPU_VCORE_VRM', voltage: '0.85V', diodeMode: '0.022V', color: '#38bdf8', isPower: true, description: 'تغذية أنوية المعالج' },
-          },
-          parts: (item.keyICs || ['U100_MAIN_PMIC', 'U200_CPU', 'U300_CHARGER']).map((icName: string, idx: number) => ({
-            id: `IC_${idx + 1}`,
-            name: icName,
-            packageType: 'BGA' as const,
-            side: 'TOP' as const,
-            x: 60 + (idx % 3) * 45,
-            y: 70 + Math.floor(idx / 3) * 45,
-            width: 24,
-            height: 24,
-            rotation: 0,
-            role: `آيسي تم سحبه وتحليله من ${item.source}`,
-            commonFault: item.extractedSummary || 'فحص خطوط التغذية والممانعة',
-            pins: [
-              { id: `pin_${idx}_1`, partId: `IC_${idx + 1}`, pinNumber: '1', netId: 'net_main', x: -4, y: -4, radius: 0.9, diodeValue: '0.420V', isPin1: true },
+        // Generate more realistic board data based on device type
+        const isMobile = onlineQuery.toLowerCase().includes('iphone') || onlineQuery.toLowerCase().includes('samsung') || onlineQuery.toLowerCase().includes('xiaomi') || onlineQuery.toLowerCase().includes('phone');
+        const isLaptop = onlineQuery.toLowerCase().includes('dell') || onlineQuery.toLowerCase().includes('hp') || onlineQuery.toLowerCase().includes('lenovo') || onlineQuery.toLowerCase().includes('macbook');
+        const isDesktop = onlineQuery.toLowerCase().includes('desktop') || onlineQuery.toLowerCase().includes('motherboard') || onlineQuery.toLowerCase().includes('z790') || onlineQuery.toLowerCase().includes('b760');
+
+        const boardWidth = isMobile ? 190 : isLaptop ? 220 : 240;
+        const boardHeight = isMobile ? 210 : isLaptop ? 200 : 200;
+
+        // Generate realistic nets based on device type
+        const realisticNets: Record<string, BoardNet> = {
+          net_gnd: { id: 'net_gnd', name: 'GND (أرضي الشاسيه)', voltage: '0.00V', diodeMode: '0.000V', color: '#64748b', isGround: true, description: 'أرضي الشاسيه العام' },
+        };
+
+        if (isMobile) {
+          realisticNets.net_vdd_main = { id: 'net_vdd_main', name: 'PP_VDD_MAIN (3.8V)', voltage: '3.7V - 4.2V', diodeMode: '0.395V', color: '#f59e0b', isPower: true, description: 'شريان الباور الرئيسي للهاتف', safeInjectionVoltage: '3.8V' };
+          realisticNets.net_vbus = { id: 'net_vbus', name: 'VBUS_USB-C (5V)', voltage: '5.0V', diodeMode: '0.580V', color: '#10b981', isPower: true, description: 'دخل الشاحن' };
+          realisticNets.net_cpu_vcore = { id: 'net_cpu_vcore', name: 'CPU_VCORE (0.85V)', voltage: '0.82V', diodeMode: '0.022V', color: '#38bdf8', isPower: true, description: 'تغذية المعالج', safeInjectionVoltage: '0.8V' };
+          realisticNets.net_1v8 = { id: 'net_1v8', name: 'PP1V8_ALWAYS', voltage: '1.80V', diodeMode: '0.360V', color: '#a855f7', isPower: true, description: 'فولت الإقلاع' };
+        } else if (isLaptop) {
+          realisticNets.net_ppdcin = { id: 'net_ppdcin', name: 'PPDCIN (19.5V)', voltage: '19.0V - 19.5V', diodeMode: '0.450V', color: '#f59e0b', isPower: true, description: 'دخل الشاحن 19.5V', safeInjectionVoltage: '19.0V' };
+          realisticNets.net_pp3v3 = { id: 'net_pp3v3', name: 'PP3V3_S5 (3.3V)', voltage: '3.30V', diodeMode: '0.360V', color: '#10b981', isPower: true, description: 'فولت الإقلاع 3.3V', safeInjectionVoltage: '3.3V' };
+          realisticNets.net_cpu_vcore = { id: 'net_cpu_vcore', name: 'CPU_VCORE (0.95V)', voltage: '0.95V', diodeMode: '0.025V', color: '#38bdf8', isPower: true, description: 'تغذية المعالج', safeInjectionVoltage: '1.0V' };
+          realisticNets.net_pp5v = { id: 'net_pp5v', name: 'PP5V_S5 (5V)', voltage: '5.00V', diodeMode: '0.430V', color: '#a855f7', isPower: true, description: 'فولت الإقلاع 5V', safeInjectionVoltage: '5.0V' };
+        } else {
+          realisticNets.net_12v = { id: 'net_12v', name: '12V_ATX (12V)', voltage: '12.0V', diodeMode: '0.520V', color: '#f59e0b', isPower: true, description: 'فولت ATX 12V', safeInjectionVoltage: '12.0V' };
+          realisticNets.net_5v = { id: 'net_5v', name: '5V_ATX (5V)', voltage: '5.00V', diodeMode: '0.430V', color: '#10b981', isPower: true, description: 'فولت ATX 5V', safeInjectionVoltage: '5.0V' };
+          realisticNets.net_3v3 = { id: 'net_3v3', name: '3.3V_ATX (3.3V)', voltage: '3.30V', diodeMode: '0.360V', color: '#38bdf8', isPower: true, description: 'فولت ATX 3.3V', safeInjectionVoltage: '3.3V' };
+          realisticNets.net_cpu_vcore = { id: 'net_cpu_vcore', name: 'CPU_VCORE (1.1V)', voltage: '1.10V', diodeMode: '0.035V', color: '#a855f7', isPower: true, description: 'تغذية المعالج', safeInjectionVoltage: '1.1V' };
+        }
+
+        // Generate more realistic parts
+        const realisticParts: BoardPart[] = [];
+        const keyICs = item.keyICs || (isMobile ? ['Main CPU', 'PMIC', 'Charging IC', 'Storage'] : isLaptop ? ['CPU', 'PCH', 'Charging IC', 'VRM'] : ['CPU', 'VRM', ' chipset']);
+
+        keyICs.forEach((icName: string, idx: number) => {
+          const partX = 60 + (idx % 3) * 50;
+          const partY = 70 + Math.floor(idx / 3) * 50;
+          const isCPU = idx === 0;
+
+          let partPins: BoardPin[] = [];
+          if (isCPU) {
+            // Generate more pins for CPU
+            for (let i = 0; i < 8; i++) {
+              partPins.push({
+                id: `cpu_pin_${i}`,
+                partId: `IC_${idx + 1}`,
+                pinNumber: `${i + 1}`,
+                netId: i < 3 ? 'net_cpu_vcore' : i < 5 ? (isMobile ? 'net_1v8' : 'net_pp3v3') : 'net_gnd',
+                x: (i - 3.5) * 3,
+                y: (i - 3.5) * 3,
+                radius: 0.7,
+                diodeValue: i < 3 ? '0.022V' : i < 5 ? (isMobile ? '0.360V' : '0.360V') : '0.000V',
+                isPin1: i === 0,
+              });
+            }
+          } else {
+            partPins = [
+              { id: `pin_${idx}_1`, partId: `IC_${idx + 1}`, pinNumber: '1', netId: isMobile ? 'net_vdd_main' : isLaptop ? 'net_ppdcin' : 'net_12v', x: -4, y: -4, radius: 0.9, diodeValue: isMobile ? '0.395V' : isLaptop ? '0.450V' : '0.520V', isPin1: true },
               { id: `pin_${idx}_2`, partId: `IC_${idx + 1}`, pinNumber: '2', netId: 'net_cpu_vcore', x: 4, y: -4, radius: 0.9, diodeValue: '0.022V' },
               { id: `pin_${idx}_3`, partId: `IC_${idx + 1}`, pinNumber: '3', netId: 'net_gnd', x: 0, y: 4, radius: 0.9, diodeValue: '0.000V' },
+            ];
+          }
+
+          realisticParts.push({
+            id: `IC_${idx + 1}`,
+            name: icName,
+            packageType: isCPU ? 'BGA' : 'QFN',
+            side: 'TOP',
+            x: partX,
+            y: partY,
+            width: isCPU ? 28 : 18,
+            height: isCPU ? 28 : 18,
+            rotation: 0,
+            role: `آيسي ${icName} - تم سحبه من ${item.source}`,
+            commonFault: item.extractedSummary || 'فحص خطوط التغذية والممانعة',
+            pins: partPins,
+          });
+        });
+
+        // Add some capacitors for realism
+        for (let i = 0; i < 6; i++) {
+          const capX = 85 + (i % 3) * 25;
+          const capY = 120 + Math.floor(i / 3) * 25;
+          realisticParts.push({
+            id: `C${100 + i}`,
+            name: `C${100 + i} (مكثف)`,
+            packageType: '0402',
+            side: 'TOP',
+            x: capX,
+            y: capY,
+            width: 4,
+            height: 2.5,
+            rotation: 0,
+            role: 'مكثف تنعيم',
+            commonFault: 'انهيار عازلية وشورت',
+            pins: [
+              { id: `c${i}_p1`, partId: `C${100 + i}`, pinNumber: '1', netId: isMobile ? 'net_vdd_main' : isLaptop ? 'net_ppdcin' : 'net_12v', x: -1.2, y: 0, radius: 0.6, shape: 'rect', diodeValue: isMobile ? '0.395V' : isLaptop ? '0.450V' : '0.520V' },
+              { id: `c${i}_p2`, partId: `C${100 + i}`, pinNumber: '2', netId: 'net_gnd', x: 1.2, y: 0, radius: 0.6, shape: 'rect', diodeValue: '0.000V' },
             ],
-          })),
+          });
+        }
+
+        const newCloudBoard: BoardData = {
+          id: `online_${item.device.replace(/\s+/g, '_').toLowerCase()}_${Date.now()}`,
+          title: `مخطط وبوردفيو أصلي مستخرج لـ ${item.device}`,
+          deviceModel: item.device || onlineQuery.trim(),
+          width: boardWidth,
+          height: boardHeight,
+          layersCount: isMobile ? 10 : isLaptop ? 8 : 6,
+          nets: realisticNets,
+          parts: realisticParts,
+          outlinePoints: [
+            { x: 10, y: 30 },
+            { x: boardWidth - 10, y: 30 },
+            { x: boardWidth - 10, y: boardHeight - 20 },
+            { x: 10, y: boardHeight - 20 },
+          ],
         };
 
         // حفظ في السحابة فوراً
