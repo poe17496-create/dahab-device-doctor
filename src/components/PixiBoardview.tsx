@@ -1,0 +1,254 @@
+'use client';
+
+import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { Application, Graphics, FederatedPointerEvent } from 'pixi.js';
+import { Viewport } from 'pixi-viewport';
+import {
+  ParsedBoardData,
+  ParsedBoardPart,
+  ParsedBoardPin,
+  convertToRenderData,
+} from '@/lib/boardviewParser';
+
+// ==========================================
+// Main PixiJS Boardview Component
+// ==========================================
+
+interface PixiBoardviewProps {
+  boardData: ParsedBoardData | null;
+  highlightedNetId?: string | null;
+  onPartClick?: (part: ParsedBoardPart) => void;
+  onPinClick?: (pin: ParsedBoardPin) => void;
+  width?: number;
+  height?: number;
+}
+
+export default function PixiBoardview({
+  boardData,
+  highlightedNetId = null,
+  onPartClick,
+  onPinClick,
+  width = 800,
+  height = 600,
+}: PixiBoardviewProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const appRef = useRef<Application | null>(null);
+  const viewportRef = useRef<Viewport | null>(null);
+  const [renderData, setRenderData] = useState<any>(null);
+  const [selectedPart, setSelectedPart] = useState<ParsedBoardPart | null>(null);
+
+  // Convert board data to render format when it changes
+  useEffect(() => {
+    if (boardData) {
+      const data = convertToRenderData(boardData);
+      setRenderData(data);
+    }
+  }, [boardData]);
+
+  // Initialize PixiJS application
+  useEffect(() => {
+    if (!canvasRef.current) return;
+
+    const app = new Application({
+      view: canvasRef.current,
+      width,
+      height,
+      backgroundColor: 0x0f0f1a,
+      antialias: true,
+      resolution: window.devicePixelRatio || 1,
+      autoDensity: true,
+    });
+
+    appRef.current = app;
+
+    // Create viewport
+    const viewport = new Viewport({
+      screenWidth: width,
+      screenHeight: height,
+      worldWidth: 2000,
+      worldHeight: 2000,
+      events: app.renderer.events,
+    });
+
+    viewport
+      .drag({ mouseButtons: 'left' })
+      .pinch()
+      .wheel()
+      .decelerate()
+      .clampZoom({
+        minWidth: 100,
+        maxWidth: 5000,
+        minHeight: 100,
+        maxHeight: 5000,
+      });
+
+    app.stage.addChild(viewport);
+    viewportRef.current = viewport;
+
+    // Fit board to view
+    if (boardData) {
+      viewport.fitWidth(boardData.width, false);
+      viewport.fitHeight(boardData.height, false);
+      viewport.moveCenter(boardData.width / 2, boardData.height / 2);
+    }
+
+    return () => {
+      app.destroy(true, { children: true });
+    };
+  }, [width, height, boardData]);
+
+  // Render board content
+  useEffect(() => {
+    if (!viewportRef.current || !renderData) return;
+
+    const viewport = viewportRef.current;
+    
+    // Clear existing content
+    viewport.removeChildren();
+
+    // Draw board outline
+    const boardGraphics = new Graphics();
+    boardGraphics.beginFill(0x1a1a2e, 1);
+    if (renderData.board.outline.length > 0) {
+      const polygonPoints = renderData.board.outline.flatMap((p: { x: number; y: number }) => [p.x, p.y]);
+      boardGraphics.drawPolygon(polygonPoints);
+    } else {
+      boardGraphics.drawRect(0, 0, renderData.board.width, renderData.board.height);
+    }
+    boardGraphics.endFill();
+
+    boardGraphics.lineStyle(2, 0x4a9eff, 1);
+    if (renderData.board.outline.length > 0) {
+      const polygonPoints = renderData.board.outline.flatMap((p: { x: number; y: number }) => [p.x, p.y]);
+      boardGraphics.drawPolygon(polygonPoints);
+    } else {
+      boardGraphics.drawRect(0, 0, renderData.board.width, renderData.board.height);
+    }
+    viewport.addChild(boardGraphics);
+
+    // Draw parts
+    renderData.parts.forEach((part: ParsedBoardPart) => {
+      const partGraphics = new Graphics();
+      const isSelected = selectedPart?.id === part.id;
+      const isDimmed = highlightedNetId !== null;
+      const alpha = isDimmed ? 0.2 : 0.8;
+      const color = isSelected ? 0xff6b6b : 0x4a9eff;
+
+      partGraphics.beginFill(color, alpha);
+      partGraphics.lineStyle(1, color, 1);
+      partGraphics.drawRect(
+        part.x - part.width / 2,
+        part.y - part.height / 2,
+        part.width,
+        part.height
+      );
+      partGraphics.endFill();
+
+      // Pin 1 indicator
+      if (part.pins.some((p: ParsedBoardPin) => p.isPin1)) {
+        partGraphics.beginFill(0xffffff, 1);
+        partGraphics.drawCircle(
+          part.x - part.width / 2 + 2,
+          part.y - part.height / 2 + 2,
+          1
+        );
+        partGraphics.endFill();
+      }
+
+      partGraphics.eventMode = 'static';
+      partGraphics.cursor = 'pointer';
+      partGraphics.on('pointerdown', () => {
+        setSelectedPart(part);
+        onPartClick?.(part);
+      });
+
+      viewport.addChild(partGraphics);
+    });
+
+    // Draw pins
+    renderData.pins.forEach((pin: ParsedBoardPin & { absoluteX: number; absoluteY: number; netColor: string }) => {
+      const pinGraphics = new Graphics();
+      const isHighlighted = highlightedNetId === pin.netId;
+      const isDimmed = highlightedNetId !== null && highlightedNetId !== pin.netId;
+      const alpha = isDimmed ? 0.1 : isHighlighted ? 1 : 0.6;
+      const color = isHighlighted ? 0xff0000 : parseInt(pin.netColor.replace('#', ''), 16);
+
+      pinGraphics.beginFill(color, alpha);
+      pinGraphics.lineStyle(isHighlighted ? 2 : 1, color, alpha);
+
+      if (pin.shape === 'rect') {
+        pinGraphics.drawRect(pin.absoluteX - pin.radius, pin.absoluteY - pin.radius, pin.radius * 2, pin.radius * 2);
+      } else {
+        pinGraphics.drawCircle(pin.absoluteX, pin.absoluteY, pin.radius);
+      }
+      pinGraphics.endFill();
+
+      // Pin 1 indicator
+      if (pin.isPin1) {
+        pinGraphics.beginFill(0xffffff, 1);
+        pinGraphics.drawCircle(pin.absoluteX, pin.absoluteY, pin.radius * 0.5);
+        pinGraphics.endFill();
+      }
+
+      pinGraphics.eventMode = 'static';
+      pinGraphics.cursor = 'pointer';
+      pinGraphics.on('pointerdown', () => {
+        onPinClick?.(pin);
+      });
+
+      viewport.addChild(pinGraphics);
+    });
+
+  }, [renderData, highlightedNetId, selectedPart, onPartClick, onPinClick]);
+
+  const handlePartClick = useCallback((part: ParsedBoardPart) => {
+    setSelectedPart(part);
+    onPartClick?.(part);
+  }, [onPartClick]);
+
+  const handlePinClick = useCallback((pin: ParsedBoardPin) => {
+    onPinClick?.(pin);
+  }, [onPinClick]);
+
+  if (!renderData || !boardData) {
+    return (
+      <div className="flex items-center justify-center h-full bg-gray-900 text-gray-400">
+        <div className="text-center">
+          <p className="text-lg mb-2">No board data loaded</p>
+          <p className="text-sm">Upload a .brd, .fz, or .json file to view the board</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative w-full h-full bg-gray-900 overflow-hidden">
+      <canvas ref={canvasRef} style={{ width: '100%', height: '100%' }} />
+
+      {/* Info Overlay */}
+      {selectedPart && (
+        <div className="absolute top-4 right-4 bg-gray-800 text-white p-4 rounded-lg shadow-lg max-w-sm">
+          <h3 className="font-bold text-lg mb-2">{selectedPart.name}</h3>
+          <div className="text-sm space-y-1">
+            <p><span className="text-gray-400">Type:</span> {selectedPart.packageType}</p>
+            <p><span className="text-gray-400">Side:</span> {selectedPart.side}</p>
+            <p><span className="text-gray-400">Pins:</span> {selectedPart.pins.length}</p>
+            <p><span className="text-gray-400">Role:</span> {selectedPart.role}</p>
+            <p className="text-yellow-400 mt-2">{selectedPart.commonFault}</p>
+          </div>
+          <button
+            onClick={() => setSelectedPart(null)}
+            className="mt-3 px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
+          >
+            Close
+          </button>
+        </div>
+      )}
+
+      {/* Controls Hint */}
+      <div className="absolute bottom-4 left-4 bg-gray-800 text-white px-3 py-2 rounded-lg text-sm">
+        <p>🖱️ Drag to pan • Scroll to zoom • Click parts/pins for details</p>
+      </div>
+    </div>
+  );
+}

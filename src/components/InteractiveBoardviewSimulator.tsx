@@ -54,6 +54,11 @@ import dynamic from 'next/dynamic';
 // Dynamic import for KonvaBoardview to avoid SSR issues
 const KonvaBoardview = dynamic(() => import('./KonvaBoardview'), { ssr: false });
 
+// Dynamic import for PixiBoardviewViewer to avoid SSR issues
+const PixiBoardviewViewer = dynamic(() => import('./PixiBoardviewViewer'), { ssr: false });
+
+import { convertBoardDataToParsed } from '@/lib/boardviewParser';
+
 // ==========================================
 // 1. تعريف واجهات ونماذج بيانات البوردفيو
 // ==========================================
@@ -626,6 +631,7 @@ export default function InteractiveBoardviewSimulator() {
   const [showPartLabels, setShowPartLabels] = useState(true);
   const [showPinNumbers, setShowPinNumbers] = useState(false);
   const [highContrastMode, setHighContrastMode] = useState(false);
+  const [usePixiRenderer, setUsePixiRenderer] = useState(false);
 
   // بوردات ومخططات السحابة المرفوعة
   const [cloudBoards, setCloudBoards] = useState<BoardData[]>([]);
@@ -1749,6 +1755,20 @@ export default function InteractiveBoardviewSimulator() {
             </button>
           </div>
 
+          {/* تبديل محرك العرض Canvas / PixiJS WebGL */}
+          <button
+            onClick={() => setUsePixiRenderer(!usePixiRenderer)}
+            className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
+              usePixiRenderer
+                ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700'
+            }`}
+            title={usePixiRenderer ? 'تبديل إلى محرك Canvas القديم' : 'تبديل إلى محرك PixiJS WebGL السريع'}
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>{usePixiRenderer ? 'WebGL (PixiJS)' : 'Canvas'}</span>
+          </button>
+
           {/* ميزات العرض */}
           <div className="flex items-center gap-1">
             <button
@@ -2034,34 +2054,42 @@ export default function InteractiveBoardviewSimulator() {
       <div className="flex-1 flex flex-col lg:grid lg:grid-cols-12 relative min-h-0 overflow-hidden">
         {/* منطقة الكانفاس التفاعلي — يملأ كامل الشاشة على الموبايل */}
         <div className="flex-1 lg:col-span-8 xl:col-span-9 relative bg-[#0a0f1d] overflow-hidden select-none" style={{ minHeight: 0 }}>
-          <KonvaBoardview
-            boardData={boardData}
-            scale={zoom}
-            position={pan}
-            selectedNetId={selectedNetId}
-            selectedPartId={selectedPartId}
-            selectedSide={selectedSide}
-            showGrid={showGrid}
-            showFlightLines={showFlightLines}
-            showComponentLabels={showComponentLabels}
-            showPinNumbers={showPinNumbers}
-            onWheel={handleWheel}
-            onDragStart={() => setIsDragging(true)}
-            onDragEnd={(e) => {
-              setIsDragging(false);
-              setPan({ x: e.target.x(), y: e.target.y() });
-            }}
-            containerWidth={containerRef.current?.clientWidth || 1000}
-            containerHeight={containerRef.current?.clientHeight || 800}
-            onPartClick={zoomToPart}
-            onPinHover={(pin, part) => {
-              if (pin && part) {
-                setHoveredPin({ pin, part });
-              } else {
-                setHoveredPin(null);
-              }
-            }}
-          />
+          {usePixiRenderer ? (
+            <PixiBoardviewViewer
+              width={containerRef.current?.clientWidth || 1000}
+              height={containerRef.current?.clientHeight || 800}
+              initialBoardData={convertBoardDataToParsed(boardData)}
+            />
+          ) : (
+            <KonvaBoardview
+              boardData={boardData}
+              scale={zoom}
+              position={pan}
+              selectedNetId={selectedNetId}
+              selectedPartId={selectedPartId}
+              selectedSide={selectedSide}
+              showGrid={showGrid}
+              showFlightLines={showFlightLines}
+              showComponentLabels={showComponentLabels}
+              showPinNumbers={showPinNumbers}
+              onWheel={handleWheel}
+              onDragStart={() => setIsDragging(true)}
+              onDragEnd={(e) => {
+                setIsDragging(false);
+                setPan({ x: e.target.x(), y: e.target.y() });
+              }}
+              containerWidth={containerRef.current?.clientWidth || 1000}
+              containerHeight={containerRef.current?.clientHeight || 800}
+              onPartClick={zoomToPart}
+              onPinHover={(pin, part) => {
+                if (pin && part) {
+                  setHoveredPin({ pin, part });
+                } else {
+                  setHoveredPin(null);
+                }
+              }}
+            />
+          )}
 
           {/* أزرار التكبير والتصغير العائمة */}
           <div className="absolute bottom-4 left-4 flex items-center gap-1.5 bg-gray-900/90 p-1.5 rounded-2xl border border-gray-800 shadow-2xl backdrop-blur-md">
