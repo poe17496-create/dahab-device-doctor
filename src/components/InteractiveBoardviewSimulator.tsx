@@ -634,7 +634,7 @@ export default function InteractiveBoardviewSimulator() {
   const [showPartLabels, setShowPartLabels] = useState(true);
   const [showPinNumbers, setShowPinNumbers] = useState(false);
   const [highContrastMode, setHighContrastMode] = useState(false);
-  const [usePixiRenderer, setUsePixiRenderer] = useState(true); // تفعيل PixiJS افتراضياً
+  const [usePixiRenderer, setUsePixiRenderer] = useState(false); // react-konva افتراضياً (أخف وأسرع)
   const [showModal, setShowModal] = useState(false);
 
   // بوردات ومخططات السحابة المرفوعة
@@ -697,8 +697,7 @@ export default function InteractiveBoardviewSimulator() {
   const lastTouchDistance = useRef<number>(0);
   const lastTouchCenter = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  // مراجع الكانفاس
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  // مراجع الـ container
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -1376,15 +1375,9 @@ export default function InteractiveBoardviewSimulator() {
     reader.readAsText(file);
   };
 
-  // تصدير لقطة شاشة من البوردفيو
+  // تصدير لقطة شاشة من البوردفيو (مؤقت - تحتاج تطبيق)
   const handleExportImage = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const url = canvas.toDataURL('image/png');
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Dahab_BoardView_${boardData.deviceModel}_${activeNet.name}.png`;
-    a.click();
+    alert('ميزة تصدير الصورة قيد التطوير حالياً');
   };
 
   // حفظ البوردة الحالية المعروضة يدوياً في السحابة
@@ -1819,7 +1812,7 @@ export default function InteractiveBoardviewSimulator() {
             </button>
           </div>
 
-          {/* تبديل محرك العرض Canvas / PixiJS WebGL */}
+          {/* تبديل محرك العرض react-konva / PixiJS WebGL */}
           <button
             onClick={() => setUsePixiRenderer(!usePixiRenderer)}
             className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
@@ -1827,10 +1820,10 @@ export default function InteractiveBoardviewSimulator() {
                 ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30'
                 : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700'
             }`}
-            title={usePixiRenderer ? 'تبديل إلى محرك Canvas القديم' : 'تبديل إلى محرك PixiJS WebGL السريع'}
+            title={usePixiRenderer ? 'تبديل إلى react-konva (أخف وأسرع)' : 'تبديل إلى PixiJS WebGL (أداء أعلى)'}
           >
             <Sparkles className="w-4 h-4" />
-            <span>{usePixiRenderer ? 'WebGL (PixiJS)' : 'Canvas'}</span>
+            <span>{usePixiRenderer ? 'WebGL (PixiJS)' : 'Konva'}</span>
           </button>
 
           {/* ميزات العرض */}
