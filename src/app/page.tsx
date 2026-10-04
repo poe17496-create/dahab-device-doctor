@@ -768,7 +768,7 @@ export default function DahabFixAiConsole() {
               {/* التبويبات الأخرى (تظهر نظيفة بالكامل بدون أي ازدحام بالأسفل) */}
               {activeTab === 'panic-log' && <PanicLogAnalyzer />}
               {activeTab === 'safe-injection' && <SafeInjectionCalculator />}
-              {activeTab === 'boardview' && <InteractiveBoardview />}
+              {activeTab === 'boardview' && <InteractiveBoardviewSimulator />}
               {activeTab === 'ic-encyclopedia' && <ICEncyclopediaTab />}
               {activeTab === 'checklist' && <InteractiveChecklist />}
               {activeTab === 'references' && <SourcesReferences sources={sources} />}
