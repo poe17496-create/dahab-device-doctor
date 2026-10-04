@@ -1647,8 +1647,7 @@ export default function InteractiveBoardviewSimulator() {
       if (nextBoard.parts.length > 0) {
         setSelectedPartId(nextBoard.parts[0].id);
       }
-      // Keep PixiJS renderer active when switching boards
-      setUsePixiRenderer(true);
+      // لا تغيير محرك العرض - احتفظ باختيار المستخدم
       handleResetView();
     }
   };
@@ -1693,7 +1692,10 @@ export default function InteractiveBoardviewSimulator() {
           {/* اختيار البوردة الجاهزة من بين جميع الموديلات المدمجة والسحابية */}
           <select
             value={boardData.id}
-            onChange={(e) => handleSelectPreset(e.target.value)}
+            onChange={(e) => {
+              console.log('Selected board ID:', e.target.value);
+              handleSelectPreset(e.target.value);
+            }}
             className="p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-800 dark:text-gray-200 outline-none focus:border-dahab-500 cursor-pointer max-w-[280px]"
             title="اختر الموديل المطلوب (يدعم جميع أنواع الموبايل واللابتوب)"
           >
@@ -1994,7 +1996,7 @@ export default function InteractiveBoardviewSimulator() {
 
           {/* نتائج البحث المنسدلة */}
           {searchResults.length > 0 && (
-            <div className="absolute top-full right-0 left-0 mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-2xl z-40 max-h-60 overflow-y-auto">
+            <div className="absolute top-full right-0 left-0 mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-2xl z-[9999] max-h-60 overflow-y-auto">
               {searchResults.map((res, i) => (
                 <button
                   key={i}
@@ -2121,10 +2123,13 @@ export default function InteractiveBoardviewSimulator() {
               width={containerRef.current?.clientWidth || 1000}
               height={containerRef.current?.clientHeight || 800}
               initialBoardData={convertBoardDataToParsed(boardData)}
-              onSearchOnline={(query) => {
-                setOnlineQuery(query);
-                setShowOnlineSearchBox(true);
-                handleSearchOnlineSchematic();
+              selectedNetId={selectedNetId}
+              onPartClick={(part) => {
+                // تحويل من ParsedBoardPart إلى BoardPart إذا لزم الأمر
+                console.log('Part clicked in Pixi:', part);
+              }}
+              onPinClick={(pin) => {
+                console.log('Pin clicked in Pixi:', pin);
               }}
             />
           ) : (
