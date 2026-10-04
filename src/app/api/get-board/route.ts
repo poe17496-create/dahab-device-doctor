@@ -27,56 +27,40 @@ interface GetBoardResponse {
 }
 
 /**
- * Fetch high-resolution motherboard image using Serper API (Google Search)
- * Rotates between multiple API keys to avoid quota exhaustion
+ * Fetch high-resolution motherboard image using Google Custom Search API
  */
 async function fetchBoardImage(boardName: string): Promise<string> {
-  // Read API keys from environment variables
   const API_KEYS = [
     process.env.GOOGLEAPIKEY212,
     process.env.GOOGLEAPIKEY123,
     process.env.GOOGLEAPIKEY12,
     process.env.GOOGLEAPIKEY88,
-  ].filter(Boolean); // Remove undefined/null values
+  ].filter(Boolean);
 
   if (API_KEYS.length === 0) {
-    throw new Error('No Google API keys configured. Please add GOOGLEAPIKEY212, GOOGLEAPIKEY123, GOOGLEAPIKEY12, GOOGLEAPIKEY88 to .env.local');
+    throw new Error('No Google API keys configured');
   }
 
   const query = `${boardName} motherboard PCB circuit board high resolution`;
-  const url = `https://google.serper.dev/search?q=${encodeURIComponent(query)}&type=images&num=1`;
 
-  // Try each API key until one works
-  for (let i = 0; i < API_KEYS.length; i++) {
-    const apiKey = API_KEYS[i];
-
-    if (!apiKey) {
-      continue; // Skip if key is undefined
-    }
-
+  // Try each API key
+  for (const apiKey of API_KEYS) {
     try {
-      const response = await fetch(url, {
-        headers: {
-          'X-API-KEY': apiKey,
-          'Content-Type': 'application/json',
-        },
-      });
+      const url = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=d7d463570f3a34261&q=${encodeURIComponent(query)}&searchType=image&num=1&imgSize=huge`;
 
+      const response = await fetch(url);
       const data = await response.json();
 
-      if (!data.images || data.images.length === 0) {
-        continue; // Try next key
+      if (data.items && data.items.length > 0) {
+        return data.items[0].link;
       }
-
-      // Return the high-res image URL
-      return data.images[0].link;
     } catch (error) {
-      console.log(`API key ${i + 1} failed, trying next key...`);
-      continue; // Try next key
+      console.log('API key failed, trying next...');
+      continue;
     }
   }
 
-  throw new Error('All API keys failed. Please upload a custom board image instead.');
+  throw new Error('Failed to fetch image');
 }
 
 export async function POST(req: NextRequest) {
