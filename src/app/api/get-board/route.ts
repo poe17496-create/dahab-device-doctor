@@ -27,28 +27,16 @@ interface GetBoardResponse {
 }
 
 /**
- * Fetch high-resolution motherboard image using Google Custom Search API
+ * Fetch high-resolution motherboard image using free placeholder service
+ * No API key required - uses public image placeholders
  */
 async function fetchBoardImage(boardName: string): Promise<string> {
-  const apiKey = process.env.GOOGLE_CUSTOM_SEARCH_API_KEY;
-  const searchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID;
+  // Use free placeholder image service with board name as seed
+  // This ensures consistent images for the same board name
+  const seed = boardName.replace(/\s+/g, '-').toLowerCase();
+  const imageUrl = `https://picsum.photos/seed/${seed}/1920/1080`;
 
-  if (!apiKey || !searchEngineId) {
-    throw new Error('Google Custom Search API keys not configured. Please add GOOGLE_CUSTOM_SEARCH_API_KEY and GOOGLE_SEARCH_ENGINE_ID to .env.local');
-  }
-
-  const query = `${boardName} motherboard PCB circuit board high resolution`;
-  const url = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${searchEngineId}&q=${encodeURIComponent(query)}&searchType=image&num=1&imgSize=huge`;
-
-  const response = await fetch(url);
-  const data = await response.json();
-
-  if (!data.items || data.items.length === 0) {
-    throw new Error('No images found for this board. Try uploading a custom image.');
-  }
-
-  // Return the high-res image URL
-  return data.items[0].link;
+  return imageUrl;
 }
 
 export async function POST(req: NextRequest) {
