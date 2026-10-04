@@ -11,6 +11,7 @@ import SourcesReferences from '@/components/SourcesReferences';
 import PanicLogAnalyzer from '@/components/PanicLogAnalyzer';
 import SafeInjectionCalculator from '@/components/SafeInjectionCalculator';
 import InteractiveBoardviewSimulator from '@/components/InteractiveBoardviewSimulator';
+import InteractiveBoardview from '@/components/InteractiveBoardview';
 import ICEncyclopediaTab from '@/components/ICEncyclopediaTab';
 import SchematicIntegrationReport from '@/components/SchematicIntegrationReport';
 import NavigationSidebar from '@/components/NavigationSidebar';
@@ -767,7 +768,7 @@ export default function DahabFixAiConsole() {
               {/* التبويبات الأخرى (تظهر نظيفة بالكامل بدون أي ازدحام بالأسفل) */}
               {activeTab === 'panic-log' && <PanicLogAnalyzer />}
               {activeTab === 'safe-injection' && <SafeInjectionCalculator />}
-              {activeTab === 'boardview' && <InteractiveBoardviewSimulator />}
+              {activeTab === 'boardview' && <InteractiveBoardview />}
               {activeTab === 'ic-encyclopedia' && <ICEncyclopediaTab />}
               {activeTab === 'checklist' && <InteractiveChecklist />}
               {activeTab === 'references' && <SourcesReferences sources={sources} />}
