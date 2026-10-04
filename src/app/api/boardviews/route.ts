@@ -1,226 +1,198 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
-import { getAllBoardviews } from '@/lib/dataServices';
-import { BoardData } from '@/components/InteractiveBoardviewSimulator';
-
-// دالة لتوليد UUID بسيط
-function generateUUID(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
-}
+import { BoardData } from '@/components/InteractiveBoardview';
 
 export const dynamic = 'force-dynamic';
 
-// 1. GET: جلب جميع البوردات من Supabase أو local fallback
-export async function GET() {
+// Mock database of boardview data
+const mockBoardDatabase: Record<string, BoardData> = {
+  'iphone_13_pro': {
+    id: 'iphone_13_pro_mainboard',
+    title: 'iPhone 13 Pro Mainboard',
+    deviceModel: 'iPhone 13 Pro (A2639)',
+    width: 3000,
+    height: 1500,
+    components: [
+      {
+        id: 'U1000',
+        name: 'U1000',
+        x: 500,
+        y: 300,
+        width: 200,
+        height: 200,
+        type: 'IC',
+        rotation: 0,
+        pins: [
+          { id: 'U1000_A1', x: 510, y: 310, net: 'PP_VDD_MAIN', type: 'pad', label: 'A1' },
+          { id: 'U1000_A2', x: 510, y: 330, net: 'PP_VDD_MAIN', type: 'pad', label: 'A2' },
+          { id: 'U1000_B1', x: 530, y: 310, net: 'PP_VDD_CPU', type: 'pad', label: 'B1' },
+          { id: 'U1000_B2', x: 530, y: 330, net: 'GND', type: 'pad', label: 'B2' },
+          { id: 'U1000_C1', x: 550, y: 310, net: 'PP_VDD_GPU', type: 'pad', label: 'C1' },
+          { id: 'U1000_C2', x: 550, y: 330, net: 'PP_1V8_SDRAM', type: 'pad', label: 'C2' },
+        ],
+      },
+      {
+        id: 'U2000',
+        name: 'U2000',
+        x: 800,
+        y: 300,
+        width: 150,
+        height: 150,
+        type: 'IC',
+        rotation: 0,
+        pins: [
+          { id: 'U2000_1', x: 810, y: 310, net: 'PP_VDD_MAIN', type: 'pad', label: '1' },
+          { id: 'U2000_2', x: 810, y: 330, net: 'PP_3V3_CAM', type: 'pad', label: '2' },
+          { id: 'U2000_3', x: 830, y: 310, net: 'GND', type: 'pad', label: '3' },
+        ],
+      },
+      {
+        id: 'C1000',
+        name: 'C1000',
+        x: 400,
+        y: 600,
+        width: 40,
+        height: 40,
+        type: 'capacitor',
+        pins: [
+          { id: 'C1000_1', x: 410, y: 610, net: 'PP_VDD_MAIN', type: 'pad' },
+          { id: 'C1000_2', x: 430, y: 610, net: 'GND', type: 'pad' },
+        ],
+      },
+      {
+        id: 'C1001',
+        name: 'C1001',
+        x: 450,
+        y: 600,
+        width: 40,
+        height: 40,
+        type: 'capacitor',
+        pins: [
+          { id: 'C1001_1', x: 460, y: 610, net: 'PP_VDD_CPU', type: 'pad' },
+          { id: 'C1001_2', x: 480, y: 610, net: 'GND', type: 'pad' },
+        ],
+      },
+      {
+        id: 'J1',
+        name: 'Battery Connector',
+        x: 200,
+        y: 700,
+        width: 100,
+        height: 80,
+        type: 'connector',
+        pins: [
+          { id: 'J1_1', x: 210, y: 710, net: 'PP_BATT_VCC', type: 'pad', label: 'VBAT' },
+          { id: 'J1_2', x: 230, y: 710, net: 'GND', type: 'pad', label: 'GND' },
+          { id: 'J1_3', x: 250, y: 710, net: 'PP_BATT_TEMP', type: 'pad', label: 'TEMP' },
+        ],
+      },
+    ],
+    nets: {
+      'PP_VDD_MAIN': ['U1000_A1', 'U1000_A2', 'U2000_1', 'C1000_1'],
+      'PP_VDD_CPU': ['U1000_B1', 'C1001_1'],
+      'PP_VDD_GPU': ['U1000_C1'],
+      'PP_1V8_SDRAM': ['U1000_C2'],
+      'PP_3V3_CAM': ['U2000_2'],
+      'GND': ['U1000_B2', 'U2000_3', 'C1000_2', 'C1001_2', 'J1_2'],
+      'PP_BATT_VCC': ['J1_1'],
+      'PP_BATT_TEMP': ['J1_3'],
+    },
+  },
+  'samsung_s23': {
+    id: 'samsung_s23_mainboard',
+    title: 'Samsung Galaxy S23 Mainboard',
+    deviceModel: 'Samsung Galaxy S23 (SM-S911B)',
+    width: 3200,
+    height: 1600,
+    components: [
+      {
+        id: 'U500',
+        name: 'U500',
+        x: 600,
+        y: 400,
+        width: 250,
+        height: 250,
+        type: 'IC',
+        rotation: 0,
+        pins: [
+          { id: 'U500_A1', x: 610, y: 410, net: 'VDD_MSM', type: 'pad', label: 'A1' },
+          { id: 'U500_A2', x: 610, y: 430, net: 'VDD_MSM', type: 'pad', label: 'A2' },
+          { id: 'U500_B1', x: 630, y: 410, net: 'VDD_CPU', type: 'pad', label: 'B1' },
+          { id: 'U500_B2', x: 630, y: 430, net: 'GND', type: 'pad', label: 'B2' },
+        ],
+      },
+      {
+        id: 'C501',
+        name: 'C501',
+        x: 500,
+        y: 700,
+        width: 35,
+        height: 35,
+        type: 'capacitor',
+        pins: [
+          { id: 'C501_1', x: 510, y: 710, net: 'VDD_MSM', type: 'pad' },
+          { id: 'C501_2', x: 530, y: 710, net: 'GND', type: 'pad' },
+        ],
+      },
+    ],
+    nets: {
+      'VDD_MSM': ['U500_A1', 'U500_A2', 'C501_1'],
+      'VDD_CPU': ['U500_B1'],
+      'GND': ['U500_B2', 'C501_2'],
+    },
+  },
+};
+
+export async function GET(req: NextRequest) {
   try {
-    const boards = await getAllBoardviews();
-
-    return NextResponse.json({ boards, total: boards.length, source: 'supabase-or-fallback' });
-  } catch (err: any) {
-    return NextResponse.json({ error: 'فشل في جلب البوردات', details: err?.message }, { status: 500 });
-  }
-}
-
-// 2. POST: رفع وحفظ بوردفيو جديدة في Supabase
-export async function POST(req: NextRequest) {
-  try {
-    if (!isSupabaseConfigured || !supabaseAdmin) {
-      return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 });
-    }
-
-    const body = await req.json();
-    const { title, deviceModel, category, boardData, rawContent, fileName } = body;
-
-    if (!title && !deviceModel) {
-      return NextResponse.json({ error: 'اسم البوردة أو الموديل مطلوب' }, { status: 400 });
-    }
-
-    let finalBoardData: BoardData;
-
-    if (boardData && boardData.parts && boardData.nets) {
-      finalBoardData = {
-        ...boardData,
-        id: boardData.id.startsWith('custom_') ? generateUUID() : boardData.id,
-        title: title || boardData.title || deviceModel,
-        deviceModel: deviceModel || boardData.deviceModel || title,
-      };
-    } else if (rawContent) {
-      // تفكيك وتحليل ملف BRD أو FZ أو JSON
-      try {
-        const parsed = JSON.parse(rawContent);
-        if (parsed.parts && parsed.nets) {
-          finalBoardData = {
-            ...parsed,
-            id: parsed.id.startsWith('custom_') ? generateUUID() : parsed.id,
-            title: title || parsed.title || deviceModel,
-            deviceModel: deviceModel || parsed.deviceModel || title,
-          };
-        } else {
-          throw new Error('Not board json');
-        }
-      } catch (e) {
-        // قراءة BRD / FZ نصي
-        const lines: string[] = rawContent.split('\n');
-        const customParts: any[] = [];
-        const customNets: Record<string, any> = {
-          net_gnd: { id: 'net_gnd', name: 'GND (أرضي)', voltage: '0.00V', diodeMode: '0.000V', color: '#64748b', isGround: true, description: 'أرضي الشاسيه' },
-          net_main: { id: 'net_main', name: 'MAIN_POWER', voltage: '3.8V - 19V', diodeMode: '0.420V', color: '#f59e0b', isPower: true, description: 'خط التغذية الرئيسي' },
-        };
-
-        let currentPart: any = null;
-        let xOffset = 30;
-        let yOffset = 40;
-
-        lines.forEach((line, idx) => {
-          const trimmed = line.trim();
-          if (!trimmed || trimmed.startsWith('#')) return;
-          const tokens = trimmed.split(/\s+/);
-          const cmd = tokens[0].toUpperCase();
-
-          if (cmd === 'PART' || cmd === 'COMP' || cmd === 'PACKAGE') {
-            const partName = tokens[1] || `U_${idx}`;
-            currentPart = {
-              id: partName,
-              name: partName,
-              packageType: 'BGA',
-              side: 'TOP',
-              x: xOffset,
-              y: yOffset,
-              width: 16,
-              height: 16,
-              rotation: 0,
-              role: `مكون تم استيراده من ${fileName || 'الملف'}`,
-              commonFault: 'غير محدد في الملف',
-              pins: [],
-            };
-            customParts.push(currentPart);
-            xOffset += 24;
-            if (xOffset > 180) {
-              xOffset = 30;
-              yOffset += 24;
-            }
-          } else if ((cmd === 'PIN' || cmd === 'PAD') && currentPart) {
-            const pinNum = tokens[1] || `${currentPart.pins.length + 1}`;
-            currentPart.pins.push({
-              id: `${currentPart.id}_${pinNum}`,
-              partId: currentPart.id,
-              pinNumber: pinNum,
-              netId: idx % 2 === 0 ? 'net_main' : 'net_gnd',
-              x: (currentPart.pins.length % 4 - 1.5) * 2,
-              y: (Math.floor(currentPart.pins.length / 4) - 1.5) * 2,
-              radius: 0.7,
-              diodeValue: '0.420V',
-            });
-          }
-        });
-
-        finalBoardData = {
-          id: generateUUID(),
-          title: title || fileName || deviceModel,
-          deviceModel: deviceModel || title || 'جهاز مخصص',
-          width: 220,
-          height: 200,
-          layersCount: 6,
-          nets: customNets,
-          parts: customParts.length > 0 ? customParts : [
-            {
-              id: 'U100_MAIN',
-              name: 'Main Controller (U100)',
-              packageType: 'BGA',
-              side: 'TOP',
-              x: 100,
-              y: 90,
-              width: 26,
-              height: 26,
-              rotation: 0,
-              role: 'المتحكم الرئيسي للبوردة المستوردة',
-              commonFault: 'عطل تشغيل عام',
-              pins: [
-                { id: 'p1', partId: 'U100_MAIN', pinNumber: '1', netId: 'net_main', x: -5, y: -5, radius: 0.9, diodeValue: '0.420V', isPin1: true },
-                { id: 'p2', partId: 'U100_MAIN', pinNumber: '2', netId: 'net_gnd', x: 5, y: 5, radius: 0.9, diodeValue: '0.000V' },
-              ],
-            },
-          ],
-        };
-      }
-    } else {
-      return NextResponse.json({ error: 'محتوى البوردة غير متوفر' }, { status: 400 });
-    }
-
-    // الحفظ في Supabase أو محلياً
-    if (isSupabaseConfigured && supabaseAdmin) {
-      const { error } = await supabaseAdmin.from('boardviews').insert([
-        {
-          id: finalBoardData.id,
-          user_id: null, // يمكن إضافة user_id لاحقاً
-          device_name: finalBoardData.title,
-          model: finalBoardData.deviceModel,
-          brand: category || 'custom',
-          category: category || 'mobile',
-          description: finalBoardData.title,
-          specifications: finalBoardData,
-        },
-      ]);
-
-      if (error) {
-        console.error('Error saving boardview to Supabase:', error);
-        // Cannot use localStorage in server-side API route
-        return NextResponse.json({
-          success: false,
-          message: 'فشل في حفظ البوردة في Supabase',
-          board: finalBoardData,
-          savedLocally: false,
-          error: error.message,
-        }, { status: 500 });
-      }
-    } else {
-      // Supabase not configured - cannot save to localStorage in server-side route
-      return NextResponse.json({
-        success: false,
-        message: 'Supabase غير مُهيأ - لا يمكن حفظ البوردة بدون تكوين قاعدة البيانات',
-        board: finalBoardData,
-        savedLocally: false,
-      }, { status: 500 });
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: 'تم حفظ البوردة بنجاح في Supabase! ✓',
-      board: finalBoardData,
-    });
-  } catch (err: any) {
-    console.error('Boardview Save Error:', err);
-    return NextResponse.json({ error: 'فشل في حفظ البوردفيو', details: err?.message }, { status: 500 });
-  }
-}
-
-// 3. DELETE: حذف بوردفيو من Supabase
-export async function DELETE(req: NextRequest) {
-  try {
-    if (!isSupabaseConfigured || !supabaseAdmin) {
-      return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 });
-    }
-
     const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
+    const model = searchParams.get('model');
 
-    if (!id) {
-      return NextResponse.json({ error: 'معرف البوردة مطلوب' }, { status: 400 });
+    if (!model) {
+      return NextResponse.json(
+        { error: 'Model parameter is required' },
+        { status: 400 }
+      );
     }
 
-    const { error } = await supabaseAdmin.from('boardviews').delete().eq('id', id);
+    // Normalize model name
+    const normalizedModel = model.toLowerCase().replace(/[^a-z0-9_]/g, '_');
 
-    if (error) {
-      console.error('Error deleting boardview:', error);
-      return NextResponse.json({ error: 'فشل في حذف البوردة' }, { status: 500 });
+    // Search in mock database
+    const boardData = Object.values(mockBoardDatabase).find(
+      (board) => board.deviceModel.toLowerCase().replace(/[^a-z0-9_]/g, '_') === normalizedModel ||
+                 board.id.toLowerCase().replace(/[^a-z0-9_]/g, '_') === normalizedModel
+    );
+
+    if (boardData) {
+      return NextResponse.json({ boardData });
     }
 
-    return NextResponse.json({ success: true, message: 'تم حذف البوردة بنجاح' });
-  } catch (err: any) {
-    return NextResponse.json({ error: 'فشل في حذف البوردة' }, { status: 500 });
+    // Try to fetch from cloud API (simulated)
+    try {
+      const cloudResponse = await fetch(
+        `https://api.dahab-boardview-library.com/v1/boards/${encodeURIComponent(model)}`,
+        {
+          signal: AbortSignal.timeout(5000), // 5 second timeout
+        }
+      );
+
+      if (cloudResponse.ok) {
+        const cloudData = await cloudResponse.json();
+        return NextResponse.json({ boardData: cloudData });
+      }
+    } catch (cloudError) {
+      console.warn('Cloud fetch failed:', cloudError);
+    }
+
+    return NextResponse.json(
+      { error: 'Boardview data not found for this model' },
+      { status: 404 }
+    );
+  } catch (error) {
+    console.error('Error fetching boardview:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }

@@ -24,6 +24,11 @@ const nextConfig = {
       },
     ],
   },
+  // Webpack configuration to handle konva
+  webpack: (config) => {
+    config.externals = [...(config.externals || []), { canvas: 'canvas' }];
+    return config;
+  },
   async headers() {
     return [
       {
