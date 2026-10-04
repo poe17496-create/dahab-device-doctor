@@ -57,6 +57,8 @@ export default function PixiBoardview({
       antialias: true,
       resolution: window.devicePixelRatio || 1,
       autoDensity: true,
+      backgroundAlpha: 1,
+      preserveDrawingBuffer: false,
     });
 
     appRef.current = app;
@@ -140,7 +142,7 @@ export default function PixiBoardview({
       const alpha = isDimmed ? 0.2 : 0.8;
       const color = isSelected ? 0xff6b6b : 0x4a9eff;
 
-      partGraphics.beginFill(color, alpha);
+      partGraphics.beginFill(color, Math.max(alpha, 0.01));
       partGraphics.lineStyle(1, color, 1);
       partGraphics.drawRect(
         part.x - part.width / 2,
@@ -180,8 +182,8 @@ export default function PixiBoardview({
         const alpha = isDimmed ? 0.1 : isHighlighted ? 1 : 0.6;
         const color = isHighlighted ? 0xff0000 : parseInt(pin.netColor.replace('#', ''), 16);
 
-        pinGraphics.beginFill(color, alpha);
-        pinGraphics.lineStyle(isHighlighted ? 2 : 1, color, alpha);
+        pinGraphics.beginFill(color, Math.max(alpha, 0.01));
+        pinGraphics.lineStyle(isHighlighted ? 2 : 1, color, Math.max(alpha, 0.01));
 
         if (pin.shape === 'rect') {
           pinGraphics.drawRect(pin.absoluteX - pin.radius, pin.absoluteY - pin.radius, pin.radius * 2, pin.radius * 2);
