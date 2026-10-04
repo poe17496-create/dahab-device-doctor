@@ -52,6 +52,10 @@ async function fetchBoardImage(boardName: string): Promise<string> {
   for (let i = 0; i < API_KEYS.length; i++) {
     const apiKey = API_KEYS[i];
 
+    if (!apiKey) {
+      continue; // Skip if key is undefined
+    }
+
     try {
       const response = await fetch(url, {
         headers: {
