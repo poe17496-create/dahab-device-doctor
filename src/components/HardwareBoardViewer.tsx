@@ -52,6 +52,9 @@ export function HardwareBoardViewer({
   const [activeNet, setActiveNet] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<NetTrace[]>([]);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadUrl, setUploadUrl] = useState('');
+  const [uploading, setUploading] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
 
   // Fetch board image on mount (or use custom image)
@@ -137,6 +140,42 @@ export function HardwareBoardViewer({
     fetchBoardImage();
   };
 
+  const handleUploadCustomImage = async () => {
+    if (!uploadUrl.trim()) {
+      alert('Please enter a valid image URL');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      const response = await fetch('/api/upload-board-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          boardName,
+          imageUrl: uploadUrl,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setImageUrl(uploadUrl);
+        setShowUploadModal(false);
+        setUploadUrl('');
+        setError(null);
+      } else {
+        alert('Failed to upload image: ' + data.error);
+      }
+    } catch (err: any) {
+      alert('Failed to upload image: ' + err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   // ==========================================
   // Render
   // ==========================================
@@ -163,6 +202,14 @@ export function HardwareBoardViewer({
             </button>
           )}
         </div>
+
+        <button
+          onClick={() => setShowUploadModal(true)}
+          className="px-4 py-2 bg-green-600 border border-green-700 rounded-lg text-white hover:bg-green-700 transition-colors text-sm font-medium"
+          title="Upload custom image"
+        >
+          Upload Image
+        </button>
 
         <button
           onClick={handleRefresh}
@@ -202,6 +249,53 @@ export function HardwareBoardViewer({
               )}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Upload Modal */}
+      {showUploadModal && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-30">
+          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white text-lg font-medium">Upload Custom Board Image</h3>
+              <button
+                onClick={() => setShowUploadModal(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="mb-4">
+              <label className="block text-gray-300 text-sm mb-2">
+                Image URL
+              </label>
+              <input
+                type="text"
+                value={uploadUrl}
+                onChange={(e) => setUploadUrl(e.target.value)}
+                placeholder="https://example.com/board-image.jpg"
+                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-gray-400 text-xs mt-2">
+                Enter a direct URL to a high-resolution board image
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleUploadCustomImage}
+                disabled={uploading}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {uploading ? 'Uploading...' : 'Upload'}
+              </button>
+              <button
+                onClick={() => setShowUploadModal(false)}
+                className="flex-1 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

@@ -27,66 +27,29 @@ interface GetBoardResponse {
 }
 
 /**
- * Fetch high-resolution motherboard image using Unsplash API (Free)
- * Unsplash offers 5000 requests/hour for free - perfect for this use case
+ * Fetch high-resolution motherboard image using Google Custom Search API
  */
 async function fetchBoardImage(boardName: string): Promise<string> {
-  const accessKey = process.env.UNSPLASH_ACCESS_KEY;
+  const apiKey = process.env.GOOGLE_CUSTOM_SEARCH_API_KEY;
+  const searchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID;
 
-  if (!accessKey) {
-    throw new Error('Unsplash API key not configured. Please add UNSPLASH_ACCESS_KEY to .env.local');
+  if (!apiKey || !searchEngineId) {
+    throw new Error('Google Custom Search API keys not configured. Please add GOOGLE_CUSTOM_SEARCH_API_KEY and GOOGLE_SEARCH_ENGINE_ID to .env.local');
   }
 
-  const query = `${boardName} motherboard PCB circuit board`;
-  const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`;
+  const query = `${boardName} motherboard PCB circuit board high resolution`;
+  const url = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${searchEngineId}&q=${encodeURIComponent(query)}&searchType=image&num=1&imgSize=huge`;
 
-  const response = await fetch(url, {
-    headers: {
-      'Authorization': `Client-ID ${accessKey}`,
-    },
-  });
-
+  const response = await fetch(url);
   const data = await response.json();
 
-  if (!data.results || data.results.length === 0) {
+  if (!data.items || data.items.length === 0) {
     throw new Error('No images found for this board. Try uploading a custom image.');
   }
 
   // Return the high-res image URL
-  return data.results[0].urls.raw;
+  return data.items[0].link;
 }
-
-/**
- * Alternative: Use Unsplash API for high-quality images
- * Uncomment if you prefer Unsplash over Google Custom Search
- */
-/*
-async function fetchBoardImageUnsplash(boardName: string): Promise<string> {
-  const accessKey = process.env.UNSPLASH_ACCESS_KEY;
-
-  if (!accessKey) {
-    throw new Error('Unsplash API key not configured');
-  }
-
-  const query = `${boardName} motherboard PCB circuit board`;
-  const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`;
-
-  const response = await fetch(url, {
-    headers: {
-      'Authorization': `Client-ID ${accessKey}`,
-    },
-  });
-
-  const data = await response.json();
-
-  if (!data.results || data.results.length === 0) {
-    throw new Error('No images found for this board');
-  }
-
-  // Return the high-res image URL
-  return data.results[0].urls.raw;
-}
-*/
 
 export async function POST(req: NextRequest) {
   try {
@@ -145,7 +108,19 @@ export async function POST(req: NextRequest) {
 
     // Step 3: If not cached, fetch image using Image Search API
     console.log(`Fetching image for board: ${boardName}`);
-    const imageUrl = await fetchBoardImage(boardName);
+    let imageUrl: string;
+    try {
+      imageUrl = await fetchBoardImage(boardName);
+    } catch (error: any) {
+      // If API fails, return error with suggestion to upload custom image
+      return NextResponse.json<GetBoardResponse>(
+        {
+          success: false,
+          error: 'Could not fetch image automatically. Please upload a custom board image instead.',
+        },
+        { status: 500 }
+      );
+    }
 
     // Step 4: Cache the image URL in Supabase (use upsert to handle duplicates)
     const { error: insertError } = await supabaseAdmin

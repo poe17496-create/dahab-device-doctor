@@ -31,6 +31,15 @@ CREATE POLICY "Server insert access for boards" ON boards FOR INSERT WITH CHECK 
 DROP POLICY IF EXISTS "Server update access for boards" ON boards;
 CREATE POLICY "Server update access for boards" ON boards FOR UPDATE USING (true);
 
+-- Create function for updated_at trigger (if not exists)
+CREATE OR REPLACE FUNCTION handle_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Apply trigger for updated_at
 DROP TRIGGER IF EXISTS set_updated_at_boards ON boards;
 CREATE TRIGGER set_updated_at_boards BEFORE UPDATE ON boards
