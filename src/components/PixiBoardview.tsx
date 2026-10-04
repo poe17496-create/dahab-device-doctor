@@ -57,6 +57,7 @@ export default function PixiBoardview({
       console.log('PixiBoardview: Processing board data', boardData.id, boardData.parts.length, 'parts');
       const data = convertToRenderData(boardData);
       console.log('PixiBoardview: Converted render data', data.parts.length, 'parts', data.pins.length, 'pins');
+      console.log('PixiBoardview: Parts sides:', data.parts.map((p: any) => `${p.id}:${p.side}`));
       // Filter parts by selected side
       const filteredParts = data.parts.filter((part: ParsedBoardPart) => part.side === selectedSide);
       const filteredPins = data.pins.filter((pin: any) => {
@@ -64,6 +65,7 @@ export default function PixiBoardview({
         return part !== undefined;
       });
       console.log('PixiBoardview: Filtered to', filteredParts.length, 'parts', filteredPins.length, 'pins for side', selectedSide);
+      console.log('PixiBoardview: Filtered parts:', filteredParts.map((p: any) => p.id));
       setRenderData({
         ...data,
         parts: filteredParts,
@@ -95,8 +97,8 @@ export default function PixiBoardview({
     const viewport = new Viewport({
       screenWidth: width,
       screenHeight: height,
-      worldWidth: boardData?.width || 2000,
-      worldHeight: boardData?.height || 2000,
+      worldWidth: (boardData?.width || 2000) * 2, // Larger world to allow panning
+      worldHeight: (boardData?.height || 2000) * 2,
       events: app.renderer.events,
     });
 
@@ -106,10 +108,10 @@ export default function PixiBoardview({
       .wheel()
       .decelerate()
       .clampZoom({
-        minWidth: 100,
-        maxWidth: 5000,
-        minHeight: 100,
-        maxHeight: 5000,
+        minWidth: 50,
+        maxWidth: 10000,
+        minHeight: 50,
+        maxHeight: 10000,
       });
 
     app.stage.addChild(viewport);
@@ -126,12 +128,13 @@ export default function PixiBoardview({
       const viewport = viewportRef.current;
       // Center the board in the viewport
       viewport.moveCenter(boardData.width / 2, boardData.height / 2);
-      // Set zoom to fit with better scale - improved for full board visibility
+      // Set zoom to fit with better scale - much higher zoom for full board visibility
       const scaleX = width / boardData.width;
       const scaleY = height / boardData.height;
-      const zoom = Math.min(scaleX, scaleY) * 0.85; // Optimized for full board visibility
+      const zoom = Math.min(scaleX, scaleY) * 5.0; // Increased significantly to show full board clearly
       viewport.setZoom(zoom);
       console.log('PixiBoardview: Set zoom to', zoom, 'for board', boardData.width, 'x', boardData.height);
+      console.log('PixiBoardview: Viewport size', width, 'x', height);
     }
   }, [boardData, width, height]);
 

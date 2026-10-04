@@ -393,5 +393,6 @@ export function convertBoardDataToParsed(boardData: any): ParsedBoardData {
   };
 
   console.log('✅ Converted board data:', result.id, result.parts.length, 'parts');
+  console.log('   - Part sides:', result.parts.map(p => `${p.id}:${p.side}`));
   return result;
 }

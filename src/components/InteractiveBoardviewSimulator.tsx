@@ -1411,7 +1411,10 @@ export default function InteractiveBoardviewSimulator() {
 
   // Convert board data for Pixi renderer (memoized to avoid unnecessary conversions)
   const parsedBoardData = useMemo(() => {
-    return convertBoardDataToParsed(boardData);
+    const parsed = convertBoardDataToParsed(boardData);
+    console.log('InteractiveBoardviewSimulator: Parsed board data', parsed.id, parsed.parts.length, 'parts');
+    console.log('InteractiveBoardviewSimulator: Parts with sides:', parsed.parts.map(p => `${p.id}:${p.side}`));
+    return parsed;
   }, [boardData.id]); // Only reconvert when board ID changes
 
   // البحث التفاعلي
