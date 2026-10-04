@@ -682,13 +682,31 @@ export default function InteractiveBoardviewSimulator() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // ضبط العرض الأولي لتوسيط البوردة
+  useEffect(() => {
+    const container = canvasContainerRef.current;
+    if (container && boardData) {
+      const cw = container.clientWidth;
+      const ch = container.clientHeight;
+      const scaleX = cw / boardData.width;
+      const scaleY = ch / boardData.height;
+      const initialZoom = Math.min(scaleX, scaleY) * 0.8; // 80% من المساحة المتاحة
+      const centeredPan = {
+        x: (cw - boardData.width * initialZoom) / 2,
+        y: (ch - boardData.height * initialZoom) / 2,
+      };
+      setZoom(initialZoom);
+      setPan(centeredPan);
+    }
+  }, [boardData.id]); // فقط عند تغيير البوردة
+
   // البحث
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<{ type: 'part' | 'net'; item: any }[]>([]);
 
   // محول الكانفاس (Zoom & Pan & Rotation)
   const [zoom, setZoom] = useState(2.2);
-  const [pan, setPan] = useState({ x: 180, y: 140 });
+  const [pan, setPan] = useState({ x: 0, y: 0 });
   const [rotation, setRotation] = useState<0 | 90 | 180 | 270>(0);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -757,10 +775,22 @@ export default function InteractiveBoardviewSimulator() {
 
   // التكبير والتصغير وتوسيط الكانفاس
   const handleResetView = useCallback(() => {
-    setZoom(2.0);
-    setPan({ x: 180, y: 140 });
-    setRotation(0);
-  }, []);
+    const container = canvasContainerRef.current;
+    if (container && boardData) {
+      const cw = container.clientWidth;
+      const ch = container.clientHeight;
+      const scaleX = cw / boardData.width;
+      const scaleY = ch / boardData.height;
+      const newZoom = Math.min(scaleX, scaleY) * 0.8;
+      const centeredPan = {
+        x: (cw - boardData.width * newZoom) / 2,
+        y: (ch - boardData.height * newZoom) / 2,
+      };
+      setZoom(newZoom);
+      setPan(centeredPan);
+      setRotation(0);
+    }
+  }, [boardData]);
 
   // توجيه الكاميرا إلى مكون محدد
   const zoomToPart = useCallback((part: BoardPart) => {

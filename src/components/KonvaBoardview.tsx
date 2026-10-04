@@ -87,7 +87,7 @@ export default function KonvaBoardview({
       draggable
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
-      style={{ cursor: 'grab' }}
+      style={{ cursor: 'grab', background: '#0a0f1d' }}
       listening={true}
     >
       <Layer listening={false}>
