@@ -27,16 +27,54 @@ interface GetBoardResponse {
 }
 
 /**
- * Fetch high-resolution motherboard image using free placeholder service
- * No API key required - uses public image placeholders
+ * Fetch high-resolution motherboard image using Serper API (Google Search)
+ * Rotates between multiple API keys to avoid quota exhaustion
  */
 async function fetchBoardImage(boardName: string): Promise<string> {
-  // Use free placeholder image service with board name as seed
-  // This ensures consistent images for the same board name
-  const seed = boardName.replace(/\s+/g, '-').toLowerCase();
-  const imageUrl = `https://picsum.photos/seed/${seed}/1920/1080`;
+  // Read API keys from environment variables
+  const API_KEYS = [
+    process.env.GOOGLE_API_KEY_1,
+    process.env.GOOGLE_API_KEY_2,
+    process.env.GOOGLE_API_KEY_3,
+    process.env.GOOGLE_API_KEY_4,
+    process.env.GOOGLE_API_KEY_5,
+    process.env.GOOGLE_API_KEY_6,
+  ].filter(Boolean); // Remove undefined/null values
 
-  return imageUrl;
+  if (API_KEYS.length === 0) {
+    throw new Error('No Google API keys configured. Please add GOOGLE_API_KEY_1 through GOOGLE_API_KEY_6 to .env.local');
+  }
+
+  const query = `${boardName} motherboard PCB circuit board high resolution`;
+  const url = `https://google.serper.dev/search?q=${encodeURIComponent(query)}&type=images&num=1`;
+
+  // Try each API key until one works
+  for (let i = 0; i < API_KEYS.length; i++) {
+    const apiKey = API_KEYS[i];
+
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'X-API-KEY': apiKey,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!data.images || data.images.length === 0) {
+        continue; // Try next key
+      }
+
+      // Return the high-res image URL
+      return data.images[0].link;
+    } catch (error) {
+      console.log(`API key ${i + 1} failed, trying next key...`);
+      continue; // Try next key
+    }
+  }
+
+  throw new Error('All API keys failed. Please upload a custom board image instead.');
 }
 
 export async function POST(req: NextRequest) {
