@@ -150,9 +150,16 @@ export default function PixiBoardview({
 
   // Render board content
   useEffect(() => {
-    if (!viewportRef.current || !renderData) return;
+    console.log('PixiBoardview: Render effect triggered', !!viewportRef.current, !!renderData);
+    if (!viewportRef.current || !renderData) {
+      console.log('PixiBoardview: Skipping render - viewport or renderData missing');
+      return;
+    }
 
     const viewport = viewportRef.current;
+    console.log('PixiBoardview: Starting render');
+    console.log('PixiBoardview: Viewport initialized:', !!viewport);
+    console.log('PixiBoardview: Viewport children count:', viewport.children.length);
 
     // Clear existing content with proper cleanup
     while (viewport.children.length > 0) {
@@ -269,6 +276,7 @@ export default function PixiBoardview({
       height: p.height,
       side: p.side
     })));
+    console.log('Viewport children before adding parts:', viewport.children.length);
     partsToRender.forEach((part: ParsedBoardPart) => {
       const partGraphics = new Graphics();
       const isSelected = selectedPart?.id === part.id;
@@ -413,6 +421,7 @@ export default function PixiBoardview({
         viewport.addChild(pinGraphics);
       });
 
+    console.log('Viewport children after rendering:', viewport.children.length);
   }, [renderData, highlightedNetId, selectedPart, showGrid, showLabels, showPinNumbers, showDiodeOverlay, showCoordinates, showMeasurements]);
 
   const handlePartClick = useCallback((part: ParsedBoardPart) => {
