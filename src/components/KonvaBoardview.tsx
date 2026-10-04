@@ -21,6 +21,7 @@ interface KonvaBoardviewProps {
   showFlightLines: boolean;
   showComponentLabels: boolean;
   showPinNumbers: boolean;
+  showDiodeOverlay: boolean;
   onWheel: (e: any) => void;
   onDragStart: () => void;
   onDragEnd: (e: any) => void;
@@ -28,6 +29,8 @@ interface KonvaBoardviewProps {
   containerHeight: number;
   onPartClick?: (part: BoardPart) => void;
   onPinHover?: (pin: BoardPin | null, part: BoardPart | null) => void;
+  showCoordinates?: boolean;
+  showMeasurements?: boolean;
 }
 
 export default function KonvaBoardview({
@@ -41,6 +44,7 @@ export default function KonvaBoardview({
   showFlightLines,
   showComponentLabels,
   showPinNumbers,
+  showDiodeOverlay,
   onWheel,
   onDragStart,
   onDragEnd,
@@ -48,6 +52,8 @@ export default function KonvaBoardview({
   containerHeight,
   onPartClick,
   onPinHover,
+  showCoordinates = false,
+  showMeasurements = false,
 }: KonvaBoardviewProps) {
   // Get active net
   const activeNet = boardData.nets[selectedNetId] || Object.values(boardData.nets)[0];
@@ -89,6 +95,8 @@ export default function KonvaBoardview({
       onDragEnd={onDragEnd}
       style={{ cursor: 'grab', background: '#0a0f1d' }}
       listening={true}
+      perfectDrawEnabled={true}
+      shadowForStrokeEnabled={true}
     >
       <Layer listening={false}>
         {/* Board Background - Dark workshop theme */}
@@ -122,6 +130,35 @@ export default function KonvaBoardview({
                 listening={false}
               />
             ))}
+            {/* Coordinate Labels */}
+            {showCoordinates && scale > 2 && (
+              <>
+                {[...Array(Math.ceil(boardData.width / 100))].map((_, i) => (
+                  <Text
+                    key={`coord-x-${i}`}
+                    x={i * 100}
+                    y={5}
+                    text={`${i * 100}`}
+                    fontSize={8}
+                    fill="rgba(148, 163, 184, 0.5)"
+                    fontFamily="monospace"
+                    listening={false}
+                  />
+                ))}
+                {[...Array(Math.ceil(boardData.height / 100))].map((_, i) => (
+                  <Text
+                    key={`coord-y-${i}`}
+                    x={5}
+                    y={i * 100}
+                    text={`${i * 100}`}
+                    fontSize={8}
+                    fill="rgba(148, 163, 184, 0.5)"
+                    fontFamily="monospace"
+                    listening={false}
+                  />
+                ))}
+              </>
+            )}
           </>
         )}
 
@@ -258,6 +295,21 @@ export default function KonvaBoardview({
                 />
               )}
 
+              {/* Component Dimensions */}
+              {showMeasurements && scale >= 3 && (
+                <Text
+                  x={0}
+                  y={part.height / 2 + 8}
+                  text={`${part.width}x${part.height}`}
+                  fontSize={Math.max(1.5, 2.5 / scale)}
+                  fill="rgba(148, 163, 184, 0.7)"
+                  fontFamily="monospace"
+                  align="center"
+                  verticalAlign="middle"
+                  listening={false}
+                />
+              )}
+
               {/* Pins - Only render when zoom is sufficient */}
               {scale > 0.8 && part.pins.map((pin) => {
                 const pinWorldX = part.x + pin.x;
@@ -338,6 +390,21 @@ export default function KonvaBoardview({
                         text={pin.pinNumber}
                         fontSize={2}
                         fill="#94a3b8"
+                        listening={false}
+                      />
+                    )}
+
+                    {/* Diode Value Overlay */}
+                    {showDiodeOverlay && scale >= 3.2 && pin.diodeValue && pin.diodeValue !== '0.000V' && (
+                      <Text
+                        x={0}
+                        y={-pin.radius - 2}
+                        text={pin.diodeValue.replace('V', '')}
+                        fontSize={2.2}
+                        fill={isConnectedToActiveNet ? '#ffffff' : '#fef08a'}
+                        fontStyle="bold"
+                        fontFamily="monospace"
+                        align="center"
                         listening={false}
                       />
                     )}

@@ -633,6 +633,8 @@ export default function InteractiveBoardviewSimulator() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showPartLabels, setShowPartLabels] = useState(true);
   const [showPinNumbers, setShowPinNumbers] = useState(false);
+  const [showCoordinates, setShowCoordinates] = useState(false);
+  const [showMeasurements, setShowMeasurements] = useState(false);
   const [highContrastMode, setHighContrastMode] = useState(false);
   const [usePixiRenderer, setUsePixiRenderer] = useState(false); // react-konva افتراضياً (أخف وأسرع)
   const [showModal, setShowModal] = useState(false);
@@ -1738,6 +1740,28 @@ export default function InteractiveBoardviewSimulator() {
           >
             <span>أسماء الآيسيات (Labels)</span>
           </button>
+
+          <button
+            onClick={() => setShowCoordinates(!showCoordinates)}
+            className={`px-2.5 py-1 rounded-lg border text-[11px] font-bold transition flex items-center gap-1 ${
+              showCoordinates
+                ? 'bg-green-500/15 border-green-500 text-green-600 dark:text-green-400'
+                : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500'
+            }`}
+          >
+            <span>الإحداثيات (Coords)</span>
+          </button>
+
+          <button
+            onClick={() => setShowMeasurements(!showMeasurements)}
+            className={`px-2.5 py-1 rounded-lg border text-[11px] font-bold transition flex items-center gap-1 ${
+              showMeasurements
+                ? 'bg-red-500/15 border-red-500 text-red-600 dark:text-red-400'
+                : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500'
+            }`}
+          >
+            <span>الأبعاد (Size)</span>
+          </button>
         </div>
       </div>
 
@@ -1790,6 +1814,12 @@ export default function InteractiveBoardviewSimulator() {
               initialBoardData={convertBoardDataToParsed(boardData)}
               selectedNetId={selectedNetId}
               selectedSide={selectedSide}
+              showGrid={showGrid}
+              showLabels={showComponentLabels}
+              showPinNumbers={showPinNumbers}
+              showDiodeOverlay={showDiodeOverlay}
+              showCoordinates={showCoordinates}
+              showMeasurements={showMeasurements}
               onPartClick={(part) => {
                 // تحويل من ParsedBoardPart إلى BoardPart إذا لزم الأمر
                 console.log('Part clicked in Pixi:', part);
@@ -1819,6 +1849,9 @@ export default function InteractiveBoardviewSimulator() {
               showFlightLines={showFlightLines}
               showComponentLabels={showComponentLabels}
               showPinNumbers={showPinNumbers}
+              showDiodeOverlay={showDiodeOverlay}
+              showCoordinates={showCoordinates}
+              showMeasurements={showMeasurements}
               onWheel={handleWheel}
               onDragStart={() => setIsDragging(true)}
               onDragEnd={(e) => {

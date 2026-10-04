@@ -18,6 +18,12 @@ interface PixiBoardviewProps {
   boardData: ParsedBoardData | null;
   highlightedNetId?: string | null;
   selectedSide?: 'TOP' | 'BOTTOM';
+  showGrid?: boolean;
+  showLabels?: boolean;
+  showPinNumbers?: boolean;
+  showDiodeOverlay?: boolean;
+  showCoordinates?: boolean;
+  showMeasurements?: boolean;
   onPartClick?: (part: ParsedBoardPart) => void;
   onPinClick?: (pin: ParsedBoardPin) => void;
   width?: number;
@@ -28,6 +34,12 @@ export default function PixiBoardview({
   boardData,
   highlightedNetId = null,
   selectedSide = 'TOP',
+  showGrid = true,
+  showLabels = true,
+  showPinNumbers = false,
+  showDiodeOverlay = false,
+  showCoordinates = false,
+  showMeasurements = false,
   onPartClick,
   onPinClick,
   width = 800,
@@ -154,7 +166,7 @@ export default function PixiBoardview({
     viewport.addChild(boardGraphics);
 
     // Draw Grid Lines
-    if (renderData.board.width > 0 && renderData.board.height > 0) {
+    if (showGrid && renderData.board.width > 0 && renderData.board.height > 0) {
       const gridGraphics = new Graphics();
       gridGraphics.lineStyle(0.5, 0x334155, 0.25);
 
@@ -168,6 +180,32 @@ export default function PixiBoardview({
         gridGraphics.lineTo(renderData.board.width, y);
       }
       viewport.addChild(gridGraphics);
+
+      // Coordinate Labels
+      if (showCoordinates) {
+        for (let x = 0; x <= renderData.board.width; x += 100) {
+          const coordText = new PixiText(`${x}`, {
+            fontSize: 8,
+            fill: 0x94a3b8,
+            fontFamily: 'monospace',
+          });
+          coordText.x = x;
+          coordText.y = 5;
+          coordText.alpha = 0.5;
+          viewport.addChild(coordText);
+        }
+        for (let y = 0; y <= renderData.board.height; y += 100) {
+          const coordText = new PixiText(`${y}`, {
+            fontSize: 8,
+            fill: 0x94a3b8,
+            fontFamily: 'monospace',
+          });
+          coordText.x = 5;
+          coordText.y = y;
+          coordText.alpha = 0.5;
+          viewport.addChild(coordText);
+        }
+      }
     }
 
     // Draw Flight Lines (Animated) if highlighted net
@@ -243,7 +281,7 @@ export default function PixiBoardview({
       viewport.addChild(partGraphics);
 
       // Component Label
-      if (part.name) {
+      if (showLabels && part.name) {
         const labelText = new PixiText(part.name.split(' ')[0], {
           fontSize: 12,
           fill: isSelected ? 0xf59e0b : 0xcbd5e1,
@@ -254,6 +292,20 @@ export default function PixiBoardview({
         labelText.x = part.x;
         labelText.y = part.y + part.height / 2 + 5;
         viewport.addChild(labelText);
+      }
+
+      // Component Dimensions
+      if (showMeasurements) {
+        const dimText = new PixiText(`${part.width}x${part.height}`, {
+          fontSize: 10,
+          fill: 0x94a3b8,
+          fontFamily: 'monospace',
+        });
+        dimText.anchor.set(0.5, 0);
+        dimText.x = part.x;
+        dimText.y = part.y + part.height / 2 + 12;
+        dimText.alpha = 0.7;
+        viewport.addChild(dimText);
       }
     });
 
@@ -281,6 +333,32 @@ export default function PixiBoardview({
           pinGraphics.beginFill(0xffffff, 1);
           pinGraphics.drawCircle(pin.absoluteX, pin.absoluteY, pin.radius * 0.5);
           pinGraphics.endFill();
+        }
+
+        // Pin Number
+        if (showPinNumbers) {
+          const pinNumText = new PixiText(pin.pinNumber, {
+            fontSize: 8,
+            fill: 0x94a3b8,
+            fontFamily: 'monospace',
+          });
+          pinNumText.x = pin.absoluteX + pin.radius + 2;
+          pinNumText.y = pin.absoluteY - 4;
+          viewport.addChild(pinNumText);
+        }
+
+        // Diode Value Overlay
+        if (showDiodeOverlay && pin.diodeValue && pin.diodeValue !== '0.000V') {
+          const diodeText = new PixiText(pin.diodeValue.replace('V', ''), {
+            fontSize: 9,
+            fill: isHighlighted ? 0xffffff : 0xfef08a,
+            fontWeight: 'bold',
+            fontFamily: 'monospace',
+          });
+          diodeText.anchor.set(0.5, 0);
+          diodeText.x = pin.absoluteX;
+          diodeText.y = pin.absoluteY - pin.radius - 3;
+          viewport.addChild(diodeText);
         }
 
         pinGraphics.eventMode = 'static';

@@ -14,6 +14,12 @@ interface PixiBoardviewViewerProps {
   initialBoardData?: ParsedBoardData | null;
   selectedNetId?: string;
   selectedSide?: 'TOP' | 'BOTTOM';
+  showGrid?: boolean;
+  showLabels?: boolean;
+  showPinNumbers?: boolean;
+  showDiodeOverlay?: boolean;
+  showCoordinates?: boolean;
+  showMeasurements?: boolean;
   onPartClick?: (part: ParsedBoardPart) => void;
   onPinClick?: (pin: ParsedBoardPin) => void;
 }
@@ -24,6 +30,12 @@ export default function PixiBoardviewViewer({
   initialBoardData = null,
   selectedNetId,
   selectedSide = 'TOP',
+  showGrid = true,
+  showLabels = true,
+  showPinNumbers = false,
+  showDiodeOverlay = false,
+  showCoordinates = false,
+  showMeasurements = false,
   onPartClick,
   onPinClick,
 }: PixiBoardviewViewerProps) {
@@ -75,6 +87,12 @@ export default function PixiBoardviewViewer({
         boardData={boardData}
         highlightedNetId={highlightedNetId}
         selectedSide={selectedSide}
+        showGrid={showGrid}
+        showLabels={showLabels}
+        showPinNumbers={showPinNumbers}
+        showDiodeOverlay={showDiodeOverlay}
+        showCoordinates={showCoordinates}
+        showMeasurements={showMeasurements}
         onPartClick={handlePartClick}
         onPinClick={handlePinClick}
         width={width}
