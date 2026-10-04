@@ -106,10 +106,10 @@ export default function PixiBoardview({
       .wheel()
       .decelerate()
       .clampZoom({
-        scaleX: 0.1,
-        scaleY: 0.1,
-        maxScale: 10,
-        minScale: 0.1,
+        minWidth: 100,
+        maxWidth: 5000,
+        minHeight: 100,
+        maxHeight: 5000,
       });
 
     app.stage.addChild(viewport);

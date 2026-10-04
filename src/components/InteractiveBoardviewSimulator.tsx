@@ -775,7 +775,7 @@ const SAMSUNG_S24_ULTRA_BOARD: BoardData = (() => {
     ],
   });
 
-  // Capacitors (Bypass caps)
+  // Capacitors (Bypass caps) - increased for more realism
   const caps = [
     { id: 'C2001', x: 95, y: 90, net: 'net_vbat_main', diode: '0.410V' },
     { id: 'C2002', x: 95, y: 100, net: 'net_vbat_main', diode: '0.410V' },
@@ -783,6 +783,10 @@ const SAMSUNG_S24_ULTRA_BOARD: BoardData = (() => {
     { id: 'C2004', x: 95, y: 130, net: 'net_1v8', diode: '0.360V' },
     { id: 'C2005', x: 145, y: 90, net: 'net_vdd_cpu', diode: '0.025V' },
     { id: 'C2006', x: 155, y: 90, net: 'net_vdd_cpu', diode: '0.025V' },
+    { id: 'C2007', x: 145, y: 130, net: 'net_vdd_emmc', diode: '0.350V' },
+    { id: 'C2008', x: 155, y: 130, net: 'net_vdd_emmc', diode: '0.350V' },
+    { id: 'C2009', x: 65, y: 90, net: 'net_vbus', diode: '0.550V' },
+    { id: 'C2010', x: 65, y: 130, net: 'net_1v8', diode: '0.360V' },
   ];
 
   caps.forEach((cap) => {
@@ -805,11 +809,13 @@ const SAMSUNG_S24_ULTRA_BOARD: BoardData = (() => {
     });
   });
 
-  // Test Points
+  // Test Points - increased for more realism
   const testPoints = [
     { id: 'TP_VBAT', name: 'TP_VBAT', x: 100, y: 150, net: 'net_vbat_main', diode: '0.410V' },
     { id: 'TP_VBUS', name: 'TP_VBUS', x: 50, y: 160, net: 'net_vbus', diode: '0.550V' },
     { id: 'TP_CPU', name: 'TP_CPU', x: 145, y: 95, net: 'net_vdd_cpu', diode: '0.025V' },
+    { id: 'TP_1V8', name: 'TP_1V8', x: 60, y: 80, net: 'net_1v8', diode: '0.360V' },
+    { id: 'TP_UFS', name: 'TP_UFS', x: 170, y: 130, net: 'net_vdd_emmc', diode: '0.350V' },
   ];
 
   testPoints.forEach((tp) => {
@@ -829,6 +835,82 @@ const SAMSUNG_S24_ULTRA_BOARD: BoardData = (() => {
         { id: `${tp.id}_pin`, partId: tp.id, pinNumber: 'TP', netId: tp.net, x: 0, y: 0, radius: 1, diodeValue: tp.diode },
       ],
     });
+  });
+
+  // Add Resistors for realism
+  const resistors = [
+    { id: 'R3001', x: 70, y: 140, net: 'net_vbus', diode: '0.550V', role: 'Current Sense Resistor' },
+    { id: 'R3002', x: 90, y: 140, net: 'net_vbat_main', diode: '0.410V', role: 'Battery Sense Resistor' },
+    { id: 'R3003', x: 75, y: 85, net: 'net_1v8', diode: '0.360V', role: 'Pull-up Resistor' },
+    { id: 'R3004', x: 85, y: 85, net: 'net_1v8', diode: '0.360V', role: 'Pull-up Resistor' },
+  ];
+
+  resistors.forEach((res) => {
+    parts.push({
+      id: res.id,
+      name: `${res.id} (مقاومة)`,
+      packageType: '0402',
+      side: 'TOP',
+      x: res.x,
+      y: res.y,
+      width: 3,
+      height: 1.5,
+      rotation: 0,
+      role: res.role,
+      commonFault: 'احتراق أو تغيير قيمة',
+      pins: [
+        { id: `${res.id}_p1`, partId: res.id, pinNumber: '1', netId: res.net, x: -0.8, y: 0, radius: 0.5, shape: 'rect', diodeValue: res.diode },
+        { id: `${res.id}_p2`, partId: res.id, pinNumber: '2', netId: 'net_gnd', x: 0.8, y: 0, radius: 0.5, shape: 'rect', diodeValue: '0.000V' },
+      ],
+    });
+  });
+
+  // Add Inductors for realism
+  const inductors = [
+    { id: 'L3001', x: 110, y: 140, net: 'net_vbat_main', diode: '0.410V', role: 'Power Inductor' },
+    { id: 'L3002', x: 140, y: 110, net: 'net_vdd_cpu', diode: '0.025V', role: 'CPU Power Inductor' },
+  ];
+
+  inductors.forEach((ind) => {
+    parts.push({
+      id: ind.id,
+      name: `${ind.id} (ملف)`,
+      packageType: 'COIL',
+      side: 'TOP',
+      x: ind.x,
+      y: ind.y,
+      width: 8,
+      height: 6,
+      rotation: 0,
+      role: ind.role,
+      commonFault: 'كسر في الملف أو شورت',
+      pins: [
+        { id: `${ind.id}_p1`, partId: ind.id, pinNumber: '1', netId: ind.net, x: -3, y: 0, radius: 1, diodeValue: ind.diode },
+        { id: `${ind.id}_p2`, partId: ind.id, pinNumber: '2', netId: ind.net, x: 3, y: 0, radius: 1, diodeValue: ind.diode },
+      ],
+    });
+  });
+
+  // Add USB-C Connector
+  parts.push({
+    id: 'J5000_USBC',
+    name: 'USB-C Connector (J5000)',
+    packageType: 'CONNECTOR',
+    side: 'TOP',
+    x: 30,
+    y: 160,
+    width: 12,
+    height: 20,
+    rotation: 0,
+    role: 'منفذ الشحن USB-C',
+    commonFault: 'تلف البنات بسبب شد الكابل',
+    pins: [
+      { id: 'usbc_1', partId: 'J5000_USBC', pinNumber: '1', netId: 'net_vbus', x: 0, y: -6, radius: 0.8, diodeValue: '0.550V' },
+      { id: 'usbc_2', partId: 'J5000_USBC', pinNumber: '2', netId: 'net_vbus', x: 0, y: -3, radius: 0.8, diodeValue: '0.550V' },
+      { id: 'usbc_3', partId: 'J5000_USBC', pinNumber: '3', netId: 'net_gnd', x: 0, y: 0, radius: 0.8, diodeValue: '0.000V' },
+      { id: 'usbc_4', partId: 'J5000_USBC', pinNumber: '4', netId: 'net_1v8', x: 0, y: 3, radius: 0.8, diodeValue: '0.360V' },
+      { id: 'usbc_5', partId: 'J5000_USBC', pinNumber: '5', netId: 'net_gnd', x: 0, y: 6, radius: 0.8, diodeValue: '0.000V' },
+    ],
   });
 
   return {
@@ -1044,13 +1126,18 @@ const DELL_LATITUDE_5420_BOARD: BoardData = (() => {
     ],
   });
 
-  // Capacitors
+  // Capacitors - increased for more realism
   const caps = [
     { id: 'C3001', x: 75, y: 130, net: 'net_ppdcin', diode: '0.450V' },
     { id: 'C3002', x: 75, y: 140, net: 'net_ppdcin', diode: '0.450V' },
+    { id: 'C3003', x: 70, y: 130, net: 'net_pp3v3_s5', diode: '0.360V' },
+    { id: 'C3004', x: 70, y: 140, net: 'net_pp5v_s5', diode: '0.430V' },
     { id: 'C4001', x: 145, y: 70, net: 'net_ppvccsa', diode: '0.022V' },
     { id: 'C4002', x: 175, y: 70, net: 'net_ppvccsa', diode: '0.022V' },
     { id: 'C4003', x: 145, y: 90, net: 'net_ppvccio', diode: '0.025V' },
+    { id: 'C4004', x: 175, y: 90, net: 'net_ppvccio', diode: '0.025V' },
+    { id: 'C4005', x: 160, y: 100, net: 'net_ppvccsa', diode: '0.022V' },
+    { id: 'C4006', x: 170, y: 100, net: 'net_ppvccio', diode: '0.025V' },
   ];
 
   caps.forEach((cap) => {
@@ -1073,11 +1160,13 @@ const DELL_LATITUDE_5420_BOARD: BoardData = (() => {
     });
   });
 
-  // Test Points
+  // Test Points - increased for more realism
   const testPoints = [
     { id: 'TP_DCIN', name: 'TP_DCIN', x: 45, y: 150, net: 'net_ppdcin', diode: '0.450V' },
     { id: 'TP_3V3', name: 'TP_3V3', x: 90, y: 80, net: 'net_pp3v3_s5', diode: '0.360V' },
     { id: 'TP_VCCSA', name: 'TP_VCCSA', x: 145, y: 75, net: 'net_ppvccsa', diode: '0.022V' },
+    { id: 'TP_5V', name: 'TP_5V', x: 85, y: 90, net: 'net_pp5v_s5', diode: '0.430V' },
+    { id: 'TP_VCCIO', name: 'TP_VCCIO', x: 150, y: 95, net: 'net_ppvccio', diode: '0.025V' },
   ];
 
   testPoints.forEach((tp) => {
@@ -1095,6 +1184,61 @@ const DELL_LATITUDE_5420_BOARD: BoardData = (() => {
       commonFault: 'تآكل',
       pins: [
         { id: `${tp.id}_pin`, partId: tp.id, pinNumber: 'TP', netId: tp.net, x: 0, y: 0, radius: 1.1, diodeValue: tp.diode },
+      ],
+    });
+  });
+
+  // Add Resistors for realism
+  const resistors = [
+    { id: 'R5001', x: 50, y: 140, net: 'net_ppdcin', diode: '0.450V', role: 'Current Sense Resistor' },
+    { id: 'R5002', x: 55, y: 130, net: 'net_pp3v3_s5', diode: '0.360V', role: 'Pull-up Resistor' },
+    { id: 'R5003', x: 75, y: 85, net: 'net_pp5v_s5', diode: '0.430V', role: 'Pull-up Resistor' },
+    { id: 'R5004', x: 85, y: 85, net: 'net_pp3v3_s5', diode: '0.360V', role: 'Pull-up Resistor' },
+  ];
+
+  resistors.forEach((res) => {
+    parts.push({
+      id: res.id,
+      name: `${res.id} (مقاومة)`,
+      packageType: '0402',
+      side: 'TOP',
+      x: res.x,
+      y: res.y,
+      width: 3,
+      height: 1.5,
+      rotation: 0,
+      role: res.role,
+      commonFault: 'احتراق أو تغيير قيمة',
+      pins: [
+        { id: `${res.id}_p1`, partId: res.id, pinNumber: '1', netId: res.net, x: -0.8, y: 0, radius: 0.5, shape: 'rect', diodeValue: res.diode },
+        { id: `${res.id}_p2`, partId: res.id, pinNumber: '2', netId: 'net_gnd', x: 0.8, y: 0, radius: 0.5, shape: 'rect', diodeValue: '0.000V' },
+      ],
+    });
+  });
+
+  // Add Inductors for realism
+  const inductors = [
+    { id: 'L6001', x: 70, y: 110, net: 'net_ppdcin', diode: '0.450V', role: 'Main Power Inductor' },
+    { id: 'L6002', x: 155, y: 75, net: 'net_ppvccsa', diode: '0.022V', role: 'CPU Power Inductor' },
+    { id: 'L6003', x: 165, y: 95, net: 'net_ppvccio', diode: '0.025V', role: 'CPU IO Power Inductor' },
+  ];
+
+  inductors.forEach((ind) => {
+    parts.push({
+      id: ind.id,
+      name: `${ind.id} (ملف)`,
+      packageType: 'COIL',
+      side: 'TOP',
+      x: ind.x,
+      y: ind.y,
+      width: 10,
+      height: 7,
+      rotation: 0,
+      role: ind.role,
+      commonFault: 'كسر في الملف أو شورت',
+      pins: [
+        { id: `${ind.id}_p1`, partId: ind.id, pinNumber: '1', netId: ind.net, x: -4, y: 0, radius: 1.2, diodeValue: ind.diode },
+        { id: `${ind.id}_p2`, partId: ind.id, pinNumber: '2', netId: ind.net, x: 4, y: 0, radius: 1.2, diodeValue: ind.diode },
       ],
     });
   });
