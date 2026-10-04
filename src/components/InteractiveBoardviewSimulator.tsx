@@ -720,6 +720,13 @@ export default function InteractiveBoardviewSimulator() {
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Debug: Log board data changes
+  useEffect(() => {
+    console.log('Board data changed:', boardData);
+    console.log('Parts count:', boardData.parts.length);
+    console.log('Nets count:', Object.keys(boardData.nets).length);
+  }, [boardData.id]);
+
   // المكون والمسار النشط
   const activeNet = boardData.nets[selectedNetId] || Object.values(boardData.nets)[0];
   const selectedPart = boardData.parts.find((p) => p.id === selectedPartId) || boardData.parts[0];
@@ -1785,9 +1792,18 @@ export default function InteractiveBoardviewSimulator() {
               onPartClick={(part) => {
                 // تحويل من ParsedBoardPart إلى BoardPart إذا لزم الأمر
                 console.log('Part clicked in Pixi:', part);
+                const boardPart = boardData.parts.find((p) => p.id === part.id);
+                if (boardPart) {
+                  zoomToPart(boardPart);
+                }
               }}
               onPinClick={(pin) => {
                 console.log('Pin clicked in Pixi:', pin);
+                const boardPart = boardData.parts.find((p) => p.id === pin.partId);
+                if (boardPart) {
+                  setSelectedPartId(boardPart.id);
+                  setSelectedNetId(pin.netId);
+                }
               }}
             />
           ) : (

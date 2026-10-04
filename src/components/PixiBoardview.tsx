@@ -96,11 +96,15 @@ export default function PixiBoardview({
   useEffect(() => {
     if (viewportRef.current && boardData) {
       const viewport = viewportRef.current;
-      viewport.fitWidth(boardData.width, false);
-      viewport.fitHeight(boardData.height, false);
+      // Center the board in the viewport
       viewport.moveCenter(boardData.width / 2, boardData.height / 2);
+      // Set zoom to fit
+      const scaleX = width / boardData.width;
+      const scaleY = height / boardData.height;
+      const zoom = Math.min(scaleX, scaleY) * 0.8;
+      viewport.setZoom(zoom);
     }
-  }, [boardData]);
+  }, [boardData, width, height]);
 
   // Render board content
   useEffect(() => {

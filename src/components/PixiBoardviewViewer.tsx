@@ -30,15 +30,16 @@ export default function PixiBoardviewViewer({
 
   // Update board data when initialBoardData changes (use ID to detect actual board change)
   useEffect(() => {
-    if (initialBoardData && initialBoardData.id !== boardData?.id) {
+    if (initialBoardData) {
       setBoardData(initialBoardData);
-      setHighlightedNetId(selectedNetId || null);
     }
-  }, [initialBoardData?.id, selectedNetId]);
+  }, [initialBoardData?.id, initialBoardData]);
 
   // Update highlighted net when selectedNetId changes
   useEffect(() => {
-    setHighlightedNetId(selectedNetId || null);
+    if (selectedNetId !== undefined) {
+      setHighlightedNetId(selectedNetId || null);
+    }
   }, [selectedNetId]);
 
   const handlePartClick = useCallback((part: ParsedBoardPart) => {
@@ -54,8 +55,20 @@ export default function PixiBoardviewViewer({
     return null;
   }
 
+  // محرك عرض WebGL فقط - بدون أي واجهة UI
+  if (!boardData) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-gray-900 text-gray-400">
+        <div className="text-center">
+          <p className="text-lg mb-2">No board data loaded</p>
+          <p className="text-sm">Select a board from the dropdown to view it</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full h-full relative overflow-hidden">
+    <div className="w-full h-full relative overflow-hidden bg-gray-900">
       <PixiBoardview
         boardData={boardData}
         highlightedNetId={highlightedNetId}

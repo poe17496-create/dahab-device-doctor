@@ -337,15 +337,59 @@ export function convertToRenderData(boardData: ParsedBoardData) {
  * This bridges the gap between the old mock data and the new parser format
  */
 export function convertBoardDataToParsed(boardData: any): ParsedBoardData {
-  return {
+  console.log('Converting board data:', boardData);
+
+  // Convert nets
+  const convertedNets: Record<string, ParsedBoardNet> = {};
+  if (boardData.nets) {
+    Object.entries(boardData.nets).forEach(([key, net]: [string, any]) => {
+      convertedNets[key] = {
+        id: net.id || key,
+        name: net.name || key,
+        voltage: net.voltage || '0V',
+        diodeMode: net.diodeMode || '0.000V',
+        color: net.color || '#64748b',
+        description: net.description || '',
+        isGround: net.isGround || false,
+        isPower: net.isPower || false,
+        safeInjectionVoltage: net.safeInjectionVoltage,
+      };
+    });
+  }
+
+  // Convert parts
+  const convertedParts: ParsedBoardPart[] = [];
+  if (boardData.parts) {
+    boardData.parts.forEach((part: any) => {
+      convertedParts.push({
+        id: part.id,
+        name: part.name,
+        packageType: part.packageType || 'OTHER',
+        side: part.side || 'TOP',
+        x: part.x,
+        y: part.y,
+        width: part.width,
+        height: part.height,
+        rotation: part.rotation || 0,
+        role: part.role || '',
+        commonFault: part.commonFault || '',
+        pins: part.pins || [],
+      });
+    });
+  }
+
+  const result = {
     id: boardData.id || 'unknown',
     title: boardData.title || 'Unknown Board',
     deviceModel: boardData.deviceModel || 'Unknown Model',
     width: boardData.width || 1000,
     height: boardData.height || 1000,
     layersCount: boardData.layersCount || 2,
-    nets: boardData.nets || {},
-    parts: boardData.parts || [],
+    nets: convertedNets,
+    parts: convertedParts,
     outlinePoints: boardData.outlinePoints,
   };
+
+  console.log('Converted board data:', result);
+  return result;
 }
