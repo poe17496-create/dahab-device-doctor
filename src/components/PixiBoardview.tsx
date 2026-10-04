@@ -87,17 +87,20 @@ export default function PixiBoardview({
     app.stage.addChild(viewport);
     viewportRef.current = viewport;
 
-    // Fit board to view
-    if (boardData) {
+    return () => {
+      app.destroy(true, { children: true });
+    };
+  }, [width, height]);
+
+  // Fit board to view when board data changes
+  useEffect(() => {
+    if (viewportRef.current && boardData) {
+      const viewport = viewportRef.current;
       viewport.fitWidth(boardData.width, false);
       viewport.fitHeight(boardData.height, false);
       viewport.moveCenter(boardData.width / 2, boardData.height / 2);
     }
-
-    return () => {
-      app.destroy(true, { children: true });
-    };
-  }, [width, height, boardData]);
+  }, [boardData]);
 
   // Render board content
   useEffect(() => {
@@ -134,15 +137,16 @@ export default function PixiBoardview({
     }
     viewport.addChild(boardGraphics);
 
-    // Draw parts
-    renderData.parts.forEach((part: ParsedBoardPart) => {
+    // Draw parts (limit to 500 for performance)
+    const partsToRender = renderData.parts.slice(0, 500);
+    partsToRender.forEach((part: ParsedBoardPart) => {
       const partGraphics = new Graphics();
       const isSelected = selectedPart?.id === part.id;
       const isDimmed = highlightedNetId !== null;
       const alpha = isDimmed ? 0.2 : 0.8;
       const color = isSelected ? 0xff6b6b : 0x4a9eff;
 
-      partGraphics.beginFill(color, Math.max(alpha, 0.01));
+      partGraphics.beginFill(color, alpha);
       partGraphics.lineStyle(1, color, 1);
       partGraphics.drawRect(
         part.x - part.width / 2,
@@ -180,10 +184,10 @@ export default function PixiBoardview({
         const isHighlighted = highlightedNetId === pin.netId;
         const isDimmed = highlightedNetId !== null && highlightedNetId !== pin.netId;
         const alpha = isDimmed ? 0.1 : isHighlighted ? 1 : 0.6;
-        const color = isHighlighted ? 0xff0000 : parseInt(pin.netColor.replace('#', ''), 16);
+        const color = isHighlighted ? 0xff0000 : parseInt(pin.netColor.replace('#', ''), 16) || 0x4a9eff;
 
-        pinGraphics.beginFill(color, Math.max(alpha, 0.01));
-        pinGraphics.lineStyle(isHighlighted ? 2 : 1, color, Math.max(alpha, 0.01));
+        pinGraphics.beginFill(color, alpha);
+        pinGraphics.lineStyle(isHighlighted ? 2 : 1, color, alpha);
 
         if (pin.shape === 'rect') {
           pinGraphics.drawRect(pin.absoluteX - pin.radius, pin.absoluteY - pin.radius, pin.radius * 2, pin.radius * 2);
