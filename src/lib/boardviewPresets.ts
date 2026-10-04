@@ -598,6 +598,76 @@ export function buildSamsungS24UltraBoard(): BoardData {
         return { netId: 'net_gnd', diode: '0.000V' };
       }),
     },
+    // Add UFS Storage
+    {
+      id: 'U400_UFS',
+      name: 'UFS 4.0 512GB Storage',
+      packageType: 'BGA',
+      side: 'TOP',
+      x: 160,
+      y: 105,
+      width: 18,
+      height: 16,
+      rotation: 0,
+      role: 'ذاكرة التخزين السريعة UFS 4.0',
+      commonFault: 'تلف بسبب سقوط أو دخول سوائل - خطأ 4013',
+      pins: createBgaPins('U400_UFS', 5, 5, 2.1, (r) => {
+        if (r < 2) return { netId: 'net_vsys', diode: '0.385V' };
+        return { netId: 'net_gnd', diode: '0.000V' };
+      }),
+    },
+    // Add capacitors
+    {
+      id: 'C1001',
+      name: 'C1001 (Bypass Cap)',
+      packageType: '0402',
+      side: 'TOP',
+      x: 85,
+      y: 90,
+      width: 4,
+      height: 2.5,
+      rotation: 0,
+      role: 'مكثف تنعيم على VSYS',
+      commonFault: 'انهيار عازلية وشورت',
+      pins: [
+        { id: 'c1001_p1', partId: 'C1001', pinNumber: '1', netId: 'net_vsys', x: -1.2, y: 0, radius: 0.6, shape: 'rect', diodeValue: '0.385V' },
+        { id: 'c1001_p2', partId: 'C1001', pinNumber: '2', netId: 'net_gnd', x: 1.2, y: 0, radius: 0.6, shape: 'rect', diodeValue: '0.000V' },
+      ],
+    },
+    {
+      id: 'C1002',
+      name: 'C1002 (Bypass Cap)',
+      packageType: '0402',
+      side: 'TOP',
+      x: 85,
+      y: 120,
+      width: 4,
+      height: 2.5,
+      rotation: 0,
+      role: 'مكثف تنعيم على CPU Core',
+      commonFault: 'انهيار عازلية وشورت',
+      pins: [
+        { id: 'c1002_p1', partId: 'C1002', pinNumber: '1', netId: 'net_snapdragon_core', x: -1.2, y: 0, radius: 0.6, shape: 'rect', diodeValue: '0.019V' },
+        { id: 'c1002_p2', partId: 'C1002', pinNumber: '2', netId: 'net_gnd', x: 1.2, y: 0, radius: 0.6, shape: 'rect', diodeValue: '0.000V' },
+      ],
+    },
+    {
+      id: 'C1003',
+      name: 'C1003 (Bypass Cap)',
+      packageType: '0402',
+      side: 'TOP',
+      x: 145,
+      y: 90,
+      width: 4,
+      height: 2.5,
+      rotation: 0,
+      role: 'مكثف تنعيم على VREG_L5A',
+      commonFault: 'انهيار عازلية وشورت',
+      pins: [
+        { id: 'c1003_p1', partId: 'C1003', pinNumber: '1', netId: 'net_vreg_l5a', x: -1.2, y: 0, radius: 0.6, shape: 'rect', diodeValue: '0.350V' },
+        { id: 'c1003_p2', partId: 'C1003', pinNumber: '2', netId: 'net_gnd', x: 1.2, y: 0, radius: 0.6, shape: 'rect', diodeValue: '0.000V' },
+      ],
+    },
   ];
 
   return {

@@ -245,8 +245,8 @@ export default function PixiBoardview({
       }
     }
 
-    // Draw parts (limit to 500 for performance)
-    const partsToRender = renderData.parts.slice(0, 500);
+    // Draw parts (no limit - render all parts)
+    const partsToRender = renderData.parts;
     console.log('Rendering', partsToRender.length, 'parts in PixiJS');
     partsToRender.forEach((part: ParsedBoardPart) => {
       const partGraphics = new Graphics();
@@ -315,9 +315,8 @@ export default function PixiBoardview({
       }
     });
 
-    // Draw pins (only if not too many to avoid performance issues)
-    if (renderData.pins.length < 10000) {
-      renderData.pins.forEach((pin: ParsedBoardPin & { absoluteX: number; absoluteY: number; netColor: string }) => {
+    // Draw pins (render all pins)
+    renderData.pins.forEach((pin: ParsedBoardPin & { absoluteX: number; absoluteY: number; netColor: string }) => {
         const pinGraphics = new Graphics();
         const isHighlighted = highlightedNetId === pin.netId;
         const isDimmed = highlightedNetId !== null && highlightedNetId !== pin.netId;
@@ -375,7 +374,6 @@ export default function PixiBoardview({
 
         viewport.addChild(pinGraphics);
       });
-    }
 
   }, [renderData, highlightedNetId, selectedPart, showGrid, showLabels, showPinNumbers, showDiodeOverlay, showCoordinates, showMeasurements]);
 

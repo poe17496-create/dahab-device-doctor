@@ -1269,7 +1269,7 @@ export default function InteractiveBoardviewSimulator() {
   const { setBoardData: ctxSetBoardData } = useDiagnosticContext();
 
   // الحالات الأساسية
-  const [boardData, setBoardData] = useState<BoardData>(IPHONE_15_PRO_MAX_BOARD);
+  const [boardData, setBoardData] = useState<BoardData>(SAMSUNG_S24_ULTRA_BOARD);
   const [selectedSide, setSelectedSide] = useState<BoardSide>('TOP');
   const [selectedNetId, setSelectedNetId] = useState<string>('net_vdd_main');
   const [selectedPartId, setSelectedPartId] = useState<string>('U1000_SOC');
@@ -1965,7 +1965,7 @@ export default function InteractiveBoardviewSimulator() {
           nextBoard = buildIphone11ProMaxBoard();
           break;
         case 'samsung_s24_ultra':
-          nextBoard = buildSamsungS24UltraBoard();
+          nextBoard = SAMSUNG_S24_ULTRA_BOARD;
           break;
         case 'samsung_a54_5g':
           nextBoard = buildSamsungA54Board();
@@ -1981,6 +1981,9 @@ export default function InteractiveBoardviewSimulator() {
           break;
         case 'macbook_intel_a1708':
           nextBoard = buildMacBookIntelA1708Board();
+          break;
+        case 'dell_latitude_5420':
+          nextBoard = DELL_LATITUDE_5420_BOARD;
           break;
         case 'dell_xps_latitude':
           nextBoard = buildDellXpsBoard();
