@@ -699,6 +699,7 @@ export default function InteractiveBoardviewSimulator() {
 
   // مراجع الـ container
   const containerRef = useRef<HTMLDivElement>(null);
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // المكون والمسار النشط
@@ -768,7 +769,7 @@ export default function InteractiveBoardviewSimulator() {
     if (part.pins.length > 0) {
       setSelectedNetId(part.pins[0].netId);
     }
-    const container = containerRef.current;
+    const container = canvasContainerRef.current;
     if (container) {
       const cw = container.clientWidth;
       const ch = container.clientHeight;
@@ -1740,11 +1741,15 @@ export default function InteractiveBoardviewSimulator() {
       {/* 4. مساحة العمل: الكانفاس + اللوحة الجانبية لفحص المكون */}
       <div className="flex-1 flex flex-col lg:grid lg:grid-cols-12 relative min-h-0 overflow-hidden">
         {/* منطقة الكانفاس التفاعلي — يملأ كامل الشاشة على الموبايل */}
-        <div className="flex-1 lg:col-span-8 xl:col-span-9 relative bg-[#0a0f1d] overflow-hidden select-none" style={{ minHeight: 0 }}>
+        <div
+          ref={canvasContainerRef}
+          className="flex-1 lg:col-span-8 xl:col-span-9 relative bg-[#0a0f1d] overflow-hidden select-none"
+          style={{ minHeight: 0 }}
+        >
           {usePixiRenderer ? (
             <PixiBoardviewViewer
-              width={containerRef.current?.clientWidth || 1000}
-              height={containerRef.current?.clientHeight || 800}
+              width={canvasContainerRef.current?.clientWidth || 1000}
+              height={canvasContainerRef.current?.clientHeight || 800}
               initialBoardData={convertBoardDataToParsed(boardData)}
               selectedNetId={selectedNetId}
               onPartClick={(part) => {
@@ -1773,8 +1778,8 @@ export default function InteractiveBoardviewSimulator() {
                 setIsDragging(false);
                 setPan({ x: e.target.x(), y: e.target.y() });
               }}
-              containerWidth={containerRef.current?.clientWidth || 1000}
-              containerHeight={containerRef.current?.clientHeight || 800}
+              containerWidth={canvasContainerRef.current?.clientWidth || 1000}
+              containerHeight={canvasContainerRef.current?.clientHeight || 800}
               onPartClick={zoomToPart}
               onPinHover={(pin, part) => {
                 if (pin && part) {
