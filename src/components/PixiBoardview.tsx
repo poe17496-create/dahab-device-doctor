@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Application, Graphics, FederatedPointerEvent } from 'pixi.js';
+import { Application, Graphics, FederatedPointerEvent, Text as PixiText } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import {
   ParsedBoardData,
@@ -17,6 +17,7 @@ import {
 interface PixiBoardviewProps {
   boardData: ParsedBoardData | null;
   highlightedNetId?: string | null;
+  selectedSide?: 'TOP' | 'BOTTOM';
   onPartClick?: (part: ParsedBoardPart) => void;
   onPinClick?: (pin: ParsedBoardPin) => void;
   width?: number;
@@ -26,6 +27,7 @@ interface PixiBoardviewProps {
 export default function PixiBoardview({
   boardData,
   highlightedNetId = null,
+  selectedSide = 'TOP',
   onPartClick,
   onPinClick,
   width = 800,
@@ -41,9 +43,19 @@ export default function PixiBoardview({
   useEffect(() => {
     if (boardData) {
       const data = convertToRenderData(boardData);
-      setRenderData(data);
+      // Filter parts by selected side
+      const filteredParts = data.parts.filter((part: ParsedBoardPart) => part.side === selectedSide);
+      const filteredPins = data.pins.filter((pin: any) => {
+        const part = filteredParts.find((p: ParsedBoardPart) => p.id === pin.partId);
+        return part !== undefined;
+      });
+      setRenderData({
+        ...data,
+        parts: filteredParts,
+        pins: filteredPins,
+      });
     }
-  }, [boardData]);
+  }, [boardData, selectedSide]);
 
   // Initialize PixiJS application
   useEffect(() => {
@@ -111,7 +123,7 @@ export default function PixiBoardview({
     if (!viewportRef.current || !renderData) return;
 
     const viewport = viewportRef.current;
-    
+
     // Clear existing content with proper cleanup
     while (viewport.children.length > 0) {
       const child = viewport.children[0];
@@ -140,6 +152,56 @@ export default function PixiBoardview({
       boardGraphics.drawRect(0, 0, renderData.board.width, renderData.board.height);
     }
     viewport.addChild(boardGraphics);
+
+    // Draw Grid Lines
+    if (renderData.board.width > 0 && renderData.board.height > 0) {
+      const gridGraphics = new Graphics();
+      gridGraphics.lineStyle(0.5, 0x334155, 0.25);
+
+      const gridSize = 20;
+      for (let x = 0; x <= renderData.board.width; x += gridSize) {
+        gridGraphics.moveTo(x, 0);
+        gridGraphics.lineTo(x, renderData.board.height);
+      }
+      for (let y = 0; y <= renderData.board.height; y += gridSize) {
+        gridGraphics.moveTo(0, y);
+        gridGraphics.lineTo(renderData.board.width, y);
+      }
+      viewport.addChild(gridGraphics);
+    }
+
+    // Draw Flight Lines (Animated) if highlighted net
+    if (highlightedNetId && renderData.pins.length > 0) {
+      const connectedPins = renderData.pins.filter((p: any) => p.netId === highlightedNetId);
+      if (connectedPins.length > 1) {
+        const flightGraphics = new Graphics();
+        const netColor = parseInt(
+          renderData.nets[highlightedNetId]?.color?.replace('#', '') || '4a9eff',
+          16
+        ) || 0x4a9eff;
+
+        // Draw glow effect
+        flightGraphics.lineStyle(5, netColor, 0.27);
+        for (let i = 0; i < connectedPins.length - 1; i++) {
+          const p1 = connectedPins[i];
+          const p2 = connectedPins[i + 1];
+          flightGraphics.moveTo(p1.absoluteX, p1.absoluteY);
+          flightGraphics.lineTo(p2.absoluteX, p2.absoluteY);
+        }
+        viewport.addChild(flightGraphics);
+
+        // Draw animated line (PixiJS doesn't support lineDash directly, use solid line)
+        const animatedLineGraphics = new Graphics();
+        animatedLineGraphics.lineStyle(1.8, netColor, 1);
+        for (let i = 0; i < connectedPins.length - 1; i++) {
+          const p1 = connectedPins[i];
+          const p2 = connectedPins[i + 1];
+          animatedLineGraphics.moveTo(p1.absoluteX, p1.absoluteY);
+          animatedLineGraphics.lineTo(p2.absoluteX, p2.absoluteY);
+        }
+        viewport.addChild(animatedLineGraphics);
+      }
+    }
 
     // Draw parts (limit to 500 for performance)
     const partsToRender = renderData.parts.slice(0, 500);
@@ -179,6 +241,20 @@ export default function PixiBoardview({
       });
 
       viewport.addChild(partGraphics);
+
+      // Component Label
+      if (part.name) {
+        const labelText = new PixiText(part.name.split(' ')[0], {
+          fontSize: 12,
+          fill: isSelected ? 0xf59e0b : 0xcbd5e1,
+          fontWeight: 'bold',
+          fontFamily: 'monospace',
+        });
+        labelText.anchor.set(0.5, 0);
+        labelText.x = part.x;
+        labelText.y = part.y + part.height / 2 + 5;
+        viewport.addChild(labelText);
+      }
     });
 
     // Draw pins (only if not too many to avoid performance issues)

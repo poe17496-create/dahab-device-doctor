@@ -1789,6 +1789,7 @@ export default function InteractiveBoardviewSimulator() {
               height={canvasContainerRef.current?.clientHeight || 800}
               initialBoardData={convertBoardDataToParsed(boardData)}
               selectedNetId={selectedNetId}
+              selectedSide={selectedSide}
               onPartClick={(part) => {
                 // تحويل من ParsedBoardPart إلى BoardPart إذا لزم الأمر
                 console.log('Part clicked in Pixi:', part);

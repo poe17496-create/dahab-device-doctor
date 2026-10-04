@@ -13,6 +13,7 @@ interface PixiBoardviewViewerProps {
   height?: number;
   initialBoardData?: ParsedBoardData | null;
   selectedNetId?: string;
+  selectedSide?: 'TOP' | 'BOTTOM';
   onPartClick?: (part: ParsedBoardPart) => void;
   onPinClick?: (pin: ParsedBoardPin) => void;
 }
@@ -22,6 +23,7 @@ export default function PixiBoardviewViewer({
   height = 800,
   initialBoardData = null,
   selectedNetId,
+  selectedSide = 'TOP',
   onPartClick,
   onPinClick,
 }: PixiBoardviewViewerProps) {
@@ -72,6 +74,7 @@ export default function PixiBoardviewViewer({
       <PixiBoardview
         boardData={boardData}
         highlightedNetId={highlightedNetId}
+        selectedSide={selectedSide}
         onPartClick={handlePartClick}
         onPinClick={handlePinClick}
         width={width}
