@@ -103,8 +103,14 @@ export default function PixiBoardview({
 
     const viewport = viewportRef.current;
     
-    // Clear existing content
-    viewport.removeChildren();
+    // Clear existing content with proper cleanup
+    while (viewport.children.length > 0) {
+      const child = viewport.children[0];
+      if (child.destroy) {
+        child.destroy({ children: true });
+      }
+      viewport.removeChild(child);
+    }
 
     // Draw board outline
     const boardGraphics = new Graphics();
@@ -165,39 +171,41 @@ export default function PixiBoardview({
       viewport.addChild(partGraphics);
     });
 
-    // Draw pins
-    renderData.pins.forEach((pin: ParsedBoardPin & { absoluteX: number; absoluteY: number; netColor: string }) => {
-      const pinGraphics = new Graphics();
-      const isHighlighted = highlightedNetId === pin.netId;
-      const isDimmed = highlightedNetId !== null && highlightedNetId !== pin.netId;
-      const alpha = isDimmed ? 0.1 : isHighlighted ? 1 : 0.6;
-      const color = isHighlighted ? 0xff0000 : parseInt(pin.netColor.replace('#', ''), 16);
+    // Draw pins (only if not too many to avoid performance issues)
+    if (renderData.pins.length < 10000) {
+      renderData.pins.forEach((pin: ParsedBoardPin & { absoluteX: number; absoluteY: number; netColor: string }) => {
+        const pinGraphics = new Graphics();
+        const isHighlighted = highlightedNetId === pin.netId;
+        const isDimmed = highlightedNetId !== null && highlightedNetId !== pin.netId;
+        const alpha = isDimmed ? 0.1 : isHighlighted ? 1 : 0.6;
+        const color = isHighlighted ? 0xff0000 : parseInt(pin.netColor.replace('#', ''), 16);
 
-      pinGraphics.beginFill(color, alpha);
-      pinGraphics.lineStyle(isHighlighted ? 2 : 1, color, alpha);
+        pinGraphics.beginFill(color, alpha);
+        pinGraphics.lineStyle(isHighlighted ? 2 : 1, color, alpha);
 
-      if (pin.shape === 'rect') {
-        pinGraphics.drawRect(pin.absoluteX - pin.radius, pin.absoluteY - pin.radius, pin.radius * 2, pin.radius * 2);
-      } else {
-        pinGraphics.drawCircle(pin.absoluteX, pin.absoluteY, pin.radius);
-      }
-      pinGraphics.endFill();
-
-      // Pin 1 indicator
-      if (pin.isPin1) {
-        pinGraphics.beginFill(0xffffff, 1);
-        pinGraphics.drawCircle(pin.absoluteX, pin.absoluteY, pin.radius * 0.5);
+        if (pin.shape === 'rect') {
+          pinGraphics.drawRect(pin.absoluteX - pin.radius, pin.absoluteY - pin.radius, pin.radius * 2, pin.radius * 2);
+        } else {
+          pinGraphics.drawCircle(pin.absoluteX, pin.absoluteY, pin.radius);
+        }
         pinGraphics.endFill();
-      }
 
-      pinGraphics.eventMode = 'static';
-      pinGraphics.cursor = 'pointer';
-      pinGraphics.on('pointerdown', () => {
-        onPinClick?.(pin);
+        // Pin 1 indicator
+        if (pin.isPin1) {
+          pinGraphics.beginFill(0xffffff, 1);
+          pinGraphics.drawCircle(pin.absoluteX, pin.absoluteY, pin.radius * 0.5);
+          pinGraphics.endFill();
+        }
+
+        pinGraphics.eventMode = 'static';
+        pinGraphics.cursor = 'pointer';
+        pinGraphics.on('pointerdown', () => {
+          onPinClick?.(pin);
+        });
+
+        viewport.addChild(pinGraphics);
       });
-
-      viewport.addChild(pinGraphics);
-    });
+    }
 
   }, [renderData, highlightedNetId, selectedPart, onPartClick, onPinClick]);
 

@@ -42,12 +42,16 @@ export default function PixiBoardviewViewer({
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Update board data when initialBoardData changes
+  // Update board data when initialBoardData changes (use ID to detect actual board change)
   useEffect(() => {
-    if (initialBoardData) {
+    if (initialBoardData && initialBoardData.id !== boardData?.id) {
       setBoardData(initialBoardData);
+      setSelectedPart(null);
+      setSelectedPin(null);
+      setHighlightedNetId(null);
+      setSearchQuery('');
     }
-  }, [initialBoardData]);
+  }, [initialBoardData?.id]);
 
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];

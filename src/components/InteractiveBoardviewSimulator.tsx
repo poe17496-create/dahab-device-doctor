@@ -631,7 +631,7 @@ export default function InteractiveBoardviewSimulator() {
   const [showPartLabels, setShowPartLabels] = useState(true);
   const [showPinNumbers, setShowPinNumbers] = useState(false);
   const [highContrastMode, setHighContrastMode] = useState(false);
-  const [usePixiRenderer, setUsePixiRenderer] = useState(false);
+  const [usePixiRenderer, setUsePixiRenderer] = useState(true); // تفعيل PixiJS افتراضياً
 
   // بوردات ومخططات السحابة المرفوعة
   const [cloudBoards, setCloudBoards] = useState<BoardData[]>([]);
