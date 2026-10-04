@@ -38,3 +38,5 @@ next-env.d.ts
 *.md
 !README.md
 !SETUP_GUIDE.md
+!HARDWARE_BOARD_VIEWER_GUIDE.md
+!CLEANUP_SUMMARY.md

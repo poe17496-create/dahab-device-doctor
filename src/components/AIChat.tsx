@@ -69,7 +69,7 @@ interface AIChatProps {
 }
 
 export default function AIChat({ currentUser }: AIChatProps) {
-  const { deviceModel, specialty, readings, metrics, boardData, calculatorContext, checklistProgress } = useDiagnosticContext();
+  const { deviceModel, specialty, readings, metrics, calculatorContext, checklistProgress } = useDiagnosticContext();
 
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     if (typeof window !== 'undefined') {
@@ -375,17 +375,12 @@ export default function AIChat({ currentUser }: AIChatProps) {
         content: m.content,
       }));
 
-      // إضافة سياق التشخيص والبوردفيو
+      // إضافة سياق التشخيص
       const diagnosticContext = {
         deviceModel: deviceModel || 'غير محدد',
         specialty,
         readings,
         metrics,
-        boardData: boardData ? {
-          title: boardData.title,
-          deviceModel: boardData.deviceModel,
-          partsCount: boardData.parts?.length || 0,
-        } : null,
         calculatorContext: calculatorContext || null,
         checklistProgress: checklistProgress || null,
       };

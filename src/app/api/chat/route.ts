@@ -197,9 +197,6 @@ async function chatHandler(req: NextRequest) {
     if (diagnosticContext.metrics) {
       contextInfo += `نتائج التشخيص: ${JSON.stringify(diagnosticContext.metrics)}\n`;
     }
-    if (diagnosticContext.boardData) {
-      contextInfo += `بيانات البوردفيو: ${diagnosticContext.boardData.title} (${diagnosticContext.boardData.deviceModel})\n`;
-    }
     if (diagnosticContext.calculatorContext) {
       contextInfo += `حاسبة حقن الفولت:\n`;
       contextInfo += `- المسار المختار: ${diagnosticContext.calculatorContext.selectedRail}\n`;
@@ -238,24 +235,12 @@ async function chatHandler(req: NextRequest) {
       const extractedComponents = extractComponentsFromText(message || '');
 
       if (symptoms.length > 0 || deviceModel || extractedComponents.length > 0) {
-        // Use enhanced prompt with schematic analysis if board data is available
-        if (diagnosticContext.boardData) {
-          const schematicData = `${diagnosticContext.boardData.title} ${extractedComponents.join(' ')}`;
-          expertSystemContext = await buildEnhancedPrompt(
-            deviceBrand,
-            deviceModel,
-            symptoms,
-            schematicData,
-            message || ''
-          );
-        } else {
-          expertSystemContext = await buildExpertSystemPrompt(
+        expertSystemContext = await buildExpertSystemPrompt(
             deviceBrand,
             deviceModel,
             symptoms,
             message || ''
           );
-        }
       }
     } catch (error) {
       console.error('Error fetching expert system data:', error);

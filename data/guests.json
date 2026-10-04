@@ -1,5 +1,29 @@
 [
   {
+    "id": "guest_1791146645362",
+    "createdAt": "2026-10-04T20:44:05.465Z",
+    "lastSeenAt": "2026-10-04T20:48:36.278Z",
+    "deviceInfo": "Win32 - Desktop",
+    "diagnosesCount": 0,
+    "remainingTrials": 2
+  },
+  {
+    "id": "guest_1791146591880",
+    "createdAt": "2026-10-04T20:43:16.313Z",
+    "lastSeenAt": "2026-10-04T22:12:50.845Z",
+    "deviceInfo": "Win32 - Desktop",
+    "diagnosesCount": 0,
+    "remainingTrials": 2
+  },
+  {
+    "id": "unknown",
+    "createdAt": "2026-10-04T20:35:58.437Z",
+    "lastSeenAt": "2026-10-04T20:40:19.723Z",
+    "deviceInfo": "Web Browser",
+    "diagnosesCount": 0,
+    "remainingTrials": 3
+  },
+  {
     "id": "guest_1790961047445",
     "createdAt": "2026-10-02T17:10:47.919Z",
     "lastSeenAt": "2026-10-02T17:27:17.831Z",

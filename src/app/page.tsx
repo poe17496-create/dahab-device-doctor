@@ -10,7 +10,6 @@ import InteractiveChecklist from '@/components/InteractiveChecklist';
 import SourcesReferences from '@/components/SourcesReferences';
 import PanicLogAnalyzer from '@/components/PanicLogAnalyzer';
 import SafeInjectionCalculator from '@/components/SafeInjectionCalculator';
-import InteractiveBoardviewSimulator from '@/components/InteractiveBoardviewSimulator';
 import ICEncyclopediaTab from '@/components/ICEncyclopediaTab';
 import SchematicIntegrationReport from '@/components/SchematicIntegrationReport';
 import NavigationSidebar from '@/components/NavigationSidebar';
@@ -45,13 +44,13 @@ export type MasterTab =
   | 'memory'
   | 'panic-log'
   | 'safe-injection'
-  | 'boardview'
   | 'ic-encyclopedia'
   | 'checklist'
   | 'references'
   | 'integration'
   | 'ai-chat'
-  | 'ecosystem';
+  | 'ecosystem'
+  | 'boardview';
 
 export default function DahabFixAiConsole() {
   const diagnosticContext = useDiagnosticContext();
@@ -64,8 +63,6 @@ export default function DahabFixAiConsole() {
     setReadings: ctxSetReadings,
     metrics: ctxMetrics,
     setMetrics: ctxSetMetrics,
-    boardData: ctxBoardData,
-    setBoardData: ctxSetBoardData,
     recordDiagnosis,
   } = diagnosticContext;
 
@@ -655,8 +652,6 @@ export default function DahabFixAiConsole() {
                     onDiagnose={handleDiagnose}
                     loadingMessage={loadingMessage}
                     validationError={validationError}
-                    boardData={ctxBoardData}
-                    setBoardData={ctxSetBoardData}
                   />
 
                   {metrics && (
@@ -767,7 +762,6 @@ export default function DahabFixAiConsole() {
               {/* التبويبات الأخرى (تظهر نظيفة بالكامل بدون أي ازدحام بالأسفل) */}
               {activeTab === 'panic-log' && <PanicLogAnalyzer />}
               {activeTab === 'safe-injection' && <SafeInjectionCalculator />}
-              {activeTab === 'boardview' && <InteractiveBoardviewSimulator />}
               {activeTab === 'ic-encyclopedia' && <ICEncyclopediaTab />}
               {activeTab === 'checklist' && <InteractiveChecklist />}
               {activeTab === 'references' && <SourcesReferences sources={sources} />}
@@ -791,6 +785,30 @@ export default function DahabFixAiConsole() {
                   </p>
                 </div>
               )}
+              {/* تبويب معمل البوردفيو والمسارات */}
+              {activeTab === 'boardview' && (
+                <div className="w-full h-[calc(100dvh-150px)] md:h-[calc(100dvh-115px)] lg:h-[calc(100dvh-105px)] flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl">
+                  <div className="text-center space-y-6 max-w-lg px-8">
+                    <div className="text-7xl">🔬</div>
+                    <h2 className="text-3xl font-bold text-white mb-2">معمل البوردفيو والمسارات</h2>
+                    <p className="text-gray-400 text-lg mb-4">
+                      Laboratory for Board View and Net Traces
+                    </p>
+                    <div className="space-y-3">
+                      <p className="text-gray-300 text-sm">
+                        اضغط على الزر أدناه لفتح معمل البوردفيو في نافذة جديدة
+                      </p>
+                      <button
+                        onClick={() => window.open('/boardview', '_blank')}
+                        className="w-full px-8 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:from-emerald-700 hover:to-teal-700 transition-all font-bold text-lg shadow-lg"
+                      >
+                        فتح معمل البوردفيو 🔬
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* تبويب المساعد الذكي - يأخذ كامل ارتفاع الشاشة في وضع الديسكتوب بدون فراغ سفلي */}
               <div className={`h-[calc(100dvh-150px)] md:h-[calc(100dvh-115px)] lg:h-[calc(100dvh-105px)] ${activeTab === 'ai-chat' ? 'block' : 'hidden'}`}>
                 <AIChat currentUser={currentUser} />
@@ -823,7 +841,6 @@ export default function DahabFixAiConsole() {
           {[
             { id: 'diagnosis' as MasterTab, label: 'تشخيص', icon: '🔬' },
             { id: 'ai-chat' as MasterTab, label: 'مساعد AI', icon: '🤖' },
-            { id: 'boardview' as MasterTab, label: 'بوردات', icon: '💻' },
             { id: 'memory' as MasterTab, label: 'ذاكرة', icon: '🧠' },
             { id: 'checklist' as MasterTab, label: 'فحص', icon: '✅' },
           ].map((item) => (

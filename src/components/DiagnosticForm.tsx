@@ -19,8 +19,6 @@ import {
   MicOff,
   HardDrive,
 } from 'lucide-react';
-import BoardviewSelector from './BoardviewSelector';
-import { BoardData } from './InteractiveBoardviewSimulator';
 
 interface DiagnosticFormProps {
   specialty: DeviceSpecialty;
@@ -38,8 +36,6 @@ interface DiagnosticFormProps {
   guestUsageRemaining?: number;
   loadingMessage?: string | null;
   validationError?: string | null;
-  boardData?: BoardData;
-  setBoardData?: (data: BoardData) => void;
 }
 
 const SPECIALTY_OPTIONS: { id: DeviceSpecialty; label: string; icon: any; hint: string }[] = [
@@ -244,8 +240,6 @@ export default function DiagnosticForm({
   guestUsageRemaining,
   loadingMessage,
   validationError,
-  boardData,
-  setBoardData,
 }: DiagnosticFormProps) {
   const [showAdvancedReadings, setShowAdvancedReadings] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -594,23 +588,6 @@ export default function DiagnosticForm({
             ))}
           </div>
         </div>
-
-        {/* اختيار البوردفيو (Boardview Selector) */}
-        {setBoardData && (
-          <div className="space-y-2 pt-2">
-            <label className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
-              <HardDrive className="w-4 h-4 text-dahab-500" />
-              <span>اختر البوردفيو (اختياري - لتحسين دقة التشخيص):</span>
-            </label>
-            <BoardviewSelector
-              onSelectBoard={(board) => {
-                setBoardData(board);
-                setDeviceModel(board.deviceModel || board.title);
-              }}
-              currentBoard={boardData}
-            />
-          </div>
-        )}
 
         {/* زر إظهار لوحة أجهزة المعمل */}
         <div className="pt-2">

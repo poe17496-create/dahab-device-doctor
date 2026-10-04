@@ -103,6 +103,32 @@ export interface Database {
           specifications?: Json
         }
       }
+      boards: {
+        Row: {
+          id: string
+          board_name: string
+          image_url: string
+          search_query?: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          board_name: string
+          image_url: string
+          search_query?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          board_name?: string
+          image_url?: string
+          search_query?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
       verified_faults: {
         Row: {
           id: string

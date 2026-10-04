@@ -137,18 +137,7 @@ export default function NavigationSidebar({ activeTab, onTabChange, isOpen, onCl
               </a>
             </div>
 
-            {/* Boardview Demo Link */}
-            <div className="pt-2">
-              <a
-                href="/boardview-demo"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-medium text-blue-700 dark:text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 transition-all border border-blue-500/20"
-              >
-                <Cpu className="w-4 h-4 text-blue-500" />
-                <span>تجربة Boardview الجديد</span>
-              </a>
-            </div>
+
           </nav>
 
           {/* Sidebar Footer */}

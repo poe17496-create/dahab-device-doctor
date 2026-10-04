@@ -1,0 +1,188 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
+
+export const dynamic = 'force-dynamic';
+
+/**
+ * Auto-Fetch & Cache API for Board Images
+ *
+ * Flow:
+ * 1. Receive boardName from request
+ * 2. Query Supabase boards table for cached image_url
+ * 3. If cached, return it
+ * 4. If not cached, fetch high-res image using Image Search API
+ * 5. Insert image_url into Supabase for permanent caching
+ * 6. Return the new image_url
+ */
+
+interface GetBoardRequest {
+  boardName: string;
+}
+
+interface GetBoardResponse {
+  success: boolean;
+  imageUrl?: string;
+  cached?: boolean;
+  error?: string;
+}
+
+/**
+ * Fetch high-resolution motherboard image using Unsplash API (Free)
+ * Unsplash offers 5000 requests/hour for free - perfect for this use case
+ */
+async function fetchBoardImage(boardName: string): Promise<string> {
+  const accessKey = process.env.UNSPLASH_ACCESS_KEY;
+
+  if (!accessKey) {
+    throw new Error('Unsplash API key not configured. Please add UNSPLASH_ACCESS_KEY to .env.local');
+  }
+
+  const query = `${boardName} motherboard PCB circuit board`;
+  const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`;
+
+  const response = await fetch(url, {
+    headers: {
+      'Authorization': `Client-ID ${accessKey}`,
+    },
+  });
+
+  const data = await response.json();
+
+  if (!data.results || data.results.length === 0) {
+    throw new Error('No images found for this board. Try uploading a custom image.');
+  }
+
+  // Return the high-res image URL
+  return data.results[0].urls.raw;
+}
+
+/**
+ * Alternative: Use Unsplash API for high-quality images
+ * Uncomment if you prefer Unsplash over Google Custom Search
+ */
+/*
+async function fetchBoardImageUnsplash(boardName: string): Promise<string> {
+  const accessKey = process.env.UNSPLASH_ACCESS_KEY;
+
+  if (!accessKey) {
+    throw new Error('Unsplash API key not configured');
+  }
+
+  const query = `${boardName} motherboard PCB circuit board`;
+  const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`;
+
+  const response = await fetch(url, {
+    headers: {
+      'Authorization': `Client-ID ${accessKey}`,
+    },
+  });
+
+  const data = await response.json();
+
+  if (!data.results || data.results.length === 0) {
+    throw new Error('No images found for this board');
+  }
+
+  // Return the high-res image URL
+  return data.results[0].urls.raw;
+}
+*/
+
+export async function POST(req: NextRequest) {
+  try {
+    // Check Supabase configuration
+    if (!isSupabaseConfigured) {
+      return NextResponse.json<GetBoardResponse>(
+        {
+          success: false,
+          error: 'Supabase database not configured. Please upload a custom board image instead.',
+        },
+        { status: 500 }
+      );
+    }
+
+    // Parse request body
+    const body: GetBoardRequest = await req.json();
+    const { boardName } = body;
+
+    if (!boardName || typeof boardName !== 'string' || boardName.trim() === '') {
+      return NextResponse.json<GetBoardResponse>(
+        {
+          success: false,
+          error: 'boardName is required and must be a non-empty string',
+        },
+        { status: 400 }
+      );
+    }
+
+    // Step 1: Check if board image is already cached in Supabase
+    const { data: cachedBoard, error: fetchError } = await supabaseAdmin
+      .from('boards')
+      .select('image_url')
+      .eq('board_name', boardName)
+      .single();
+
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      // PGRST116 = row not found, which is expected for new boards
+      console.error('Error fetching cached board:', fetchError);
+      return NextResponse.json<GetBoardResponse>(
+        {
+          success: false,
+          error: 'Database error',
+        },
+        { status: 500 }
+      );
+    }
+
+    // Step 2: If cached, return the image URL
+    if (cachedBoard && cachedBoard.image_url) {
+      return NextResponse.json<GetBoardResponse>({
+        success: true,
+        imageUrl: cachedBoard.image_url,
+        cached: true,
+      });
+    }
+
+    // Step 3: If not cached, fetch image using Image Search API
+    console.log(`Fetching image for board: ${boardName}`);
+    const imageUrl = await fetchBoardImage(boardName);
+
+    // Step 4: Cache the image URL in Supabase (use upsert to handle duplicates)
+    const { error: insertError } = await supabaseAdmin
+      .from('boards')
+      .upsert({
+        board_name: boardName,
+        image_url: imageUrl,
+        search_query: `${boardName} motherboard PCB high resolution`,
+      }, {
+        onConflict: 'board_name',
+        ignoreDuplicates: false,
+      });
+
+    if (insertError) {
+      console.error('Error caching board image:', insertError);
+      // Return the image anyway even if caching fails
+      return NextResponse.json<GetBoardResponse>({
+        success: true,
+        imageUrl,
+        cached: false,
+      });
+    }
+
+    // Step 5: Return the new image URL
+    return NextResponse.json<GetBoardResponse>({
+      success: true,
+      imageUrl,
+      cached: false,
+    });
+  } catch (error: any) {
+    console.error('Error in get-board API:', error);
+    return NextResponse.json<GetBoardResponse>(
+      {
+        success: false,
+        error: error.message || 'Failed to fetch board image',
+      },
+      { status: 500 }
+    );
+  }
+}

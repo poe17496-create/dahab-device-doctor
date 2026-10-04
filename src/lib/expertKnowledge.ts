@@ -1,23 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import {
-  BoardData,
-  buildIphone14ProMaxBoard,
-  buildIphone13ProBoard,
-  buildIphone12ProBoard,
-  buildIphone11ProMaxBoard,
-  buildSamsungS24UltraBoard,
-  buildSamsungA54Board,
-  buildPocoX3ProBoard,
-  buildMacBookAirM2Board,
-  buildMacBookIntelA1708Board,
-  buildDellXpsBoard,
-  buildLenovoThinkPadBoard,
-  buildDellInspiron3521Board,
-  buildHpProBook450Board,
-  buildDesktopH81Board,
-  buildRtx3060GpuBoard,
-} from './boardviewPresets';
 
 export interface ExpertPattern {
   symptom: string;
@@ -53,7 +35,6 @@ export interface ComprehensiveKnowledgeResult {
 
 let patternsCache: ExpertPattern[] | null = null;
 let hardwareMatrixCache: HardwareMatrixItem[] | null = null;
-let allBoardsCache: BoardData[] | null = null;
 
 // تحميل مصفوفة المخططات الضخمة من ملف hardwareSchematicsMatrix.json
 // Added loading flag to prevent blocking
@@ -77,34 +58,6 @@ function loadHardwareMatrix(): HardwareMatrixItem[] {
   hardwareMatrixLoading = false;
   hardwareMatrixCache = [];
   return [];
-}
-
-// تجميع البوردات المحفوظة في الذاكرة لتسريع البحث
-function getAllBoardPresets(): BoardData[] {
-  if (allBoardsCache) return allBoardsCache;
-  try {
-    allBoardsCache = [
-      buildIphone14ProMaxBoard(),
-      buildIphone13ProBoard(),
-      buildIphone12ProBoard(),
-      buildIphone11ProMaxBoard(),
-      buildSamsungS24UltraBoard(),
-      buildSamsungA54Board(),
-      buildPocoX3ProBoard(),
-      buildMacBookAirM2Board(),
-      buildMacBookIntelA1708Board(),
-      buildDellXpsBoard(),
-      buildLenovoThinkPadBoard(),
-      buildDellInspiron3521Board(),
-      buildHpProBook450Board(),
-      buildDesktopH81Board(),
-      buildRtx3060GpuBoard(),
-    ];
-  } catch (err) {
-    console.error('Error instantiating board presets:', err);
-    allBoardsCache = [];
-  }
-  return allBoardsCache;
 }
 
 // تحميل أنماط الصيانة من ملف JSON مع كاش سريع في الذاكرة
@@ -214,75 +167,7 @@ export function findRelevantSchematics(query: string, deviceModel?: string): Mat
     }
   }
 
-  // البحث في البوردات المدمجة التفاعلية كخيار تكميلي
-  const boards = getAllBoardPresets();
-  let bestBoard: BoardData | null = null;
-  let bestScore = 0;
-
-  boards.forEach((board) => {
-    if (!board) return;
-    let score = 0;
-    const model = (board.deviceModel || '').toLowerCase();
-    const title = (board.title || '').toLowerCase();
-
-    if (deviceModel && (model.includes(deviceModel.toLowerCase()) || deviceModel.toLowerCase().includes(model))) {
-      score += 10;
-    }
-
-    queryTerms.forEach(term => {
-      if (model.includes(term)) score += 4;
-      if (title.includes(term)) score += 3;
-    });
-
-    if (score > bestScore) {
-      bestScore = score;
-      bestBoard = board;
-    }
-  });
-
-  if (!bestBoard || bestScore < 2) return undefined;
-
-  const board: BoardData = bestBoard;
-  const relevantNets: { name: string; voltage: string; diodeMode: string; safeInjection?: string; description?: string }[] = [];
-  const relevantParts: { name: string; role: string; commonFault: string }[] = [];
-
-  if (board.nets) {
-    Object.values(board.nets).forEach(net => {
-      if (net.isGround) return;
-      const netStr = `${net.name} ${net.description}`.toLowerCase();
-      const isMatch = queryTerms.some(term => netStr.includes(term)) || net.isPower;
-      if (isMatch && relevantNets.length < 6) {
-        relevantNets.push({
-          name: net.name,
-          voltage: net.voltage,
-          diodeMode: net.diodeMode,
-          safeInjection: net.safeInjectionVoltage,
-          description: net.description,
-        });
-      }
-    });
-  }
-
-  if (board.parts) {
-    board.parts.forEach(part => {
-      const partStr = `${part.name} ${part.role} ${part.commonFault}`.toLowerCase();
-      const isMatch = queryTerms.some(term => partStr.includes(term));
-      if ((isMatch || relevantParts.length < 3) && relevantParts.length < 5) {
-        relevantParts.push({
-          name: part.name,
-          role: part.role,
-          commonFault: part.commonFault,
-        });
-      }
-    });
-  }
-
-  return {
-    deviceTitle: board.title,
-    deviceModel: board.deviceModel,
-    relevantNets,
-    relevantParts,
-  };
+  return undefined;
 }
 
 // دمج المعرفة الفائقة في كائن واحد سريع ومضغوط

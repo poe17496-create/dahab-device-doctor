@@ -18,8 +18,6 @@ interface DiagnosticContextType {
   setReadings: (readings: PowerSupplyReadings) => void;
   metrics: DiagnosticMetrics | undefined;
   setMetrics: (metrics: DiagnosticMetrics | undefined) => void;
-  boardData: any;
-  setBoardData: (data: any) => void;
   calculatorContext: {
     selectedRail: string;
     recommendedVoltage: number;
@@ -33,6 +31,11 @@ interface DiagnosticContextType {
     items: any[];
   };
   setChecklistProgress: (progress: any) => void;
+  // Board View Context for AI Integration
+  boardName: string;
+  setBoardName: (name: string) => void;
+  selectedNet: string | null;
+  setSelectedNet: (net: string | null) => void;
   // Productivity tracking
   recordDiagnosis: (minutesSpent: number) => void;
   getProductivityStats: () => DailyStats[];
@@ -45,13 +48,14 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
   const [specialty, setSpecialty] = useState<DeviceSpecialty>('mobile-repair');
   const [readings, setReadings] = useState<PowerSupplyReadings>({});
   const [metrics, setMetrics] = useState<DiagnosticMetrics | undefined>(undefined);
-  const [boardData, setBoardData] = useState<any>(null);
   const [calculatorContext, setCalculatorContext] = useState<any>(null);
   const [checklistProgress, setChecklistProgress] = useState({
     total: 0,
     completed: 0,
     items: [],
   });
+  const [boardName, setBoardName] = useState('');
+  const [selectedNet, setSelectedNet] = useState<string | null>(null);
 
   // Record a diagnosis completion
   const recordDiagnosis = (minutesSpent: number) => {
@@ -100,12 +104,14 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
         setReadings,
         metrics,
         setMetrics,
-        boardData,
-        setBoardData,
         calculatorContext,
         setCalculatorContext,
         checklistProgress,
         setChecklistProgress,
+        boardName,
+        setBoardName,
+        selectedNet,
+        setSelectedNet,
         recordDiagnosis,
         getProductivityStats,
       }}

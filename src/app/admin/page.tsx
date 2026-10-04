@@ -1200,19 +1200,6 @@ export default function AdminDashboardPage() {
                             dataUrl: reader.result as string,
                           };
 
-                          // حفظ سحابي دائم عبر API
-                          fetch('/api/boardviews', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              title: newSchematic.name,
-                              deviceModel: newSchematic.device,
-                              category: newSchematic.category,
-                              fileName: file.name,
-                              rawContent: typeof reader.result === 'string' ? reader.result : '',
-                            }),
-                          }).catch(console.warn);
-
                           const existing = JSON.parse(localStorage.getItem('dahab_schematics') || '[]');
                           existing.push(newSchematic);
                           try {
