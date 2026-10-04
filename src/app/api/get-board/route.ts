@@ -33,16 +33,14 @@ interface GetBoardResponse {
 async function fetchBoardImage(boardName: string): Promise<string> {
   // Read API keys from environment variables
   const API_KEYS = [
-    process.env.GOOGLE_API_KEY_1,
-    process.env.GOOGLE_API_KEY_2,
-    process.env.GOOGLE_API_KEY_3,
-    process.env.GOOGLE_API_KEY_4,
-    process.env.GOOGLE_API_KEY_5,
-    process.env.GOOGLE_API_KEY_6,
+    process.env.GOOGLEAPIKEY212,
+    process.env.GOOGLEAPIKEY123,
+    process.env.GOOGLEAPIKEY12,
+    process.env.GOOGLEAPIKEY88,
   ].filter(Boolean); // Remove undefined/null values
 
   if (API_KEYS.length === 0) {
-    throw new Error('No Google API keys configured. Please add GOOGLE_API_KEY_1 through GOOGLE_API_KEY_6 to .env.local');
+    throw new Error('No Google API keys configured. Please add GOOGLEAPIKEY212, GOOGLEAPIKEY123, GOOGLEAPIKEY12, GOOGLEAPIKEY88 to .env.local');
   }
 
   const query = `${boardName} motherboard PCB circuit board high resolution`;
