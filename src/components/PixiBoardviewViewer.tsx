@@ -45,6 +45,7 @@ export default function PixiBoardviewViewer({
   // Update board data when initialBoardData changes (use ID to detect actual board change)
   useEffect(() => {
     if (initialBoardData) {
+      console.log('PixiBoardviewViewer: Setting board data', initialBoardData.id, initialBoardData.parts.length);
       setBoardData(initialBoardData);
     }
   }, [initialBoardData?.id, initialBoardData]);

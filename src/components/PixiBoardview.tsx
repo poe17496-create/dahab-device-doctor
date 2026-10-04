@@ -54,13 +54,16 @@ export default function PixiBoardview({
   // Convert board data to render format when it changes
   useEffect(() => {
     if (boardData) {
+      console.log('PixiBoardview: Processing board data', boardData.id, boardData.parts.length, 'parts');
       const data = convertToRenderData(boardData);
+      console.log('PixiBoardview: Converted render data', data.parts.length, 'parts', data.pins.length, 'pins');
       // Filter parts by selected side
       const filteredParts = data.parts.filter((part: ParsedBoardPart) => part.side === selectedSide);
       const filteredPins = data.pins.filter((pin: any) => {
         const part = filteredParts.find((p: ParsedBoardPart) => p.id === pin.partId);
         return part !== undefined;
       });
+      console.log('PixiBoardview: Filtered to', filteredParts.length, 'parts for side', selectedSide);
       setRenderData({
         ...data,
         parts: filteredParts,
@@ -77,12 +80,13 @@ export default function PixiBoardview({
       view: canvasRef.current,
       width,
       height,
-      backgroundColor: 0x0f0f1a,
-      antialias: true,
-      resolution: window.devicePixelRatio || 1,
-      autoDensity: true,
+      backgroundColor: 0x0a0f1d, // Match Konva background
+      antialias: false, // Disable for better performance
+      resolution: 1, // Use 1 for better performance
+      autoDensity: false, // Disable for better performance
       backgroundAlpha: 1,
       preserveDrawingBuffer: false,
+      powerPreference: 'high-performance',
     });
 
     appRef.current = app;
@@ -91,8 +95,8 @@ export default function PixiBoardview({
     const viewport = new Viewport({
       screenWidth: width,
       screenHeight: height,
-      worldWidth: 2000,
-      worldHeight: 2000,
+      worldWidth: boardData?.width || 2000,
+      worldHeight: boardData?.height || 2000,
       events: app.renderer.events,
     });
 
@@ -114,7 +118,7 @@ export default function PixiBoardview({
     return () => {
       app.destroy(true, { children: true });
     };
-  }, [width, height]);
+  }, [width, height, boardData?.width, boardData?.height]);
 
   // Fit board to view when board data changes
   useEffect(() => {
@@ -145,24 +149,23 @@ export default function PixiBoardview({
       viewport.removeChild(child);
     }
 
-    // Draw board outline
+    // Draw board background
     const boardGraphics = new Graphics();
-    boardGraphics.beginFill(0x1a1a2e, 1);
-    if (renderData.board.outline.length > 0) {
-      const polygonPoints = renderData.board.outline.flatMap((p: { x: number; y: number }) => [p.x, p.y]);
-      boardGraphics.drawPolygon(polygonPoints);
-    } else {
-      boardGraphics.drawRect(0, 0, renderData.board.width, renderData.board.height);
-    }
+    boardGraphics.beginFill(0x0a0f1d, 1); // Dark background matching Konva
+    boardGraphics.drawRect(0, 0, renderData.board.width, renderData.board.height);
     boardGraphics.endFill();
 
-    boardGraphics.lineStyle(2, 0x4a9eff, 1);
-    if (renderData.board.outline.length > 0) {
+    // Draw PCB Board Outline (green glow)
+    boardGraphics.lineStyle(1.5, 0x10b981, 1);
+    boardGraphics.beginFill(0x06281e, 1);
+    if (renderData.board.outline && renderData.board.outline.length > 0) {
       const polygonPoints = renderData.board.outline.flatMap((p: { x: number; y: number }) => [p.x, p.y]);
       boardGraphics.drawPolygon(polygonPoints);
     } else {
-      boardGraphics.drawRect(0, 0, renderData.board.width, renderData.board.height);
+      // Default rectangular board with margin
+      boardGraphics.drawRect(10, 10, renderData.board.width - 20, renderData.board.height - 20);
     }
+    boardGraphics.endFill();
     viewport.addChild(boardGraphics);
 
     // Draw Grid Lines
@@ -243,15 +246,16 @@ export default function PixiBoardview({
 
     // Draw parts (limit to 500 for performance)
     const partsToRender = renderData.parts.slice(0, 500);
+    console.log('Rendering', partsToRender.length, 'parts in PixiJS');
     partsToRender.forEach((part: ParsedBoardPart) => {
       const partGraphics = new Graphics();
       const isSelected = selectedPart?.id === part.id;
       const isDimmed = highlightedNetId !== null;
-      const alpha = isDimmed ? 0.2 : 0.8;
-      const color = isSelected ? 0xff6b6b : 0x4a9eff;
+      const alpha = isDimmed ? 0.2 : 0.7;
+      const color = isSelected ? 0xff6b6b : 0x1e3a5f; // Dark blue for components
 
       partGraphics.beginFill(color, alpha);
-      partGraphics.lineStyle(1, color, 1);
+      partGraphics.lineStyle(1, 0x10b981, 1); // Green border like Konva
       partGraphics.drawRect(
         part.x - part.width / 2,
         part.y - part.height / 2,
@@ -266,7 +270,7 @@ export default function PixiBoardview({
         partGraphics.drawCircle(
           part.x - part.width / 2 + 2,
           part.y - part.height / 2 + 2,
-          1
+          1.5
         );
         partGraphics.endFill();
       }
@@ -274,6 +278,7 @@ export default function PixiBoardview({
       partGraphics.eventMode = 'static';
       partGraphics.cursor = 'pointer';
       partGraphics.on('pointerdown', () => {
+        console.log('Part clicked in Pixi:', part);
         setSelectedPart(part);
         onPartClick?.(part);
       });
@@ -371,7 +376,7 @@ export default function PixiBoardview({
       });
     }
 
-  }, [renderData, highlightedNetId, selectedPart, onPartClick, onPinClick]);
+  }, [renderData, highlightedNetId, selectedPart, showGrid, showLabels, showPinNumbers, showDiodeOverlay, showCoordinates, showMeasurements]);
 
   const handlePartClick = useCallback((part: ParsedBoardPart) => {
     setSelectedPart(part);

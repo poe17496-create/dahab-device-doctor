@@ -337,7 +337,9 @@ export function convertToRenderData(boardData: ParsedBoardData) {
  * This bridges the gap between the old mock data and the new parser format
  */
 export function convertBoardDataToParsed(boardData: any): ParsedBoardData {
-  console.log('Converting board data:', boardData);
+  console.log('🔄 Converting board data:', boardData.id, boardData.title);
+  console.log('   - Parts:', boardData.parts?.length);
+  console.log('   - Nets:', Object.keys(boardData.nets || {}).length);
 
   // Convert nets
   const convertedNets: Record<string, ParsedBoardNet> = {};
@@ -390,6 +392,6 @@ export function convertBoardDataToParsed(boardData: any): ParsedBoardData {
     outlinePoints: boardData.outlinePoints,
   };
 
-  console.log('Converted board data:', result);
+  console.log('✅ Converted board data:', result.id, result.parts.length, 'parts');
   return result;
 }

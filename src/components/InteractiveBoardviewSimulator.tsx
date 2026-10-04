@@ -756,6 +756,11 @@ export default function InteractiveBoardviewSimulator() {
     return list;
   }, [visibleParts, selectedNetId]);
 
+  // Convert board data for Pixi renderer (memoized to avoid unnecessary conversions)
+  const parsedBoardData = useMemo(() => {
+    return convertBoardDataToParsed(boardData);
+  }, [boardData.id]); // Only reconvert when board ID changes
+
   // البحث التفاعلي
   useEffect(() => {
     if (!searchQuery.trim()) {
@@ -1811,7 +1816,7 @@ export default function InteractiveBoardviewSimulator() {
             <PixiBoardviewViewer
               width={canvasContainerRef.current?.clientWidth || 1000}
               height={canvasContainerRef.current?.clientHeight || 800}
-              initialBoardData={convertBoardDataToParsed(boardData)}
+              initialBoardData={parsedBoardData}
               selectedNetId={selectedNetId}
               selectedSide={selectedSide}
               showGrid={showGrid}
