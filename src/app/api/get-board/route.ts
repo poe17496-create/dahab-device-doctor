@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
-import ddg from 'duckduckgo-images-api';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +10,7 @@ export const dynamic = 'force-dynamic';
  * 1. Receive boardName from request
  * 2. Query Supabase boards table for cached image_url
  * 3. If cached, return it
- * 4. If not cached, fetch high-res image using DuckDuckGo Image Search
+ * 4. If not cached, fetch high-res image using Bing Image Search (via serpapi)
  * 5. Insert image_url into Supabase for permanent caching
  * 6. Return the new image_url
  */
@@ -28,34 +27,47 @@ interface GetBoardResponse {
 }
 
 /**
- * Fetch high-resolution motherboard image using DuckDuckGo Image Search
- * No API key required - uses free web scraping
+ * Fetch high-resolution motherboard image using Bing Image Search
+ * Uses free scraping - no API key required
  */
 async function fetchBoardImage(boardName: string): Promise<string> {
   const query = `${boardName} motherboard PCB high resolution`;
 
   try {
-    const results = await ddg.image_search({
-      query: query,
-      iterations: 1,
-      moderate: false,
+    // Use Bing Image Search via a simple scraper
+    const searchUrl = `https://www.bing.com/images/search?q=${encodeURIComponent(query)}&qft=+filterui:imagesize-large&form=IRFLTR`;
+
+    const response = await fetch(searchUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      },
     });
 
-    if (!results || results.length === 0) {
+    if (!response.ok) {
+      throw new Error('Bing search failed');
+    }
+
+    const html = await response.text();
+
+    // Extract image URLs from Bing's HTML
+    // Bing stores image URLs in a specific format in the HTML
+    const urlRegex = /"murl":"(https?:\/\/[^"]+)"/g;
+    const matches: string[] = [];
+    let match: RegExpExecArray | null;
+    while ((match = urlRegex.exec(html)) !== null) {
+      matches.push(match[1]);
+    }
+
+    if (matches.length === 0) {
       throw new Error('No images found');
     }
 
-    // Filter for high-resolution images (prefer larger images)
-    const highResImages = results
-      .filter((img: any) => img.width && img.height && img.width >= 800 && img.height >= 600)
-      .sort((a: any, b: any) => (b.width * b.height) - (a.width * a.height));
-
-    // Return the best high-res image, or the first result if no high-res images
-    const bestImage = highResImages.length > 0 ? highResImages[0] : results[0];
-    return bestImage.image;
+    // Return the first high-quality image URL
+    const imageUrl = matches[0].replace(/\\u002F/g, '/');
+    return imageUrl;
   } catch (error) {
-    console.error('DuckDuckGo search error:', error);
-    throw new Error('Failed to fetch image from DuckDuckGo');
+    console.error('Bing search error:', error);
+    throw new Error('Failed to fetch image from Bing');
   }
 }
 
