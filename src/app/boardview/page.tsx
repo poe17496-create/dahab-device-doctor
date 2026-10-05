@@ -336,8 +336,11 @@ export default function BoardViewPage() {
         data.components.forEach((comp: any, index: number) => {
           const compId = `comp_ai_${index}`;
           // Use AI coordinates if available, otherwise use default grid
-          const x = comp.x !== undefined ? `${comp.x}%` : `${10 + (index * 10)}%`;
-          const y = comp.y !== undefined ? `${comp.y}%` : `${10 + (index * 10)}%`;
+          // Handle both number and string values
+          const xVal = comp.x !== undefined ? (typeof comp.x === 'number' ? comp.x : parseFloat(comp.x)) : 10 + (index * 10);
+          const yVal = comp.y !== undefined ? (typeof comp.y === 'number' ? comp.y : parseFloat(comp.y)) : 10 + (index * 10);
+          const x = `${xVal}%`;
+          const y = `${yVal}%`;
 
           newComponents[compId] = {
             id: compId,
@@ -354,7 +357,13 @@ export default function BoardViewPage() {
 
         // Handle suspicious markers if provided
         if (data.suspiciousMarkers && Array.isArray(data.suspiciousMarkers)) {
-          setSuspiciousMarkers(data.suspiciousMarkers);
+          // Convert numeric coordinates to percentage strings for consistency
+          const convertedMarkers = data.suspiciousMarkers.map((marker: any) => ({
+            ...marker,
+            x: typeof marker.x === 'number' ? `${marker.x}%` : marker.x,
+            y: typeof marker.y === 'number' ? `${marker.y}%` : marker.y,
+          }));
+          setSuspiciousMarkers(convertedMarkers);
         }
 
         // Store and show analysis result

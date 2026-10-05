@@ -816,8 +816,9 @@ export function HardwareBoardViewer({
                     >
                     {/* AI Suspicious Markers */}
                     {suspiciousMarkers.map((marker) => {
-                      const xVal = parseFloat(marker.x.replace('%', ''));
-                      const yVal = parseFloat(marker.y.replace('%', ''));
+                      // Handle both string (e.g., "35%") and number (e.g., 35) values
+                      const xVal = typeof marker.x === 'string' ? parseFloat(marker.x.replace('%', '')) : marker.x;
+                      const yVal = typeof marker.y === 'string' ? parseFloat(marker.y.replace('%', '')) : marker.y;
                       const severityColor = marker.severity === 'high' ? '#ef4444' : marker.severity === 'medium' ? '#f97316' : '#eab308';
 
                       return (
@@ -913,9 +914,9 @@ export function HardwareBoardViewer({
 
                     {/* Component Markers */}
                     {Object.values(components).map((comp) => {
-                      // Convert percentage to numeric value (0-100)
-                      const xVal = parseFloat(comp.x.replace('%', ''));
-                      const yVal = parseFloat(comp.y.replace('%', ''));
+                      // Handle both string (e.g., "35%") and number (e.g., 35) values
+                      const xVal = typeof comp.x === 'string' ? parseFloat(comp.x.replace('%', '')) : comp.x;
+                      const yVal = typeof comp.y === 'string' ? parseFloat(comp.y.replace('%', '')) : comp.y;
                       return (
                         <g key={comp.id}>
                           {/* Component Box */}
@@ -959,9 +960,9 @@ export function HardwareBoardViewer({
                           <polyline
                             points={net.points
                               .map((p) => {
-                                // Convert percentage to numeric value (0-100)
-                                const xVal = parseFloat(p.x.replace('%', ''));
-                                const yVal = parseFloat(p.y.replace('%', ''));
+                                // Handle both string (e.g., "35%") and number (e.g., 35) values
+                                const xVal = typeof p.x === 'string' ? parseFloat(p.x.replace('%', '')) : p.x;
+                                const yVal = typeof p.y === 'string' ? parseFloat(p.y.replace('%', '')) : p.y;
                                 return `${xVal} ${yVal}`;
                               })
                               .join(' ')}
@@ -985,8 +986,9 @@ export function HardwareBoardViewer({
 
                         {/* Net Points (for single-point nets or endpoints) */}
                         {net.points.map((point, idx) => {
-                          const xVal = parseFloat(point.x.replace('%', ''));
-                          const yVal = parseFloat(point.y.replace('%', ''));
+                          // Handle both string (e.g., "35%") and number (e.g., 35) values
+                          const xVal = typeof point.x === 'string' ? parseFloat(point.x.replace('%', '')) : point.x;
+                          const yVal = typeof point.y === 'string' ? parseFloat(point.y.replace('%', '')) : point.y;
                           return (
                             <circle
                               key={`${net.id}-point-${idx}`}
