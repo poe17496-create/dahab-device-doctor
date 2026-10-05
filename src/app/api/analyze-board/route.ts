@@ -58,11 +58,9 @@ export async function POST(req: NextRequest) {
       if (key) {
         console.log('Using Gemini key:', key.substring(0, 15) + '...');
         try {
-          console.log('Trying Gemini with key:', key.substring(0, 10) + '...');
           const genAI = new GoogleGenerativeAI(key);
-          const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-          // Fetch image and convert to base64
+          // Fetch image and convert to base64 (do this once for all models)
           console.log('Fetching image from URL:', imageUrl);
           const imageResponse = await fetch(imageUrl, {
             headers: {
@@ -105,34 +103,53 @@ Return the response in JSON format with this structure:
 
 Focus on identifying at least 5-10 major components visible in the image.`;
 
-          const result = await model.generateContent([
-            prompt,
-            {
-              inlineData: {
-                mimeType: imageType,
-                data: base64Image,
-              },
-            },
-          ]);
+          // Try multiple models in order
+          const models = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-1.5-flash'];
+          let lastError = null;
 
-          recordKeySuccess('gemini');
-          const content = result.response.text();
-          console.log('Gemini response received, length:', content.length);
+          for (const modelName of models) {
+            try {
+              console.log('Trying model:', modelName);
+              const model = genAI.getGenerativeModel({ model: modelName });
 
-          try {
-            const parsed = JSON.parse(content || '{}');
-            return NextResponse.json<AnalyzeBoardResponse>({
-              success: true,
-              components: parsed.components || [],
-              summary: parsed.summary || '',
-            });
-          } catch (parseError) {
-            return NextResponse.json<AnalyzeBoardResponse>({
-              success: true,
-              components: [],
-              summary: content || '',
-            });
+              const result = await model.generateContent([
+                prompt,
+                {
+                  inlineData: {
+                    mimeType: imageType,
+                    data: base64Image,
+                  },
+                },
+              ]);
+
+              recordKeySuccess('gemini');
+              const content = result.response.text();
+              console.log('Gemini response received from', modelName, ', length:', content.length);
+
+              try {
+                const parsed = JSON.parse(content || '{}');
+                return NextResponse.json<AnalyzeBoardResponse>({
+                  success: true,
+                  components: parsed.components || [],
+                  summary: parsed.summary || '',
+                });
+              } catch (parseError) {
+                return NextResponse.json<AnalyzeBoardResponse>({
+                  success: true,
+                  components: [],
+                  summary: content || '',
+                });
+              }
+            } catch (error: any) {
+              lastError = error;
+              console.error(`Model ${modelName} failed:`, error.message);
+              continue; // Try next model
+            }
           }
+
+          // If all models failed
+          recordKeyFailure('gemini', lastError?.message || 'All models failed', geminiKeys);
+          console.error('All Gemini models failed');
         } catch (error: any) {
           recordKeyFailure('gemini', error.message, geminiKeys);
           console.error('Gemini API error:', error.message, error);
