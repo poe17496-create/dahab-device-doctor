@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getAllActiveKeys, getNextKeyWithRotation, recordKeyFailure, recordKeySuccess } from '@/lib/apiKeysStorage';
+import OpenAI from 'openai';
 
 /**
  * AI Board Analysis API
  *
- * Uses Google Gemini Vision API to analyze board images and identify components
+ * Uses OpenRouter or other AI providers with vision capabilities to analyze board images
  */
 
 interface AnalyzeBoardRequest {
@@ -38,30 +40,32 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const geminiKey = process.env.GEMINI_API_KEY;
+    // Get all active AI keys from the storage system
+    const { openrouterKeys, geminiKeys, openaiKeys } = getAllActiveKeys();
 
-    if (!geminiKey) {
-      return NextResponse.json<AnalyzeBoardResponse>(
-        {
-          success: false,
-          error: 'Google Gemini API key not configured. Please add GEMINI_API_KEY to your environment variables.',
-        },
-        { status: 500 }
-      );
-    }
+    // Try OpenRouter first (has vision models)
+    if (openrouterKeys.length > 0) {
+      const key = getNextKeyWithRotation('openrouter', openrouterKeys);
+      if (key) {
+        try {
+          const client = new OpenAI({
+            apiKey: key,
+            baseURL: 'https://openrouter.ai/api/v1',
+            defaultHeaders: {
+              'HTTP-Referer': 'https://dahab-device-doctor.vercel.app',
+              'X-Title': 'Dahab Device Doctor',
+            },
+          });
 
-    // Use Google Gemini Vision API to analyze the board image
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
+          const response = await client.chat.completions.create({
+            model: 'google/gemini-2.0-flash-001',
+            messages: [
               {
-                text: `Analyze this PCB board image and identify the key components. For each component you identify, provide:
+                role: 'user',
+                content: [
+                  {
+                    type: 'text',
+                    text: `Analyze this PCB board image and identify the key components. For each component you identify, provide:
 1. Component name (e.g., U1200, C1500, R1200)
 2. Component type (IC, Capacitor, Resistor, Inductor, Connector, Diode, Transistor, Other)
 3. Brief description of its function
@@ -81,54 +85,123 @@ Return the response in JSON format with this structure:
 }
 
 Focus on identifying at least 5-10 major components visible in the image.`,
-              },
-              {
-                inline_data: {
-                  mime_type: "image/jpeg",
-                  data: imageUrl,
-                },
+                  },
+                  {
+                    type: 'image_url',
+                    image_url: {
+                      url: imageUrl,
+                    },
+                  },
+                ],
               },
             ],
-          },
-        ],
-        generationConfig: {
-          maxOutputTokens: 1000,
-          temperature: 0.4,
-        },
-      }),
-    });
+            max_tokens: 1000,
+          });
 
-    if (!response.ok) {
-      const error = await response.text();
-      console.error('Gemini API error:', error);
-      return NextResponse.json<AnalyzeBoardResponse>(
-        {
-          success: false,
-          error: 'Failed to analyze image with AI',
-        },
-        { status: 500 }
-      );
+          recordKeySuccess('openrouter');
+          const content = response.choices[0].message.content;
+
+          try {
+            const parsed = JSON.parse(content || '{}');
+            return NextResponse.json<AnalyzeBoardResponse>({
+              success: true,
+              components: parsed.components || [],
+              summary: parsed.summary || '',
+            });
+          } catch (parseError) {
+            return NextResponse.json<AnalyzeBoardResponse>({
+              success: true,
+              components: [],
+              summary: content || '',
+            });
+          }
+        } catch (error: any) {
+          recordKeyFailure('openrouter', error.message, openrouterKeys);
+          console.error('OpenRouter API error:', error.message);
+        }
+      }
     }
 
-    const data = await response.json();
-    const content = data.candidates[0].content.parts[0].text;
+    // Fallback to OpenAI if available
+    if (openaiKeys.length > 0) {
+      const key = getNextKeyWithRotation('openai', openaiKeys);
+      if (key) {
+        try {
+          const client = new OpenAI({ apiKey: key });
 
-    // Parse the AI response
-    try {
-      const parsed = JSON.parse(content);
-      return NextResponse.json<AnalyzeBoardResponse>({
-        success: true,
-        components: parsed.components || [],
-        summary: parsed.summary || '',
-      });
-    } catch (parseError) {
-      // If AI didn't return valid JSON, return the raw text
-      return NextResponse.json<AnalyzeBoardResponse>({
-        success: true,
-        components: [],
-        summary: content,
-      });
+          const response = await client.chat.completions.create({
+            model: 'gpt-4o',
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  {
+                    type: 'text',
+                    text: `Analyze this PCB board image and identify the key components. For each component you identify, provide:
+1. Component name (e.g., U1200, C1500, R1200)
+2. Component type (IC, Capacitor, Resistor, Inductor, Connector, Diode, Transistor, Other)
+3. Brief description of its function
+4. Confidence level (0-1)
+
+Return the response in JSON format with this structure:
+{
+  "components": [
+    {
+      "name": "component name",
+      "type": "component type",
+      "description": "description",
+      "confidence": 0.9
     }
+  ],
+  "summary": "brief summary of the board"
+}
+
+Focus on identifying at least 5-10 major components visible in the image.`,
+                  },
+                  {
+                    type: 'image_url',
+                    image_url: {
+                      url: imageUrl,
+                    },
+                  },
+                ],
+              },
+            ],
+            max_tokens: 1000,
+          });
+
+          recordKeySuccess('openai');
+          const content = response.choices[0].message.content;
+
+          try {
+            const parsed = JSON.parse(content || '{}');
+            return NextResponse.json<AnalyzeBoardResponse>({
+              success: true,
+              components: parsed.components || [],
+              summary: parsed.summary || '',
+            });
+          } catch (parseError) {
+            return NextResponse.json<AnalyzeBoardResponse>({
+              success: true,
+              components: [],
+              summary: content || '',
+            });
+          }
+        } catch (error: any) {
+          recordKeyFailure('openai', error.message, openaiKeys);
+          console.error('OpenAI API error:', error.message);
+        }
+      }
+    }
+
+    // If all providers failed
+    return NextResponse.json<AnalyzeBoardResponse>(
+      {
+        success: false,
+        error: 'No AI provider available. Please add API keys via the admin panel.',
+      },
+      { status: 500 }
+    );
   } catch (error: any) {
     console.error('Error in analyze-board API:', error);
     return NextResponse.json<AnalyzeBoardResponse>(
