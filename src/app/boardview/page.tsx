@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { HardwareBoardViewer, NetTrace, Component, SuspiciousMarker } from '@/components/HardwareBoardViewer';
 import { useDiagnosticContext } from '@/contexts/DiagnosticContext';
-import { Search, Upload, Sparkles, ChevronLeft, ChevronRight, X, Loader2, Plus, CircuitBoard, BarChart3, Layers, Zap, Cpu } from 'lucide-react';
+import { Search, Upload, Sparkles, ChevronLeft, ChevronRight, X, Loader2, Plus, CircuitBoard, BarChart3, Layers, Zap, Cpu, AlertTriangle, CheckCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 /**
@@ -40,6 +40,8 @@ export default function BoardViewPage() {
   const [editingNetId, setEditingNetId] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [suspiciousMarkers, setSuspiciousMarkers] = useState<SuspiciousMarker[]>([]);
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [showAnalysisResult, setShowAnalysisResult] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Example components for demonstration
@@ -355,9 +357,12 @@ export default function BoardViewPage() {
           setSuspiciousMarkers(data.suspiciousMarkers);
         }
 
-        alert(`AI identified ${data.components.length} components! They are now visible on the board.`);
+        // Store and show analysis result
+        setAnalysisResult(data);
+        setShowAnalysisResult(true);
       } else if (data.summary) {
-        alert('AI Analysis: ' + data.summary);
+        setAnalysisResult({ summary: data.summary });
+        setShowAnalysisResult(true);
       }
     } catch (error: any) {
       console.error('AI analysis error:', error);
@@ -914,6 +919,126 @@ export default function BoardViewPage() {
                     className="flex-1 px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
                   >
                     إلغاء
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* AI Analysis Result Modal */}
+          {showAnalysisResult && analysisResult && (
+            <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-gray-800 rounded-xl p-6 max-w-2xl w-full border border-gray-700 shadow-2xl max-h-[90vh] overflow-y-auto" dir="rtl">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                    <Sparkles className="w-6 h-6 text-cyan-400" />
+                    نتائج تحليل الذكاء الاصطناعي
+                  </h3>
+                  <button
+                    onClick={() => setShowAnalysisResult(false)}
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Summary */}
+                {analysisResult.summary && (
+                  <div className="mb-4 p-4 bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-lg border border-blue-500/30">
+                    <h4 className="text-sm font-medium text-blue-300 mb-2">ملخص التحليل</h4>
+                    <p className="text-white text-sm">{analysisResult.summary}</p>
+                  </div>
+                )}
+
+                {/* Components Found */}
+                {analysisResult.components && analysisResult.components.length > 0 && (
+                  <div className="mb-4">
+                    <h4 className="text-sm font-medium text-white mb-3 flex items-center gap-2">
+                      <CircuitBoard className="w-4 h-4 text-green-400" />
+                      المكونات المكتشفة ({analysisResult.components.length})
+                    </h4>
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {analysisResult.components.map((comp: any, index: number) => (
+                        <div
+                          key={index}
+                          className="p-3 bg-gray-700/50 rounded-lg border border-gray-600 hover:border-gray-500 transition-colors"
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-medium text-white">{comp.name}</span>
+                            <span className="text-xs px-2 py-1 bg-blue-600/30 text-blue-300 rounded-full">
+                              {comp.type}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-400 mb-1">{comp.description}</p>
+                          <div className="flex items-center gap-2 text-xs text-gray-500">
+                            <span>الثقة: {(comp.confidence * 100).toFixed(0)}%</span>
+                            {comp.x !== undefined && comp.y !== undefined && (
+                              <span>• الموقع: {comp.x}%, {comp.y}%</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Suspicious Markers */}
+                {analysisResult.suspiciousMarkers && analysisResult.suspiciousMarkers.length > 0 && (
+                  <div className="mb-4">
+                    <h4 className="text-sm font-medium text-white mb-3 flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-red-400" />
+                      مناطق مشبوهة ({analysisResult.suspiciousMarkers.length})
+                    </h4>
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {analysisResult.suspiciousMarkers.map((marker: any, index: number) => {
+                        const isHigh = marker.severity === 'high';
+                        const isMedium = marker.severity === 'medium';
+                        const bgColor = isHigh ? 'bg-red-600/20' : isMedium ? 'bg-orange-600/20' : 'bg-yellow-600/20';
+                        const borderColor = isHigh ? 'border-red-500/30' : isMedium ? 'border-orange-500/30' : 'border-yellow-500/30';
+                        const textColor = isHigh ? 'text-red-300' : isMedium ? 'text-orange-300' : 'text-yellow-300';
+                        const badgeColor = isHigh ? 'bg-red-600/30' : isMedium ? 'bg-orange-600/30' : 'bg-yellow-600/30';
+
+                        return (
+                          <div
+                            key={index}
+                            className={`p-3 ${bgColor} rounded-lg border ${borderColor} hover:opacity-80 transition-colors`}
+                          >
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="font-medium text-white flex items-center gap-2">
+                                <span className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-xs text-white font-bold">
+                                  {marker.id}
+                                </span>
+                                {marker.label}
+                              </span>
+                              <span className={`text-xs px-2 py-1 ${badgeColor} ${textColor} rounded-full`}>
+                                {marker.severity === 'high' ? 'خطورة عالية' : marker.severity === 'medium' ? 'خطورة متوسطة' : 'خطورة منخفضة'}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-300">{marker.note}</p>
+                            <p className="text-xs text-gray-500 mt-1">الموقع: {marker.x}%, {marker.y}%</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* No suspicious markers message */}
+                {analysisResult.suspiciousMarkers && analysisResult.suspiciousMarkers.length === 0 && (
+                  <div className="mb-4 p-4 bg-green-600/20 rounded-lg border border-green-500/30">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-5 h-5 text-green-400" />
+                      <p className="text-sm text-green-300">لم يتم اكتشاف مناطق مشبوهة في الصورة</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => setShowAnalysisResult(false)}
+                    className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                  >
+                    إغلاق
                   </button>
                 </div>
               </div>
