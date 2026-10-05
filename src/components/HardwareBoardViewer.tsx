@@ -157,7 +157,11 @@ export function HardwareBoardViewer({
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
 
-    onAddNetPoint(editingNetId, `${x.toFixed(2)}%`, `${y.toFixed(2)}%`);
+    // Clamp values to ensure they stay within 0-100%
+    const clampedX = Math.max(0, Math.min(100, x));
+    const clampedY = Math.max(0, Math.min(100, y));
+
+    onAddNetPoint(editingNetId, `${clampedX.toFixed(2)}%`, `${clampedY.toFixed(2)}%`);
   };
 
   const handleSearchResultClick = (net: NetTrace) => {
@@ -542,25 +546,26 @@ export function HardwareBoardViewer({
                 }}
               >
                 <div
-                  className="relative w-full h-full"
+                  className="relative w-full h-full flex items-center justify-center"
                   onClick={handleImageClick}
                   style={{ cursor: editingNetId ? 'crosshair' : 'default' }}
                 >
-                  {/* Board Image */}
-                  <img
-                    ref={imageRef}
-                    src={imageUrl}
-                    alt={`${boardName} board`}
-                    className="w-full h-full object-contain"
-                    draggable={false}
-                  />
+                  {/* Board Image Container */}
+                  <div className="relative inline-block max-w-full max-h-full">
+                    <img
+                      ref={imageRef}
+                      src={imageUrl}
+                      alt={`${boardName} board`}
+                      className="max-w-full max-h-full object-contain"
+                      draggable={false}
+                    />
 
-                  {/* SVG Overlay with Percentage Coordinates */}
-                  <svg
-                    ref={svgRef}
-                    className="absolute inset-0 w-full h-full pointer-events-none"
-                    style={{ mixBlendMode: 'multiply' }}
-                  >
+                    {/* SVG Overlay with Percentage Coordinates */}
+                    <svg
+                      ref={svgRef}
+                      className="absolute top-0 left-0 w-full h-full pointer-events-none"
+                      style={{ mixBlendMode: 'multiply' }}
+                    >
                     {/* Component Markers */}
                     {Object.values(components).map((comp) => (
                       <g key={comp.id}>
@@ -643,6 +648,7 @@ export function HardwareBoardViewer({
                       </g>
                     ))}
                   </svg>
+                  </div>
                 </div>
               </TransformComponent>
             </>

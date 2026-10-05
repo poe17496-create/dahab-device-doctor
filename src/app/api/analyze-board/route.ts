@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json<AnalyzeBoardResponse>(
         {
           success: false,
-          error: 'OpenAI API key not configured',
+          error: 'OpenAI API key not configured. Please add OPENAI_API_KEY to your environment variables.',
         },
         { status: 500 }
       );
