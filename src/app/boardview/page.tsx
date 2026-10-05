@@ -332,19 +332,23 @@ export default function BoardViewPage() {
         const newComponents: Record<string, Component> = {};
         data.components.forEach((comp: any, index: number) => {
           const compId = `comp_ai_${index}`;
+          // Use AI coordinates if available, otherwise use default grid
+          const x = comp.x !== undefined ? `${comp.x}%` : `${10 + (index * 10)}%`;
+          const y = comp.y !== undefined ? `${comp.y}%` : `${10 + (index * 10)}%`;
+
           newComponents[compId] = {
             id: compId,
             name: comp.name || `AI Component ${index + 1}`,
             type: comp.type || 'Other',
-            x: `${10 + (index * 10)}%`,
-            y: `${10 + (index * 10)}%`,
+            x,
+            y,
             description: comp.description || '',
             connectedNets: [],
           };
         });
 
         setComponents(prev => ({ ...prev, ...newComponents }));
-        alert(`AI identified ${data.components.length} components!`);
+        alert(`AI identified ${data.components.length} components! They are now visible on the board.`);
       } else if (data.summary) {
         alert('AI Analysis: ' + data.summary);
       }

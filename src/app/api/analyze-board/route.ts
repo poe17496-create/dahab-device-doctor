@@ -25,6 +25,8 @@ interface AnalyzeBoardResponse {
     type: string;
     description: string;
     confidence: number;
+    x?: number;
+    y?: number;
   }>;
   summary?: string;
   error?: string;
@@ -111,6 +113,7 @@ export async function POST(req: NextRequest) {
 2. Component type (IC, Capacitor, Resistor, Inductor, Connector, Diode, Transistor, Other)
 3. Brief description of its function
 4. Confidence level (0-1)
+5. Approximate position on the board as percentage (x, y coordinates from top-left, 0-100%)
 
 IMPORTANT: Return ONLY valid JSON. Do not include any other text before or after the JSON.
 Use this exact structure:
@@ -120,13 +123,15 @@ Use this exact structure:
       "name": "component name",
       "type": "component type",
       "description": "description",
-      "confidence": 0.9
+      "confidence": 0.9,
+      "x": 50,
+      "y": 50
     }
   ],
   "summary": "brief summary of the board"
 }
 
-Focus on identifying at least 5-10 major components visible in the image. If you cannot identify components, return an empty components array but still provide a summary.`;
+Focus on identifying at least 5-10 major components visible in the image. Estimate their positions roughly on the board (0-100% from top-left). If you cannot identify components, return an empty components array but still provide a summary.`;
 
         // Try multiple models in order
         const models = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-1.5-flash'];
@@ -221,6 +226,7 @@ Focus on identifying at least 5-10 major components visible in the image. If you
 2. Component type (IC, Capacitor, Resistor, Inductor, Connector, Diode, Transistor, Other)
 3. Brief description of its function
 4. Confidence level (0-1)
+5. Approximate position on the board as percentage (x, y coordinates from top-left, 0-100%)
 
 IMPORTANT: Return ONLY valid JSON. Do not include any other text before or after the JSON.
 Use this exact structure:
@@ -230,13 +236,15 @@ Use this exact structure:
       "name": "component name",
       "type": "component type",
       "description": "description",
-      "confidence": 0.9
+      "confidence": 0.9,
+      "x": 50,
+      "y": 50
     }
   ],
   "summary": "brief summary of the board"
 }
 
-Focus on identifying at least 5-10 major components visible in the image. If you cannot identify components, return an empty components array but still provide a summary.`,
+Focus on identifying at least 5-10 major components visible in the image. Estimate their positions roughly on the board (0-100% from top-left). If you cannot identify components, return an empty components array but still provide a summary.`,
                 },
                 {
                   type: 'image_url',
@@ -308,6 +316,7 @@ Focus on identifying at least 5-10 major components visible in the image. If you
 2. Component type (IC, Capacitor, Resistor, Inductor, Connector, Diode, Transistor, Other)
 3. Brief description of its function
 4. Confidence level (0-1)
+5. Approximate position on the board as percentage (x, y coordinates from top-left, 0-100%)
 
 IMPORTANT: Return ONLY valid JSON. Do not include any other text before or after the JSON.
 Use this exact structure:
@@ -317,13 +326,15 @@ Use this exact structure:
       "name": "component name",
       "type": "component type",
       "description": "description",
-      "confidence": 0.9
+      "confidence": 0.9,
+      "x": 50,
+      "y": 50
     }
   ],
   "summary": "brief summary of the board"
 }
 
-Focus on identifying at least 5-10 major components visible in the image. If you cannot identify components, return an empty components array but still provide a summary.`,
+Focus on identifying at least 5-10 major components visible in the image. Estimate their positions roughly on the board (0-100% from top-left). If you cannot identify components, return an empty components array but still provide a summary.`,
                 },
                 {
                   type: 'image_url',
