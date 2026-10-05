@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { HardwareBoardViewer, NetTrace } from '@/components/HardwareBoardViewer';
+import { HardwareBoardViewer, NetTrace, Component } from '@/components/HardwareBoardViewer';
 import { useDiagnosticContext } from '@/contexts/DiagnosticContext';
-import { Search, Upload, Sparkles, ChevronLeft, ChevronRight, X, Loader2 } from 'lucide-react';
+import { Search, Upload, Sparkles, ChevronLeft, ChevronRight, X, Loader2, Plus, CircuitBoard } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 /**
@@ -31,7 +31,62 @@ export default function BoardViewPage() {
   const [newNetName, setNewNetName] = useState('');
   const [newNetColor, setNewNetColor] = useState('#f59e0b');
   const [newNetDescription, setNewNetDescription] = useState('');
+  const [showAddComponentModal, setShowAddComponentModal] = useState(false);
+  const [newComponentName, setNewComponentName] = useState('');
+  const [newComponentType, setNewComponentType] = useState<Component['type']>('IC');
+  const [newComponentX, setNewComponentX] = useState('50%');
+  const [newComponentY, setNewComponentY] = useState('50%');
+  const [newComponentDescription, setNewComponentDescription] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Example components for demonstration
+  const [components, setComponents] = useState<Record<string, Component>>({
+    comp_cpu: {
+      id: 'comp_cpu',
+      name: 'U1200',
+      type: 'IC',
+      x: '30%',
+      y: '30%',
+      description: 'Main CPU - Processor',
+      connectedNets: ['net_cpu_vcore', 'net_vdd_main'],
+    },
+    comp_pm_ic: {
+      id: 'comp_pm_ic',
+      name: 'U1400',
+      type: 'IC',
+      x: '15%',
+      y: '40%',
+      description: 'Power Management IC',
+      connectedNets: ['net_vdd_main', 'net_1v8_always'],
+    },
+    comp_cap1: {
+      id: 'comp_cap1',
+      name: 'C1500',
+      type: 'Capacitor',
+      x: '20%',
+      y: '35%',
+      description: 'Power filter capacitor',
+      connectedNets: ['net_vdd_main'],
+    },
+    comp_res1: {
+      id: 'comp_res1',
+      name: 'R1200',
+      type: 'Resistor',
+      x: '25%',
+      y: '45%',
+      description: 'Current sense resistor',
+      connectedNets: ['net_gnd'],
+    },
+    comp_usb_conn: {
+      id: 'comp_usb_conn',
+      name: 'J8000',
+      type: 'Connector',
+      x: '5%',
+      y: '50%',
+      description: 'USB-C Connector',
+      connectedNets: ['net_vbus'],
+    },
+  });
 
   // Example nets for demonstration - expanded with more realistic traces
   const [nets, setNets] = useState<Record<string, NetTrace>>({
@@ -49,6 +104,7 @@ export default function BoardViewPage() {
         { x: '75%', y: '45%' },
       ],
       description: 'Main power rail (3.7V - 4.2V) - Primary power distribution',
+      components: [components.comp_pm_ic, components.comp_cap1],
     },
     net_cpu_vcore: {
       id: 'net_cpu_vcore',
@@ -63,6 +119,7 @@ export default function BoardViewPage() {
         { x: '65%', y: '30%' },
       ],
       description: 'CPU core voltage (0.85V) - Processor power supply',
+      components: [components.comp_cpu],
     },
     net_gnd: {
       id: 'net_gnd',
@@ -79,6 +136,7 @@ export default function BoardViewPage() {
         { x: '80%', y: '65%' },
       ],
       description: 'Ground plane - System ground reference',
+      components: [components.comp_res1],
     },
     net_vbus: {
       id: 'net_vbus',
@@ -91,6 +149,7 @@ export default function BoardViewPage() {
         { x: '25%', y: '45%' },
       ],
       description: 'USB-C power input (5V - 20V PD)',
+      components: [components.comp_usb_conn],
     },
     net_1v8_always: {
       id: 'net_1v8_always',
@@ -103,6 +162,7 @@ export default function BoardViewPage() {
         { x: '45%', y: '40%' },
       ],
       description: 'Always-on 1.8V rail - Boot and standby power',
+      components: [components.comp_pm_ic],
     },
     net_3v3_sim: {
       id: 'net_3v3_sim',
@@ -204,6 +264,41 @@ export default function BoardViewPage() {
     });
     if (selectedNet === netId) {
       setSelectedNet(null);
+    }
+  };
+
+  const handleAddComponent = () => {
+    if (!newComponentName.trim()) return;
+
+    const newComponent: Component = {
+      id: `comp_${Date.now()}`,
+      name: newComponentName,
+      type: newComponentType,
+      x: newComponentX,
+      y: newComponentY,
+      description: newComponentDescription || undefined,
+      connectedNets: [],
+    };
+
+    setComponents(prev => ({ ...prev, [newComponent.id]: newComponent }));
+    setNewComponentName('');
+    setNewComponentDescription('');
+    setNewComponentX('50%');
+    setNewComponentY('50%');
+    setShowAddComponentModal(false);
+  };
+
+  const handleDeleteComponent = (componentId: string) => {
+    setComponents(prev => {
+      const newComponents = { ...prev };
+      delete newComponents[componentId];
+      return newComponents;
+    });
+  };
+
+  const handleClearAllComponents = () => {
+    if (confirm('هل أنت متأكد من حذف جميع المكونات؟')) {
+      setComponents({});
     }
   };
 
@@ -344,6 +439,12 @@ export default function BoardViewPage() {
                 + إضافة مسار
               </button>
               <button
+                onClick={() => setShowAddComponentModal(true)}
+                className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs font-medium"
+              >
+                + إضافة مكون
+              </button>
+              <button
                 onClick={handleClearAllNets}
                 className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs font-medium"
                 title="حذف جميع المسارات"
@@ -471,6 +572,7 @@ export default function BoardViewPage() {
               boardName={boardName || 'Custom Board'}
               customImageUrl={customImage}
               nets={nets}
+              components={components}
               onNetSelect={handleNetSelect}
               className="h-full"
             />
@@ -479,7 +581,7 @@ export default function BoardViewPage() {
           {/* Add Net Modal */}
           {showAddNetModal && (
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-              <div className="bg-gray-800 rounded-xl p-6 max-w-md w-full border border-gray-700">
+              <div className="bg-gray-800 rounded-xl p-6 max-w-md w-full border border-gray-700 shadow-2xl">
                 <h3 className="text-xl font-bold text-white mb-4">إضافة مسار جديد</h3>
                 <div className="space-y-4">
                   <div>
@@ -491,7 +593,7 @@ export default function BoardViewPage() {
                       value={newNetName}
                       onChange={(e) => setNewNetName(e.target.value)}
                       placeholder="مثال: PP_VDD_MAIN"
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div>
@@ -530,13 +632,108 @@ export default function BoardViewPage() {
                   <button
                     onClick={handleAddNet}
                     disabled={!newNetName.trim()}
-                    className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors font-medium"
+                    className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors font-medium"
                   >
                     إضافة
                   </button>
                   <button
                     onClick={() => setShowAddNetModal(false)}
-                    className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
+                    className="flex-1 px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
+                  >
+                    إلغاء
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Add Component Modal */}
+          {showAddComponentModal && (
+            <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-gray-800 rounded-xl p-6 max-w-md w-full border border-gray-700 shadow-2xl">
+                <h3 className="text-xl font-bold text-white mb-4">إضافة مكون جديد</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      اسم المكون
+                    </label>
+                    <input
+                      type="text"
+                      value={newComponentName}
+                      onChange={(e) => setNewComponentName(e.target.value)}
+                      placeholder="مثال: U1200, C1500, R1200"
+                      className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      نوع المكون
+                    </label>
+                    <select
+                      value={newComponentType}
+                      onChange={(e) => setNewComponentType(e.target.value as Component['type'])}
+                      className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="IC">IC (دائرة متكاملة)</option>
+                      <option value="Capacitor">Capacitor (مكثف)</option>
+                      <option value="Resistor">Resistor (مقاومة)</option>
+                      <option value="Inductor">Inductor (ملف)</option>
+                      <option value="Connector">Connector (موصل)</option>
+                      <option value="Diode">Diode (دايود)</option>
+                      <option value="Transistor">Transistor (ترانزستور)</option>
+                      <option value="Other">Other (أخرى)</option>
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        الموقع X (%)
+                      </label>
+                      <input
+                        type="text"
+                        value={newComponentX}
+                        onChange={(e) => setNewComponentX(e.target.value)}
+                        placeholder="50%"
+                        className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        الموقع Y (%)
+                      </label>
+                      <input
+                        type="text"
+                        value={newComponentY}
+                        onChange={(e) => setNewComponentY(e.target.value)}
+                        placeholder="50%"
+                        className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      الوصف (اختياري)
+                    </label>
+                    <textarea
+                      value={newComponentDescription}
+                      onChange={(e) => setNewComponentDescription(e.target.value)}
+                      placeholder="وصف المكون والوظيفة"
+                      rows={3}
+                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={handleAddComponent}
+                    disabled={!newComponentName.trim()}
+                    className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors font-medium"
+                  >
+                    إضافة
+                  </button>
+                  <button
+                    onClick={() => setShowAddComponentModal(false)}
+                    className="flex-1 px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
                   >
                     إلغاء
                   </button>
