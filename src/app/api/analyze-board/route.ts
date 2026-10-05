@@ -53,20 +53,36 @@ export async function POST(req: NextRequest) {
 
     // Try Gemini first (direct API)
     if (geminiKeys.length > 0) {
+      console.log('Gemini keys available:', geminiKeys.length);
       const key = getNextKeyWithRotation('gemini', geminiKeys);
       if (key) {
+        console.log('Using Gemini key:', key.substring(0, 15) + '...');
         try {
           console.log('Trying Gemini with key:', key.substring(0, 10) + '...');
           const genAI = new GoogleGenerativeAI(key);
           const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
           // Fetch image and convert to base64
-          const imageResponse = await fetch(imageUrl);
+          console.log('Fetching image from URL:', imageUrl);
+          const imageResponse = await fetch(imageUrl, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            },
+          });
           if (!imageResponse.ok) {
-            throw new Error('Failed to fetch image');
+            throw new Error(`Failed to fetch image: ${imageResponse.status} ${imageResponse.statusText}`);
           }
           const imageBuffer = await imageResponse.arrayBuffer();
           const base64Image = Buffer.from(imageBuffer).toString('base64');
+          console.log('Image converted to base64, size:', base64Image.length, 'bytes');
+
+          // Check if image is too large (Gemini has limits)
+          if (base64Image.length > 20 * 1024 * 1024) { // 20MB limit
+            throw new Error('Image too large for processing (max 20MB)');
+          }
+
+          // Detect image type from URL or default to jpeg
+          const imageType = imageUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg';
 
           const prompt = `Analyze this PCB board image and identify the key components. For each component you identify, provide:
 1. Component name (e.g., U1200, C1500, R1200)
@@ -93,7 +109,7 @@ Focus on identifying at least 5-10 major components visible in the image.`;
             prompt,
             {
               inlineData: {
-                mimeType: 'image/jpeg',
+                mimeType: imageType,
                 data: base64Image,
               },
             },
@@ -101,7 +117,7 @@ Focus on identifying at least 5-10 major components visible in the image.`;
 
           recordKeySuccess('gemini');
           const content = result.response.text();
-          console.log('Gemini response received');
+          console.log('Gemini response received, length:', content.length);
 
           try {
             const parsed = JSON.parse(content || '{}');
