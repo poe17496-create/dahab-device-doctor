@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllActiveKeys, getNextKeyWithRotation, recordKeyFailure, recordKeySuccess } from '@/lib/apiKeysStorage';
 import OpenAI from 'openai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
@@ -48,67 +47,66 @@ export async function POST(req: NextRequest) {
 
     console.log('Board analysis request:', { imageUrl, boardName });
 
-    // Get all active AI keys from the storage system
-    const allKeys = getAllActiveKeys();
-    const { openrouterKeys, geminiKeys, openaiKeys } = allKeys;
-    console.log('Available keys:', {
-      openrouter: openrouterKeys.length,
-      gemini: geminiKeys.length,
-      openai: openaiKeys.length,
+    // Get keys from environment variables directly (simpler for Vercel)
+    const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+    const openrouterKey = process.env.OPENROUTER_API_KEY;
+    const openaiKey = process.env.OPENAI_API_KEY;
+
+    console.log('Available keys from env:', {
+      gemini: !!geminiKey,
+      openrouter: !!openrouterKey,
+      openai: !!openaiKey,
     });
 
     // If no keys available, return error immediately
-    if (geminiKeys.length === 0 && openrouterKeys.length === 0 && openaiKeys.length === 0) {
-      console.error('No AI keys available in any provider');
+    if (!geminiKey && !openrouterKey && !openaiKey) {
+      console.error('No AI keys available in environment variables');
       return NextResponse.json<AnalyzeBoardResponse>(
         {
           success: false,
-          error: 'No AI provider keys available. Please add API keys via the admin panel.',
+          error: 'No AI provider keys configured. Please add GEMINI_API_KEY or OPENROUTER_API_KEY to environment variables.',
         },
         { status: 500 }
       );
     }
 
     // Try Gemini first (direct API)
-    if (geminiKeys.length > 0) {
-      console.log('Gemini keys available:', geminiKeys.length);
-      const key = getNextKeyWithRotation('gemini', geminiKeys);
-      if (key) {
-        console.log('Using Gemini key:', key.substring(0, 15) + '...');
+    if (geminiKey) {
+      console.log('Using Gemini key:', geminiKey.substring(0, 15) + '...');
+      try {
+        const genAI = new GoogleGenerativeAI(geminiKey);
+
+        // Fetch image and convert to base64
+        console.log('Fetching image from URL:', imageUrl);
+        const imageResponse = await fetch(imageUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          },
+        });
+        if (!imageResponse.ok) {
+          throw new Error(`Failed to fetch image: ${imageResponse.status} ${imageResponse.statusText}`);
+        }
+        const imageBuffer = await imageResponse.arrayBuffer();
+
+        // Convert to base64 safely
+        let base64Image: string;
         try {
-          const genAI = new GoogleGenerativeAI(key);
+          base64Image = Buffer.from(imageBuffer).toString('base64');
+        } catch (bufferError) {
+          console.error('Buffer conversion error:', bufferError);
+          throw new Error('Failed to convert image to base64');
+        }
+        console.log('Image converted to base64, size:', base64Image.length, 'bytes');
 
-          // Fetch image and convert to base64 (do this once for all models)
-          console.log('Fetching image from URL:', imageUrl);
-          const imageResponse = await fetch(imageUrl, {
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            },
-          });
-          if (!imageResponse.ok) {
-            throw new Error(`Failed to fetch image: ${imageResponse.status} ${imageResponse.statusText}`);
-          }
-          const imageBuffer = await imageResponse.arrayBuffer();
+        // Check if image is too large (Gemini has limits)
+        if (base64Image.length > 20 * 1024 * 1024) { // 20MB limit
+          throw new Error('Image too large for processing (max 20MB)');
+        }
 
-          // Convert to base64 safely
-          let base64Image: string;
-          try {
-            base64Image = Buffer.from(imageBuffer).toString('base64');
-          } catch (bufferError) {
-            console.error('Buffer conversion error:', bufferError);
-            throw new Error('Failed to convert image to base64');
-          }
-          console.log('Image converted to base64, size:', base64Image.length, 'bytes');
+        // Detect image type from URL or default to jpeg
+        const imageType = imageUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg';
 
-          // Check if image is too large (Gemini has limits)
-          if (base64Image.length > 20 * 1024 * 1024) { // 20MB limit
-            throw new Error('Image too large for processing (max 20MB)');
-          }
-
-          // Detect image type from URL or default to jpeg
-          const imageType = imageUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg';
-
-          const prompt = `Analyze this PCB board image and identify the key components. For each component you identify, provide:
+        const prompt = `Analyze this PCB board image and identify the key components. For each component you identify, provide:
 1. Component name (e.g., U1200, C1500, R1200)
 2. Component type (IC, Capacitor, Resistor, Inductor, Connector, Diode, Transistor, Other)
 3. Brief description of its function
@@ -129,84 +127,78 @@ Return the response in JSON format with this structure:
 
 Focus on identifying at least 5-10 major components visible in the image.`;
 
-          // Try multiple models in order
-          const models = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-1.5-flash'];
-          let lastError = null;
+        // Try multiple models in order
+        const models = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-1.5-flash'];
+        let lastError = null;
 
-          for (const modelName of models) {
-            try {
-              console.log('Trying model:', modelName);
-              const model = genAI.getGenerativeModel({ model: modelName });
+        for (const modelName of models) {
+          try {
+            console.log('Trying model:', modelName);
+            const model = genAI.getGenerativeModel({ model: modelName });
 
-              const result = await model.generateContent([
-                prompt,
-                {
-                  inlineData: {
-                    mimeType: imageType,
-                    data: base64Image,
-                  },
+            const result = await model.generateContent([
+              prompt,
+              {
+                inlineData: {
+                  mimeType: imageType,
+                  data: base64Image,
                 },
-              ]);
+              },
+            ]);
 
-              recordKeySuccess('gemini');
-              const content = result.response.text();
-              console.log('Gemini response received from', modelName, ', length:', content.length);
+            const content = result.response.text();
+            console.log('Gemini response received from', modelName, ', length:', content.length);
 
-              try {
-                const parsed = JSON.parse(content || '{}');
-                return NextResponse.json<AnalyzeBoardResponse>({
-                  success: true,
-                  components: parsed.components || [],
-                  summary: parsed.summary || '',
-                });
-              } catch (parseError) {
-                return NextResponse.json<AnalyzeBoardResponse>({
-                  success: true,
-                  components: [],
-                  summary: content || '',
-                });
-              }
-            } catch (error: any) {
-              lastError = error;
-              console.error(`Model ${modelName} failed:`, error.message);
-              continue; // Try next model
+            try {
+              const parsed = JSON.parse(content || '{}');
+              return NextResponse.json<AnalyzeBoardResponse>({
+                success: true,
+                components: parsed.components || [],
+                summary: parsed.summary || '',
+              });
+            } catch (parseError) {
+              return NextResponse.json<AnalyzeBoardResponse>({
+                success: true,
+                components: [],
+                summary: content || '',
+              });
             }
+          } catch (error: any) {
+            lastError = error;
+            console.error(`Model ${modelName} failed:`, error.message);
+            continue; // Try next model
           }
-
-          // If all models failed
-          recordKeyFailure('gemini', lastError?.message || 'All models failed', geminiKeys);
-          console.error('All Gemini models failed');
-        } catch (error: any) {
-          recordKeyFailure('gemini', error.message, geminiKeys);
-          console.error('Gemini API error:', error.message, error);
         }
+
+        // If all models failed
+        console.error('All Gemini models failed:', lastError?.message);
+      } catch (error: any) {
+        console.error('Gemini API error:', error.message, error);
       }
     }
 
     // Try OpenRouter next
-    if (openrouterKeys.length > 0) {
-      const key = getNextKeyWithRotation('openrouter', openrouterKeys);
-      if (key) {
-        try {
-          console.log('Trying OpenRouter with key:', key.substring(0, 10) + '...');
-          const client = new OpenAI({
-            apiKey: key,
-            baseURL: 'https://openrouter.ai/api/v1',
-            defaultHeaders: {
-              'HTTP-Referer': 'https://dahab-device-doctor.vercel.app',
-              'X-Title': 'Dahab Device Doctor',
-            },
-          });
+    if (openrouterKey) {
+      console.log('Trying OpenRouter with key:', openrouterKey.substring(0, 10) + '...');
+      try {
+        const client = new OpenAI({
+          apiKey: openrouterKey,
+          baseURL: 'https://openrouter.ai/api/v1',
+          defaultHeaders: {
+            'HTTP-Referer': 'https://dahab-device-doctor.vercel.app',
+            'X-Title': 'Dahab Device Doctor',
+          },
+        });
 
-          const response = await client.chat.completions.create({
-            model: 'google/gemini-flash-1.5-8b',
-            messages: [
-              {
-                role: 'user',
-                content: [
-                  {
-                    type: 'text',
-                    text: `Analyze this PCB board image and identify the key components. For each component you identify, provide:
+        const response = await client.chat.completions.create({
+          model: 'google/gemini-flash-1.5-8b',
+          messages: [
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'text',
+                  text: `Analyze this PCB board image and identify the key components. For each component you identify, provide:
 1. Component name (e.g., U1200, C1500, R1200)
 2. Component type (IC, Capacitor, Resistor, Inductor, Connector, Diode, Transistor, Other)
 3. Brief description of its function
@@ -226,61 +218,56 @@ Return the response in JSON format with this structure:
 }
 
 Focus on identifying at least 5-10 major components visible in the image.`,
+                },
+                {
+                  type: 'image_url',
+                  image_url: {
+                    url: imageUrl,
                   },
-                  {
-                    type: 'image_url',
-                    image_url: {
-                      url: imageUrl,
-                    },
-                  },
-                ],
-              },
-            ],
-            max_tokens: 1000,
+                },
+              ],
+            },
+          ],
+          max_tokens: 1000,
+        });
+
+        const content = response.choices[0].message.content;
+        console.log('OpenRouter response received');
+
+        try {
+          const parsed = JSON.parse(content || '{}');
+          return NextResponse.json<AnalyzeBoardResponse>({
+            success: true,
+            components: parsed.components || [],
+            summary: parsed.summary || '',
           });
-
-          recordKeySuccess('openrouter');
-          const content = response.choices[0].message.content;
-          console.log('OpenRouter response received');
-
-          try {
-            const parsed = JSON.parse(content || '{}');
-            return NextResponse.json<AnalyzeBoardResponse>({
-              success: true,
-              components: parsed.components || [],
-              summary: parsed.summary || '',
-            });
-          } catch (parseError) {
-            return NextResponse.json<AnalyzeBoardResponse>({
-              success: true,
-              components: [],
-              summary: content || '',
-            });
-          }
-        } catch (error: any) {
-          recordKeyFailure('openrouter', error.message, openrouterKeys);
-          console.error('OpenRouter API error:', error.message, error);
+        } catch (parseError) {
+          return NextResponse.json<AnalyzeBoardResponse>({
+            success: true,
+            components: [],
+            summary: content || '',
+          });
         }
+      } catch (error: any) {
+        console.error('OpenRouter API error:', error.message, error);
       }
     }
 
     // Fallback to OpenAI if available
-    if (openaiKeys.length > 0) {
-      const key = getNextKeyWithRotation('openai', openaiKeys);
-      if (key) {
-        try {
-          console.log('Trying OpenAI with key:', key.substring(0, 10) + '...');
-          const client = new OpenAI({ apiKey: key });
+    if (openaiKey) {
+      console.log('Trying OpenAI with key:', openaiKey.substring(0, 10) + '...');
+      try {
+        const client = new OpenAI({ apiKey: openaiKey });
 
-          const response = await client.chat.completions.create({
-            model: 'gpt-4o',
-            messages: [
-              {
-                role: 'user',
-                content: [
-                  {
-                    type: 'text',
-                    text: `Analyze this PCB board image and identify the key components. For each component you identify, provide:
+        const response = await client.chat.completions.create({
+          model: 'gpt-4o',
+          messages: [
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'text',
+                  text: `Analyze this PCB board image and identify the key components. For each component you identify, provide:
 1. Component name (e.g., U1200, C1500, R1200)
 2. Component type (IC, Capacitor, Resistor, Inductor, Connector, Diode, Transistor, Other)
 3. Brief description of its function
@@ -300,41 +287,38 @@ Return the response in JSON format with this structure:
 }
 
 Focus on identifying at least 5-10 major components visible in the image.`,
+                },
+                {
+                  type: 'image_url',
+                  image_url: {
+                    url: imageUrl,
                   },
-                  {
-                    type: 'image_url',
-                    image_url: {
-                      url: imageUrl,
-                    },
-                  },
-                ],
-              },
-            ],
-            max_tokens: 1000,
+                },
+              ],
+            },
+          ],
+          max_tokens: 1000,
+        });
+
+        const content = response.choices[0].message.content;
+        console.log('OpenAI response received');
+
+        try {
+          const parsed = JSON.parse(content || '{}');
+          return NextResponse.json<AnalyzeBoardResponse>({
+            success: true,
+            components: parsed.components || [],
+            summary: parsed.summary || '',
           });
-
-          recordKeySuccess('openai');
-          const content = response.choices[0].message.content;
-          console.log('OpenAI response received');
-
-          try {
-            const parsed = JSON.parse(content || '{}');
-            return NextResponse.json<AnalyzeBoardResponse>({
-              success: true,
-              components: parsed.components || [],
-              summary: parsed.summary || '',
-            });
-          } catch (parseError) {
-            return NextResponse.json<AnalyzeBoardResponse>({
-              success: true,
-              components: [],
-              summary: content || '',
-            });
-          }
-        } catch (error: any) {
-          recordKeyFailure('openai', error.message, openaiKeys);
-          console.error('OpenAI API error:', error.message, error);
+        } catch (parseError) {
+          return NextResponse.json<AnalyzeBoardResponse>({
+            success: true,
+            components: [],
+            summary: content || '',
+          });
         }
+      } catch (error: any) {
+        console.error('OpenAI API error:', error.message, error);
       }
     }
 
