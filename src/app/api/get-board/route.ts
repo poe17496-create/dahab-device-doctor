@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
+import ddg from 'duckduckgo-images-api';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,7 +11,7 @@ export const dynamic = 'force-dynamic';
  * 1. Receive boardName from request
  * 2. Query Supabase boards table for cached image_url
  * 3. If cached, return it
- * 4. If not cached, fetch high-res image using Image Search API
+ * 4. If not cached, fetch high-res image using DuckDuckGo Image Search
  * 5. Insert image_url into Supabase for permanent caching
  * 6. Return the new image_url
  */
@@ -27,40 +28,35 @@ interface GetBoardResponse {
 }
 
 /**
- * Fetch high-resolution motherboard image using Google Custom Search API
+ * Fetch high-resolution motherboard image using DuckDuckGo Image Search
+ * No API key required - uses free web scraping
  */
 async function fetchBoardImage(boardName: string): Promise<string> {
-  const API_KEYS = [
-    process.env.GOOGLEAPIKEY212,
-    process.env.GOOGLEAPIKEY123,
-    process.env.GOOGLEAPIKEY12,
-    process.env.GOOGLEAPIKEY88,
-  ].filter(Boolean);
+  const query = `${boardName} motherboard PCB high resolution`;
 
-  if (API_KEYS.length === 0) {
-    throw new Error('No Google API keys configured');
-  }
+  try {
+    const results = await ddg.image_search({
+      query: query,
+      iterations: 1,
+      moderate: false,
+    });
 
-  const query = `${boardName} motherboard PCB circuit board high resolution`;
-
-  // Try each API key
-  for (const apiKey of API_KEYS) {
-    try {
-      const url = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=d7d463570f3a34261&q=${encodeURIComponent(query)}&searchType=image&num=1&imgSize=huge`;
-
-      const response = await fetch(url);
-      const data = await response.json();
-
-      if (data.items && data.items.length > 0) {
-        return data.items[0].link;
-      }
-    } catch (error) {
-      console.log('API key failed, trying next...');
-      continue;
+    if (!results || results.length === 0) {
+      throw new Error('No images found');
     }
-  }
 
-  throw new Error('Failed to fetch image');
+    // Filter for high-resolution images (prefer larger images)
+    const highResImages = results
+      .filter((img: any) => img.width && img.height && img.width >= 800 && img.height >= 600)
+      .sort((a: any, b: any) => (b.width * b.height) - (a.width * a.height));
+
+    // Return the best high-res image, or the first result if no high-res images
+    const bestImage = highResImages.length > 0 ? highResImages[0] : results[0];
+    return bestImage.image;
+  } catch (error) {
+    console.error('DuckDuckGo search error:', error);
+    throw new Error('Failed to fetch image from DuckDuckGo');
+  }
 }
 
 export async function POST(req: NextRequest) {
