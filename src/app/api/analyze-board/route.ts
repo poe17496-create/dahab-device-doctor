@@ -3,6 +3,11 @@ import { getAllActiveKeys, getNextKeyWithRotation, recordKeyFailure, recordKeySu
 import OpenAI from 'openai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
+// Polyfill for Buffer in Vercel/Edge environment
+if (typeof Buffer === 'undefined') {
+  global.Buffer = require('buffer').Buffer;
+}
+
 /**
  * AI Board Analysis API
  *
@@ -44,12 +49,25 @@ export async function POST(req: NextRequest) {
     console.log('Board analysis request:', { imageUrl, boardName });
 
     // Get all active AI keys from the storage system
-    const { openrouterKeys, geminiKeys, openaiKeys } = getAllActiveKeys();
+    const allKeys = getAllActiveKeys();
+    const { openrouterKeys, geminiKeys, openaiKeys } = allKeys;
     console.log('Available keys:', {
       openrouter: openrouterKeys.length,
       gemini: geminiKeys.length,
       openai: openaiKeys.length,
     });
+
+    // If no keys available, return error immediately
+    if (geminiKeys.length === 0 && openrouterKeys.length === 0 && openaiKeys.length === 0) {
+      console.error('No AI keys available in any provider');
+      return NextResponse.json<AnalyzeBoardResponse>(
+        {
+          success: false,
+          error: 'No AI provider keys available. Please add API keys via the admin panel.',
+        },
+        { status: 500 }
+      );
+    }
 
     // Try Gemini first (direct API)
     if (geminiKeys.length > 0) {
@@ -71,7 +89,15 @@ export async function POST(req: NextRequest) {
             throw new Error(`Failed to fetch image: ${imageResponse.status} ${imageResponse.statusText}`);
           }
           const imageBuffer = await imageResponse.arrayBuffer();
-          const base64Image = Buffer.from(imageBuffer).toString('base64');
+
+          // Convert to base64 safely
+          let base64Image: string;
+          try {
+            base64Image = Buffer.from(imageBuffer).toString('base64');
+          } catch (bufferError) {
+            console.error('Buffer conversion error:', bufferError);
+            throw new Error('Failed to convert image to base64');
+          }
           console.log('Image converted to base64, size:', base64Image.length, 'bytes');
 
           // Check if image is too large (Gemini has limits)
@@ -317,12 +343,13 @@ Focus on identifying at least 5-10 major components visible in the image.`,
     return NextResponse.json<AnalyzeBoardResponse>(
       {
         success: false,
-        error: 'No AI provider available. Please add API keys via the admin panel.',
+        error: 'All AI providers failed. Please check API keys and try again.',
       },
       { status: 500 }
     );
   } catch (error: any) {
     console.error('Error in analyze-board API:', error);
+    console.error('Error stack:', error.stack);
     return NextResponse.json<AnalyzeBoardResponse>(
       {
         success: false,
