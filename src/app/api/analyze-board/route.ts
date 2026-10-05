@@ -112,7 +112,8 @@ export async function POST(req: NextRequest) {
 3. Brief description of its function
 4. Confidence level (0-1)
 
-Return the response in JSON format with this structure:
+IMPORTANT: Return ONLY valid JSON. Do not include any other text before or after the JSON.
+Use this exact structure:
 {
   "components": [
     {
@@ -125,7 +126,7 @@ Return the response in JSON format with this structure:
   "summary": "brief summary of the board"
 }
 
-Focus on identifying at least 5-10 major components visible in the image.`;
+Focus on identifying at least 5-10 major components visible in the image. If you cannot identify components, return an empty components array but still provide a summary.`;
 
         // Try multiple models in order
         const models = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-1.5-flash'];
@@ -148,21 +149,38 @@ Focus on identifying at least 5-10 major components visible in the image.`;
 
             const content = result.response.text();
             console.log('Gemini response received from', modelName, ', length:', content.length);
+            console.log('Response preview:', content.substring(0, 200));
 
+            // Try to extract JSON from the response
+            let parsed = null;
             try {
-              const parsed = JSON.parse(content || '{}');
+              parsed = JSON.parse(content || '{}');
+            } catch (parseError) {
+              // Try to extract JSON from markdown code blocks
+              const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || content.match(/\{[\s\S]*\}/);
+              if (jsonMatch) {
+                try {
+                  parsed = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+                } catch (e) {
+                  console.error('Failed to parse extracted JSON:', e);
+                }
+              }
+            }
+
+            if (parsed && parsed.components && parsed.components.length > 0) {
               return NextResponse.json<AnalyzeBoardResponse>({
                 success: true,
-                components: parsed.components || [],
+                components: parsed.components,
                 summary: parsed.summary || '',
               });
-            } catch (parseError) {
-              return NextResponse.json<AnalyzeBoardResponse>({
-                success: true,
-                components: [],
-                summary: content || '',
-              });
             }
+
+            // If no valid components found, return raw text as summary
+            return NextResponse.json<AnalyzeBoardResponse>({
+              success: true,
+              components: [],
+              summary: content || 'AI could not identify components in this image.',
+            });
           } catch (error: any) {
             lastError = error;
             console.error(`Model ${modelName} failed:`, error.message);
@@ -204,7 +222,8 @@ Focus on identifying at least 5-10 major components visible in the image.`;
 3. Brief description of its function
 4. Confidence level (0-1)
 
-Return the response in JSON format with this structure:
+IMPORTANT: Return ONLY valid JSON. Do not include any other text before or after the JSON.
+Use this exact structure:
 {
   "components": [
     {
@@ -217,7 +236,7 @@ Return the response in JSON format with this structure:
   "summary": "brief summary of the board"
 }
 
-Focus on identifying at least 5-10 major components visible in the image.`,
+Focus on identifying at least 5-10 major components visible in the image. If you cannot identify components, return an empty components array but still provide a summary.`,
                 },
                 {
                   type: 'image_url',
@@ -233,21 +252,38 @@ Focus on identifying at least 5-10 major components visible in the image.`,
 
         const content = response.choices[0].message.content;
         console.log('OpenRouter response received');
+        console.log('Response preview:', content?.substring(0, 200));
 
+        // Try to extract JSON from the response
+        let parsed = null;
         try {
-          const parsed = JSON.parse(content || '{}');
+          parsed = JSON.parse(content || '{}');
+        } catch (parseError) {
+          // Try to extract JSON from markdown code blocks
+          const jsonMatch = content?.match(/```json\s*([\s\S]*?)\s*```/) || content?.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            try {
+              parsed = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+            } catch (e) {
+              console.error('Failed to parse extracted JSON:', e);
+            }
+          }
+        }
+
+        if (parsed && parsed.components && parsed.components.length > 0) {
           return NextResponse.json<AnalyzeBoardResponse>({
             success: true,
-            components: parsed.components || [],
+            components: parsed.components,
             summary: parsed.summary || '',
           });
-        } catch (parseError) {
-          return NextResponse.json<AnalyzeBoardResponse>({
-            success: true,
-            components: [],
-            summary: content || '',
-          });
         }
+
+        // If no valid components found, return raw text as summary
+        return NextResponse.json<AnalyzeBoardResponse>({
+          success: true,
+          components: [],
+          summary: content || 'AI could not identify components in this image.',
+        });
       } catch (error: any) {
         console.error('OpenRouter API error:', error.message, error);
       }
@@ -273,7 +309,8 @@ Focus on identifying at least 5-10 major components visible in the image.`,
 3. Brief description of its function
 4. Confidence level (0-1)
 
-Return the response in JSON format with this structure:
+IMPORTANT: Return ONLY valid JSON. Do not include any other text before or after the JSON.
+Use this exact structure:
 {
   "components": [
     {
@@ -286,7 +323,7 @@ Return the response in JSON format with this structure:
   "summary": "brief summary of the board"
 }
 
-Focus on identifying at least 5-10 major components visible in the image.`,
+Focus on identifying at least 5-10 major components visible in the image. If you cannot identify components, return an empty components array but still provide a summary.`,
                 },
                 {
                   type: 'image_url',
@@ -302,21 +339,38 @@ Focus on identifying at least 5-10 major components visible in the image.`,
 
         const content = response.choices[0].message.content;
         console.log('OpenAI response received');
+        console.log('Response preview:', content?.substring(0, 200));
 
+        // Try to extract JSON from the response
+        let parsed = null;
         try {
-          const parsed = JSON.parse(content || '{}');
+          parsed = JSON.parse(content || '{}');
+        } catch (parseError) {
+          // Try to extract JSON from markdown code blocks
+          const jsonMatch = content?.match(/```json\s*([\s\S]*?)\s*```/) || content?.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            try {
+              parsed = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+            } catch (e) {
+              console.error('Failed to parse extracted JSON:', e);
+            }
+          }
+        }
+
+        if (parsed && parsed.components && parsed.components.length > 0) {
           return NextResponse.json<AnalyzeBoardResponse>({
             success: true,
-            components: parsed.components || [],
+            components: parsed.components,
             summary: parsed.summary || '',
           });
-        } catch (parseError) {
-          return NextResponse.json<AnalyzeBoardResponse>({
-            success: true,
-            components: [],
-            summary: content || '',
-          });
         }
+
+        // If no valid components found, return raw text as summary
+        return NextResponse.json<AnalyzeBoardResponse>({
+          success: true,
+          components: [],
+          summary: content || 'AI could not identify components in this image.',
+        });
       } catch (error: any) {
         console.error('OpenAI API error:', error.message, error);
       }
