@@ -46,6 +46,8 @@ export interface BoardViewerProps {
   components?: Record<string, Component>;
   onNetSelect?: (net: NetTrace) => void;
   onComponentSelect?: (component: Component) => void;
+  onAddNetPoint?: (netId: string, x: string, y: string) => void;
+  editingNetId?: string | null;
   className?: string;
 }
 
@@ -60,6 +62,8 @@ export function HardwareBoardViewer({
   components = {},
   onNetSelect,
   onComponentSelect,
+  onAddNetPoint,
+  editingNetId = null,
   className = '',
 }: BoardViewerProps) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -75,6 +79,7 @@ export function HardwareBoardViewer({
   const [showComponentPanel, setShowComponentPanel] = useState(false);
   const [componentSearchQuery, setComponentSearchQuery] = useState('');
   const svgRef = useRef<SVGSVGElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
 
   // Fetch board image on mount (or use custom image)
   useEffect(() => {
@@ -142,6 +147,17 @@ export function HardwareBoardViewer({
     if (onComponentSelect) {
       onComponentSelect(component);
     }
+  };
+
+  const handleImageClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Only handle click if we're editing a net
+    if (!editingNetId || !onAddNetPoint) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+
+    onAddNetPoint(editingNetId, `${x.toFixed(2)}%`, `${y.toFixed(2)}%`);
   };
 
   const handleSearchResultClick = (net: NetTrace) => {
@@ -238,7 +254,7 @@ export function HardwareBoardViewer({
   // ==========================================
 
   return (
-    <div className={`relative w-full h-full bg-gray-900 ${className}`}>
+    <div className={`relative w-full h-full bg-gradient-to-br from-gray-900 via-slate-900 to-gray-900 ${className}`}>
       {/* Top Control Bar */}
       <div className="absolute top-4 left-4 right-4 z-20 flex gap-2">
         <div className="relative flex-1 max-w-md">
@@ -371,11 +387,11 @@ export function HardwareBoardViewer({
 
       {/* Component Panel Sidebar */}
       {showComponentPanel && (
-        <div className="absolute top-20 right-4 z-20 w-80 bg-gray-800/95 backdrop-blur-sm border border-gray-700 rounded-xl shadow-2xl max-h-[calc(100vh-6rem)] overflow-hidden">
-          <div className="p-4 border-b border-gray-700">
+        <div className="absolute top-20 right-4 z-20 w-80 bg-gray-800/95 backdrop-blur-xl border border-gray-700/50 rounded-2xl shadow-2xl max-h-[calc(100vh-6rem)] overflow-hidden">
+          <div className="p-4 border-b border-gray-700/50 bg-gradient-to-r from-blue-600/10 to-purple-600/10">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-white font-semibold flex items-center gap-2">
-                <CircuitBoard className="w-4 h-4" />
+                <CircuitBoard className="w-4 h-4 text-blue-400" />
                 Components
               </h3>
               <button
@@ -392,7 +408,7 @@ export function HardwareBoardViewer({
                 placeholder="Search components..."
                 value={componentSearchQuery}
                 onChange={(e) => setComponentSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="w-full pl-10 pr-4 py-2 bg-gray-700/50 backdrop-blur-sm border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition-all"
               />
               {componentSearchQuery && (
                 <button
@@ -412,15 +428,15 @@ export function HardwareBoardViewer({
                 <div
                   key={comp.id}
                   onClick={() => handleComponentClick(comp)}
-                  className={`p-3 rounded-lg cursor-pointer transition-all ${
+                  className={`p-3 rounded-xl cursor-pointer transition-all ${
                     activeComponent === comp.id
-                      ? 'bg-blue-600/30 border-2 border-blue-500'
-                      : 'bg-gray-700/50 border-2 border-transparent hover:bg-gray-700'
+                      ? 'bg-gradient-to-r from-blue-600/30 to-purple-600/30 border-2 border-blue-500 shadow-lg shadow-blue-500/20'
+                      : 'bg-gray-700/50 border-2 border-transparent hover:bg-gray-700/70 hover:border-gray-600'
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <div
-                      className="p-1.5 rounded-md"
+                      className="p-1.5 rounded-lg"
                       style={{ backgroundColor: getComponentColor(comp.type) + '20' }}
                     >
                       <div style={{ color: getComponentColor(comp.type) }}>
@@ -430,9 +446,9 @@ export function HardwareBoardViewer({
                     <span className="font-medium text-white text-sm">{comp.name}</span>
                   </div>
                   <div className="flex items-center gap-2 text-xs text-gray-400">
-                    <span className="px-2 py-0.5 rounded-full bg-gray-600">{comp.type}</span>
+                    <span className="px-2 py-0.5 rounded-full bg-gray-600/50 border border-gray-500">{comp.type}</span>
                     {comp.connectedNets && comp.connectedNets.length > 0 && (
-                      <span>{comp.connectedNets.length} nets</span>
+                      <span className="text-blue-400">{comp.connectedNets.length} nets</span>
                     )}
                   </div>
                   {comp.description && (
@@ -525,9 +541,14 @@ export function HardwareBoardViewer({
                   height: '100%',
                 }}
               >
-                <div className="relative w-full h-full">
+                <div
+                  className="relative w-full h-full"
+                  onClick={handleImageClick}
+                  style={{ cursor: editingNetId ? 'crosshair' : 'default' }}
+                >
                   {/* Board Image */}
                   <img
+                    ref={imageRef}
                     src={imageUrl}
                     alt={`${boardName} board`}
                     className="w-full h-full object-contain"

@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { HardwareBoardViewer, NetTrace, Component } from '@/components/HardwareBoardViewer';
 import { useDiagnosticContext } from '@/contexts/DiagnosticContext';
-import { Search, Upload, Sparkles, ChevronLeft, ChevronRight, X, Loader2, Plus, CircuitBoard } from 'lucide-react';
+import { Search, Upload, Sparkles, ChevronLeft, ChevronRight, X, Loader2, Plus, CircuitBoard, BarChart3, Layers, Zap, Cpu } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 /**
@@ -37,6 +37,8 @@ export default function BoardViewPage() {
   const [newComponentX, setNewComponentX] = useState('50%');
   const [newComponentY, setNewComponentY] = useState('50%');
   const [newComponentDescription, setNewComponentDescription] = useState('');
+  const [editingNetId, setEditingNetId] = useState<string | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Example components for demonstration
@@ -302,6 +304,89 @@ export default function BoardViewPage() {
     }
   };
 
+  const handleAnalyzeBoard = async () => {
+    if (!customImage && !boardName) {
+      alert('Please upload a board image first');
+      return;
+    }
+
+    setAnalyzing(true);
+    try {
+      const imageUrl = customImage || (await fetchBoardImageLocal());
+
+      const response = await fetch('/api/analyze-board', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          imageUrl,
+          boardName,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.components) {
+        // Convert AI components to our format
+        const newComponents: Record<string, Component> = {};
+        data.components.forEach((comp: any, index: number) => {
+          const compId = `comp_ai_${index}`;
+          newComponents[compId] = {
+            id: compId,
+            name: comp.name || `AI Component ${index + 1}`,
+            type: comp.type || 'Other',
+            x: `${10 + (index * 10)}%`,
+            y: `${10 + (index * 10)}%`,
+            description: comp.description || '',
+            connectedNets: [],
+          };
+        });
+
+        setComponents(prev => ({ ...prev, ...newComponents }));
+        alert(`AI identified ${data.components.length} components!`);
+      } else if (data.summary) {
+        alert('AI Analysis: ' + data.summary);
+      }
+    } catch (error: any) {
+      console.error('AI analysis error:', error);
+      alert('Failed to analyze board with AI: ' + error.message);
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  const fetchBoardImageLocal = async () => {
+    const response = await fetch('/api/get-board', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ boardName }),
+    });
+    const data = await response.json();
+    return data.imageUrl;
+  };
+
+  const handleAddNetPoint = (netId: string, x: string, y: string) => {
+    setNets(prev => ({
+      ...prev,
+      [netId]: {
+        ...prev[netId],
+        points: [...prev[netId].points, { x, y }],
+      },
+    }));
+  };
+
+  const handleEditNet = (netId: string) => {
+    setEditingNetId(netId);
+    setSelectedNet(netId);
+  };
+
+  const handleStopEditing = () => {
+    setEditingNetId(null);
+  };
+
   const handleClearAllNets = () => {
     if (confirm('هل أنت متأكد من حذف جميع المسارات؟')) {
       setNets({});
@@ -324,10 +409,16 @@ export default function BoardViewPage() {
   ];
 
   return (
-    <div className="w-full h-screen bg-gray-900 flex flex-col">
+    <div className="w-full h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-gray-900 flex flex-col">
       {/* Header & Search Bar */}
-      <div className="bg-gray-800 border-b border-gray-700 p-4 z-30">
+      <div className="bg-gray-800/80 backdrop-blur-xl border-b border-gray-700/50 p-4 z-30 shadow-2xl">
         <div className="flex items-center gap-4">
+          {/* Logo/Title */}
+          <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg">
+            <Cpu className="w-6 h-6 text-white" />
+            <span className="text-white font-bold text-lg">Dahab Board AI</span>
+          </div>
+
           {/* Search Input */}
           <div className="relative flex-1 max-w-2xl">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -337,24 +428,24 @@ export default function BoardViewPage() {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               onKeyPress={handleKeyPress}
-              className="w-full pl-12 pr-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-12 pr-4 py-3 bg-gray-700/50 backdrop-blur-sm border border-gray-600/50 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             />
           </div>
 
           {/* Upload Button (Primary) */}
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2"
+            className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl hover:from-emerald-600 hover:to-teal-700 transition-all flex items-center gap-2 shadow-lg hover:shadow-emerald-500/25"
           >
             <Upload className="w-5 h-5" />
-            <span>Upload Board Image</span>
+            <span>Upload Board</span>
           </button>
 
           {/* Search Button (Secondary - requires Supabase) */}
           <button
             onClick={handleSearch}
             disabled={isSearching || !searchInput.trim()}
-            className="px-4 py-3 bg-gray-700 text-white rounded-lg hover:bg-gray-600 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+            className="px-4 py-3 bg-gray-700/50 backdrop-blur-sm border border-gray-600/50 text-white rounded-xl hover:bg-gray-600/50 disabled:bg-gray-600/50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
             title="Requires Supabase configuration"
           >
             {isSearching ? (
@@ -365,7 +456,7 @@ export default function BoardViewPage() {
             ) : (
               <>
                 <Search className="w-5 h-5" />
-                <span>Search (Needs DB)</span>
+                <span>Search</span>
               </>
             )}
           </button>
@@ -382,10 +473,29 @@ export default function BoardViewPage() {
           {/* AI Button */}
           <button
             onClick={handleAskAI}
-            className="px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all flex items-center gap-2"
+            className="px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-xl hover:from-purple-600 hover:to-pink-700 transition-all flex items-center gap-2 shadow-lg hover:shadow-purple-500/25"
           >
             <Sparkles className="w-5 h-5" />
-            <span>Ask AI About This Board</span>
+            <span>Ask AI</span>
+          </button>
+
+          {/* AI Analyze Button */}
+          <button
+            onClick={handleAnalyzeBoard}
+            disabled={analyzing || (!customImage && !boardName)}
+            className="px-4 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-xl hover:from-cyan-600 hover:to-blue-700 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-cyan-500/25"
+          >
+            {analyzing ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Analyzing...</span>
+              </>
+            ) : (
+              <>
+                <CircuitBoard className="w-5 h-5" />
+                <span>AI Analyze</span>
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -394,17 +504,20 @@ export default function BoardViewPage() {
       <div className="flex-1 flex overflow-hidden">
         {/* Side Panel - Net Navigator */}
         <div
-          className={`bg-gray-800 border-l border-gray-700 transition-all duration-300 ${
+          className={`bg-gray-800/80 backdrop-blur-xl border-l border-gray-700/50 transition-all duration-300 ${
             sidePanelOpen ? 'w-80' : 'w-0'
-          } overflow-hidden`}
+          } overflow-hidden shadow-2xl`}
         >
           <div className="p-4 h-full flex flex-col">
             {/* Panel Header */}
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-white">Net Navigator</h2>
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <Layers className="w-5 h-5 text-blue-400" />
+                Net Navigator
+              </h2>
               <button
                 onClick={() => setSidePanelOpen(false)}
-                className="p-1 text-gray-400 hover:text-white"
+                className="p-1 text-gray-400 hover:text-white transition-colors"
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
@@ -434,19 +547,21 @@ export default function BoardViewPage() {
             <div className="flex gap-2 mb-4">
               <button
                 onClick={() => setShowAddNetModal(true)}
-                className="flex-1 px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-xs font-medium"
+                className="flex-1 px-3 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg hover:from-emerald-600 hover:to-teal-700 transition-all text-xs font-medium shadow-lg"
               >
-                + إضافة مسار
+                <Plus className="w-3 h-3 inline mr-1" />
+                إضافة مسار
               </button>
               <button
                 onClick={() => setShowAddComponentModal(true)}
-                className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs font-medium"
+                className="flex-1 px-3 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all text-xs font-medium shadow-lg"
               >
-                + إضافة مكون
+                <CircuitBoard className="w-3 h-3 inline mr-1" />
+                إضافة مكون
               </button>
               <button
                 onClick={handleClearAllNets}
-                className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs font-medium"
+                className="px-3 py-2.5 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-lg hover:from-red-600 hover:to-rose-700 transition-all text-xs font-medium shadow-lg"
                 title="حذف جميع المسارات"
               >
                 <X className="w-4 h-4" />
@@ -461,6 +576,8 @@ export default function BoardViewPage() {
                   className={`p-3 rounded-lg transition-all ${
                     selectedNet === net.id
                       ? 'bg-blue-600 border-2 border-blue-400'
+                      : editingNetId === net.id
+                      ? 'bg-orange-600 border-2 border-orange-400'
                       : 'bg-gray-700 border-2 border-transparent hover:bg-gray-600'
                   }`}
                 >
@@ -475,19 +592,37 @@ export default function BoardViewPage() {
                       />
                       <span className="font-medium text-white">{net.name}</span>
                     </button>
-                    <button
-                      onClick={() => handleDeleteNet(net.id)}
-                      className="p-1 text-gray-400 hover:text-red-400 transition-colors"
-                      title="حذف المسار"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleEditNet(net.id)}
+                        className={`p-1 transition-colors ${
+                          editingNetId === net.id
+                            ? 'text-orange-400'
+                            : 'text-gray-400 hover:text-orange-400'
+                        }`}
+                        title="رسم نقاط"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteNet(net.id)}
+                        className="p-1 text-gray-400 hover:text-red-400 transition-colors"
+                        title="حذف المسار"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                   {net.description && (
                     <p className="text-sm text-gray-400">{net.description}</p>
                   )}
                   <p className="text-xs text-gray-500 mt-1">
                     {net.points.length} نقطة
+                    {editingNetId === net.id && (
+                      <span className="text-orange-400 ml-2">
+                        (اضغط على الصورة لإضافة نقاط)
+                      </span>
+                    )}
                   </p>
                 </div>
               ))}
@@ -495,6 +630,16 @@ export default function BoardViewPage() {
                 <p className="text-gray-400 text-center py-4">لا توجد مسارات</p>
               )}
             </div>
+
+            {/* Stop Editing Button */}
+            {editingNetId && (
+              <button
+                onClick={handleStopEditing}
+                className="w-full mt-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium"
+              >
+                إيقاف الرسم
+              </button>
+            )}
 
             {/* Selected Net Info */}
             {selectedNet && nets[selectedNet] && (
@@ -532,19 +677,37 @@ export default function BoardViewPage() {
 
           {/* Empty State */}
           {!boardName && !customImage && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-900 via-slate-900 to-gray-900">
               <div className="text-center max-w-2xl px-8">
-                <div className="text-6xl mb-6">🔬</div>
-                <h1 className="text-3xl font-bold text-white mb-4">
+                <div className="relative mb-8">
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full blur-3xl opacity-20 animate-pulse"></div>
+                  <div className="relative text-8xl">🔬</div>
+                </div>
+                <h1 className="text-4xl font-bold text-white mb-4 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
                   معمل البوردفيو والمسارات
                 </h1>
-                <p className="text-gray-400 text-lg mb-4">
+                <p className="text-gray-300 text-lg mb-4">
                   Upload a board image to view its schematic with interactive net traces
                 </p>
-                <p className="text-gray-500 text-sm mb-8">
-                  يمكنك رفع صورة البورد المخصص من خلال زر "Upload Image" في الأعلى
+                <p className="text-gray-400 text-sm mb-8">
+                  يمكنك رفع صورة البورد المخصص من خلال زر "Upload Board" في الأعلى
                 </p>
-                
+
+                <div className="flex gap-4 justify-center mb-8">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-gray-800/50 rounded-lg border border-gray-700">
+                    <Cpu className="w-5 h-5 text-blue-400" />
+                    <span className="text-gray-300 text-sm">AI Analysis</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-4 py-2 bg-gray-800/50 rounded-lg border border-gray-700">
+                    <Layers className="w-5 h-5 text-purple-400" />
+                    <span className="text-gray-300 text-sm">Net Tracing</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-4 py-2 bg-gray-800/50 rounded-lg border border-gray-700">
+                    <Zap className="w-5 h-5 text-yellow-400" />
+                    <span className="text-gray-300 text-sm">Component ID</span>
+                  </div>
+                </div>
+
                 <div className="space-y-4">
                   <p className="text-gray-300 font-medium">أو جرب البحث عن بورد (يتطلب إعداد Supabase):</p>
                   <div className="flex flex-wrap gap-3 justify-center">
@@ -555,7 +718,7 @@ export default function BoardViewPage() {
                           setSearchInput(board);
                           handleSearch();
                         }}
-                        className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                        className="px-4 py-2 bg-gradient-to-r from-gray-700 to-gray-600 text-white rounded-lg hover:from-gray-600 hover:to-gray-500 transition-all border border-gray-600"
                       >
                         {board}
                       </button>
@@ -574,6 +737,8 @@ export default function BoardViewPage() {
               nets={nets}
               components={components}
               onNetSelect={handleNetSelect}
+              onAddNetPoint={handleAddNetPoint}
+              editingNetId={editingNetId}
               className="h-full"
             />
           )}

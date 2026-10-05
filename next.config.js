@@ -1,6 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  eslint: {
+    // Disable ESLint during builds if needed
+    ignoreDuringBuilds: false,
+  },
   // Allow uploading images up to 10MB in base64 payloads
   experimental: {
     serverActions: {
