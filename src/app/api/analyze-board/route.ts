@@ -28,6 +28,14 @@ interface AnalyzeBoardResponse {
     x?: number;
     y?: number;
   }>;
+  suspiciousMarkers?: Array<{
+    id: number;
+    x: number;
+    y: number;
+    label: string;
+    note: string;
+    severity?: 'low' | 'medium' | 'high';
+  }>;
   summary?: string;
   error?: string;
 }
@@ -108,12 +116,19 @@ export async function POST(req: NextRequest) {
         // Detect image type from URL or default to jpeg
         const imageType = imageUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg';
 
-        const prompt = `Analyze this PCB board image and identify the key components. For each component you identify, provide:
+        const prompt = `Analyze this PCB board image and identify the key components and any suspicious areas. For each component you identify, provide:
 1. Component name (e.g., U1200, C1500, R1200)
 2. Component type (IC, Capacitor, Resistor, Inductor, Connector, Diode, Transistor, Other)
 3. Brief description of its function
 4. Confidence level (0-1)
 5. Approximate position on the board as percentage (x, y coordinates from top-left, 0-100%)
+
+Additionally, identify any suspicious components or areas that might be faulty (e.g., burnt capacitors, damaged traces, corroded areas). For each suspicious area, provide:
+- ID (number starting from 1)
+- Position (x, y as percentage 0-100)
+- Label (e.g., VCC_MAIN, U1200)
+- Note (e.g., "مكثس محتمل", "تلف واضح")
+- Severity (low, medium, high)
 
 IMPORTANT: Return ONLY valid JSON. Do not include any other text before or after the JSON.
 Use this exact structure:
@@ -128,10 +143,20 @@ Use this exact structure:
       "y": 50
     }
   ],
+  "suspiciousMarkers": [
+    {
+      "id": 1,
+      "x": 35,
+      "y": 40,
+      "label": "VCC_MAIN",
+      "note": "مكثس محتمل",
+      "severity": "medium"
+    }
+  ],
   "summary": "brief summary of the board"
 }
 
-Focus on identifying at least 5-10 major components visible in the image. Estimate their positions roughly on the board (0-100% from top-left). If you cannot identify components, return an empty components array but still provide a summary.`;
+Focus on identifying at least 5-10 major components visible in the image. Estimate their positions roughly on the board (0-100% from top-left). If you cannot identify components, return an empty components array but still provide a summary. Only include suspiciousMarkers if you see actual issues.`;
 
         // Try multiple models in order
         const models = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-1.5-flash'];
@@ -176,6 +201,7 @@ Focus on identifying at least 5-10 major components visible in the image. Estima
               return NextResponse.json<AnalyzeBoardResponse>({
                 success: true,
                 components: parsed.components,
+                suspiciousMarkers: parsed.suspiciousMarkers || [],
                 summary: parsed.summary || '',
               });
             }
@@ -221,12 +247,19 @@ Focus on identifying at least 5-10 major components visible in the image. Estima
               content: [
                 {
                   type: 'text',
-                  text: `Analyze this PCB board image and identify the key components. For each component you identify, provide:
+                  text: `Analyze this PCB board image and identify the key components and any suspicious areas. For each component you identify, provide:
 1. Component name (e.g., U1200, C1500, R1200)
 2. Component type (IC, Capacitor, Resistor, Inductor, Connector, Diode, Transistor, Other)
 3. Brief description of its function
 4. Confidence level (0-1)
 5. Approximate position on the board as percentage (x, y coordinates from top-left, 0-100%)
+
+Additionally, identify any suspicious components or areas that might be faulty (e.g., burnt capacitors, damaged traces, corroded areas). For each suspicious area, provide:
+- ID (number starting from 1)
+- Position (x, y as percentage 0-100)
+- Label (e.g., VCC_MAIN, U1200)
+- Note (e.g., "مكثس محتمل", "تلف واضح")
+- Severity (low, medium, high)
 
 IMPORTANT: Return ONLY valid JSON. Do not include any other text before or after the JSON.
 Use this exact structure:
@@ -241,10 +274,20 @@ Use this exact structure:
       "y": 50
     }
   ],
+  "suspiciousMarkers": [
+    {
+      "id": 1,
+      "x": 35,
+      "y": 40,
+      "label": "VCC_MAIN",
+      "note": "مكثس محتمل",
+      "severity": "medium"
+    }
+  ],
   "summary": "brief summary of the board"
 }
 
-Focus on identifying at least 5-10 major components visible in the image. Estimate their positions roughly on the board (0-100% from top-left). If you cannot identify components, return an empty components array but still provide a summary.`,
+Focus on identifying at least 5-10 major components visible in the image. Estimate their positions roughly on the board (0-100% from top-left). If you cannot identify components, return an empty components array but still provide a summary. Only include suspiciousMarkers if you see actual issues.`,
                 },
                 {
                   type: 'image_url',
@@ -282,6 +325,7 @@ Focus on identifying at least 5-10 major components visible in the image. Estima
           return NextResponse.json<AnalyzeBoardResponse>({
             success: true,
             components: parsed.components,
+            suspiciousMarkers: parsed.suspiciousMarkers || [],
             summary: parsed.summary || '',
           });
         }
@@ -311,12 +355,19 @@ Focus on identifying at least 5-10 major components visible in the image. Estima
               content: [
                 {
                   type: 'text',
-                  text: `Analyze this PCB board image and identify the key components. For each component you identify, provide:
+                  text: `Analyze this PCB board image and identify the key components and any suspicious areas. For each component you identify, provide:
 1. Component name (e.g., U1200, C1500, R1200)
 2. Component type (IC, Capacitor, Resistor, Inductor, Connector, Diode, Transistor, Other)
 3. Brief description of its function
 4. Confidence level (0-1)
 5. Approximate position on the board as percentage (x, y coordinates from top-left, 0-100%)
+
+Additionally, identify any suspicious components or areas that might be faulty (e.g., burnt capacitors, damaged traces, corroded areas). For each suspicious area, provide:
+- ID (number starting from 1)
+- Position (x, y as percentage 0-100)
+- Label (e.g., VCC_MAIN, U1200)
+- Note (e.g., "مكثس محتمل", "تلف واضح")
+- Severity (low, medium, high)
 
 IMPORTANT: Return ONLY valid JSON. Do not include any other text before or after the JSON.
 Use this exact structure:
@@ -331,10 +382,20 @@ Use this exact structure:
       "y": 50
     }
   ],
+  "suspiciousMarkers": [
+    {
+      "id": 1,
+      "x": 35,
+      "y": 40,
+      "label": "VCC_MAIN",
+      "note": "مكثس محتمل",
+      "severity": "medium"
+    }
+  ],
   "summary": "brief summary of the board"
 }
 
-Focus on identifying at least 5-10 major components visible in the image. Estimate their positions roughly on the board (0-100% from top-left). If you cannot identify components, return an empty components array but still provide a summary.`,
+Focus on identifying at least 5-10 major components visible in the image. Estimate their positions roughly on the board (0-100% from top-left). If you cannot identify components, return an empty components array but still provide a summary. Only include suspiciousMarkers if you see actual issues.`,
                 },
                 {
                   type: 'image_url',
@@ -372,6 +433,7 @@ Focus on identifying at least 5-10 major components visible in the image. Estima
           return NextResponse.json<AnalyzeBoardResponse>({
             success: true,
             components: parsed.components,
+            suspiciousMarkers: parsed.suspiciousMarkers || [],
             summary: parsed.summary || '',
           });
         }

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { HardwareBoardViewer, NetTrace, Component } from '@/components/HardwareBoardViewer';
+import { HardwareBoardViewer, NetTrace, Component, SuspiciousMarker } from '@/components/HardwareBoardViewer';
 import { useDiagnosticContext } from '@/contexts/DiagnosticContext';
 import { Search, Upload, Sparkles, ChevronLeft, ChevronRight, X, Loader2, Plus, CircuitBoard, BarChart3, Layers, Zap, Cpu } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -39,6 +39,7 @@ export default function BoardViewPage() {
   const [newComponentDescription, setNewComponentDescription] = useState('');
   const [editingNetId, setEditingNetId] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [suspiciousMarkers, setSuspiciousMarkers] = useState<SuspiciousMarker[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Example components for demonstration
@@ -306,7 +307,7 @@ export default function BoardViewPage() {
 
   const handleAnalyzeBoard = async () => {
     if (!customImage && !boardName) {
-      alert('Please upload a board image first');
+      alert('يرجى رفع صورة البورد أولاً');
       return;
     }
 
@@ -348,13 +349,19 @@ export default function BoardViewPage() {
         });
 
         setComponents(prev => ({ ...prev, ...newComponents }));
+
+        // Handle suspicious markers if provided
+        if (data.suspiciousMarkers && Array.isArray(data.suspiciousMarkers)) {
+          setSuspiciousMarkers(data.suspiciousMarkers);
+        }
+
         alert(`AI identified ${data.components.length} components! They are now visible on the board.`);
       } else if (data.summary) {
         alert('AI Analysis: ' + data.summary);
       }
     } catch (error: any) {
       console.error('AI analysis error:', error);
-      alert('Failed to analyze board with AI: ' + error.message);
+      alert('فشل تحليل البورد بالذكاء الاصطناعي: ' + error.message);
     } finally {
       setAnalyzing(false);
     }
@@ -740,8 +747,10 @@ export default function BoardViewPage() {
               customImageUrl={customImage}
               nets={nets}
               components={components}
+              suspiciousMarkers={suspiciousMarkers}
               onNetSelect={handleNetSelect}
               onAddNetPoint={handleAddNetPoint}
+              onAnalyzeBoard={handleAnalyzeBoard}
               editingNetId={editingNetId}
               className="h-full"
             />

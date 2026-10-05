@@ -1,19 +1,21 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
-import { Search, ZoomIn, ZoomOut, RotateCw, Download, X, Loader2, Plus, Minus, MapPin, CircuitBoard, Cpu, Zap, Dot } from 'lucide-react';
+import { Search, ZoomIn, ZoomOut, RotateCw, Download, X, Loader2, Plus, Minus, MapPin, CircuitBoard, Cpu, Zap, Dot, Upload, AlertTriangle, CheckCircle, Sparkles } from 'lucide-react';
 
 /**
  * Hardware Board Viewer - Professional Image Overlay System
  *
  * Features:
+ * - Drag & Drop with client-side compression
  * - Auto-fetches and caches board images via API
  * - Smooth zooming and panning with react-zoom-pan-pinch
  * - Percentage-based SVG overlay for nets/traces
  * - Component marking system (ICs, capacitors, resistors)
+ * - AI-powered suspicious component highlighting
  * - Interactive trace highlighting
- * - Professional UI design
+ * - Professional UI design (RTL for Arabic)
  */
 
 // ==========================================
@@ -39,14 +41,26 @@ export interface Component {
   connectedNets?: string[]; // Net IDs this component connects to
 }
 
+export interface SuspiciousMarker {
+  id: number;
+  x: string; // Percentage (e.g., "35%")
+  y: string; // Percentage (e.g., "40%")
+  label: string; // e.g., "VCC_MAIN"
+  note: string; // e.g., "مكثف محتمل"
+  severity?: 'low' | 'medium' | 'high';
+}
+
 export interface BoardViewerProps {
   boardName: string;
   customImageUrl?: string | null;
   nets?: Record<string, NetTrace>;
   components?: Record<string, Component>;
+  suspiciousMarkers?: SuspiciousMarker[]; // AI analysis results
   onNetSelect?: (net: NetTrace) => void;
   onComponentSelect?: (component: Component) => void;
   onAddNetPoint?: (netId: string, x: string, y: string) => void;
+  onImageUpload?: (compressedImage: string, originalFile: File) => void;
+  onAnalyzeBoard?: () => void;
   editingNetId?: string | null;
   className?: string;
 }
@@ -60,9 +74,12 @@ export function HardwareBoardViewer({
   customImageUrl = null,
   nets = {},
   components = {},
+  suspiciousMarkers = [],
   onNetSelect,
   onComponentSelect,
   onAddNetPoint,
+  onImageUpload,
+  onAnalyzeBoard,
   editingNetId = null,
   className = '',
 }: BoardViewerProps) {
@@ -80,6 +97,16 @@ export function HardwareBoardViewer({
   const [componentSearchQuery, setComponentSearchQuery] = useState('');
   const svgRef = useRef<SVGSVGElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
+
+  // New state for drag & drop and image analysis
+  const [isDragging, setIsDragging] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [resolutionWarning, setResolutionWarning] = useState<string | null>(null);
+  const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
+  const [originalFile, setOriginalFile] = useState<File | null>(null);
+  const [compressedImage, setCompressedImage] = useState<string | null>(null);
 
   // Fetch board image on mount (or use custom image)
   useEffect(() => {
@@ -254,13 +281,149 @@ export function HardwareBoardViewer({
   };
 
   // ==========================================
+  // Image Compression & Resolution Check
+  // ==========================================
+
+  const checkImageResolution = (width: number, height: number): string | null => {
+    const MIN_WIDTH = 1280;
+    const MIN_HEIGHT = 720;
+
+    if (width < MIN_WIDTH || height < MIN_HEIGHT) {
+      return 'دقة الصورة منخفضة، قد تكون التفاصيل غير واضحة عند التكبير';
+    }
+    return null;
+  };
+
+  const compressImage = useCallback(async (file: File): Promise<{ compressed: string; dimensions: { width: number; height: number } }> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+
+          if (!ctx) {
+            reject(new Error('Failed to get canvas context'));
+            return;
+          }
+
+          // Calculate dimensions (max 2048px)
+          const MAX_SIZE = 2048;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > MAX_SIZE || height > MAX_SIZE) {
+            if (width > height) {
+              height = (height * MAX_SIZE) / width;
+              width = MAX_SIZE;
+            } else {
+              width = (width * MAX_SIZE) / height;
+              height = MAX_SIZE;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          // Draw and compress (85% quality)
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+          resolve({
+            compressed: compressedDataUrl,
+            dimensions: { width: Math.round(width), height: Math.round(height) },
+          });
+        };
+        img.onerror = () => reject(new Error('Failed to load image'));
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
+  }, []);
+
+  const handleFileSelect = async (file: File) => {
+    if (!file.type.match(/image\/(jpeg|png|webp)/)) {
+      alert('يرجى رفع صورة بصيغة JPG, PNG, أو WEBP فقط');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      const { compressed, dimensions } = await compressImage(file);
+
+      // Check resolution
+      const warning = checkImageResolution(dimensions.width, dimensions.height);
+      setResolutionWarning(warning);
+      setImageDimensions(dimensions);
+
+      // Set preview and compressed image
+      setPreviewImage(compressed);
+      setCompressedImage(compressed);
+      setOriginalFile(file);
+    } catch (err: any) {
+      alert('فشل معالجة الصورة: ' + err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      await handleFileSelect(file);
+    }
+  };
+
+  const handleStartAnalysis = () => {
+    if (compressedImage && originalFile) {
+      // Use compressed image
+      setImageUrl(compressedImage);
+      setPreviewImage(null);
+      setResolutionWarning(null);
+
+      // Call parent callback if provided
+      if (onImageUpload) {
+        onImageUpload(compressedImage, originalFile);
+      }
+
+      // Trigger AI analysis if provided
+      if (onAnalyzeBoard) {
+        onAnalyzeBoard();
+      }
+    }
+  };
+
+  const handleCancelPreview = () => {
+    setPreviewImage(null);
+    setCompressedImage(null);
+    setResolutionWarning(null);
+    setImageDimensions(null);
+    setOriginalFile(null);
+  };
+
+  // ==========================================
   // Render
   // ==========================================
 
   return (
-    <div className={`relative w-full h-full bg-gradient-to-br from-gray-900 via-slate-900 to-gray-900 ${className}`}>
+    <div className={`relative w-full h-full bg-gradient-to-br from-gray-900 via-slate-900 to-gray-900 ${className}`} dir="rtl">
       {/* Top Control Bar */}
-      <div className="absolute top-4 left-4 right-4 z-20 flex gap-2">
+      <div className="absolute top-4 left-4 right-4 z-20 flex gap-2" dir="ltr">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
@@ -345,9 +508,9 @@ export function HardwareBoardViewer({
       {/* Upload Modal */}
       {showUploadModal && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-30">
-          <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
+          <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 max-w-2xl w-full mx-4 shadow-2xl" dir="rtl">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-white text-lg font-semibold">Upload Custom Board Image</h3>
+              <h3 className="text-white text-lg font-semibold">رفع صورة البورد</h3>
               <button
                 onClick={() => setShowUploadModal(false)}
                 className="text-gray-400 hover:text-white transition-colors"
@@ -355,36 +518,119 @@ export function HardwareBoardViewer({
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="mb-4">
-              <label className="block text-gray-300 text-sm mb-2">
-                Image URL
-              </label>
-              <input
-                type="text"
-                value={uploadUrl}
-                onChange={(e) => setUploadUrl(e.target.value)}
-                placeholder="https://example.com/board-image.jpg"
-                className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-gray-400 text-xs mt-2">
-                Enter a direct URL to a high-resolution board image
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={handleUploadCustomImage}
-                disabled={uploading}
-                className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+
+            {/* Drag & Drop Zone */}
+            {!previewImage ? (
+              <div
+                ref={dropZoneRef}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={`relative border-2 border-dashed rounded-xl p-8 transition-all ${
+                  isDragging
+                    ? 'border-blue-500 bg-blue-500/10'
+                    : 'border-gray-600 bg-gray-700/30 hover:border-gray-500 hover:bg-gray-700/50'
+                }`}
               >
-                {uploading ? 'Uploading...' : 'Upload'}
-              </button>
-              <button
-                onClick={() => setShowUploadModal(false)}
-                className="flex-1 px-4 py-2.5 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors font-medium"
-              >
-                Cancel
-              </button>
-            </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
+                  className="hidden"
+                />
+                <div className="text-center">
+                  <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-white text-lg font-medium mb-2">
+                    ارفع صورة واضحة للبورد من أعلى
+                  </p>
+                  <p className="text-gray-400 text-sm mb-4">
+                    (يفضل بدون وميض)
+                  </p>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg hover:from-emerald-600 hover:to-teal-700 transition-all font-medium"
+                  >
+                    اختر صورة
+                  </button>
+                  <p className="text-gray-500 text-xs mt-4">
+                    الصيغ المدعومة: JPG, PNG, WEBP
+                  </p>
+                </div>
+              </div>
+            ) : (
+              /* Preview Mode */
+              <div className="space-y-4">
+                <div className="relative rounded-lg overflow-hidden bg-gray-900">
+                  <img
+                    src={previewImage}
+                    alt="معاينة الصورة"
+                    className="w-full h-64 object-contain"
+                  />
+                  {resolutionWarning && (
+                    <div className="absolute top-2 right-2 bg-yellow-500/90 text-white px-3 py-2 rounded-lg flex items-center gap-2 text-sm">
+                      <AlertTriangle className="w-4 h-4" />
+                      {resolutionWarning}
+                    </div>
+                  )}
+                  {imageDimensions && !resolutionWarning && (
+                    <div className="absolute top-2 right-2 bg-green-500/90 text-white px-3 py-2 rounded-lg flex items-center gap-2 text-sm">
+                      <CheckCircle className="w-4 h-4" />
+                      {imageDimensions.width} × {imageDimensions.height}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleStartAnalysis}
+                    disabled={uploading}
+                    className="flex-1 px-4 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg hover:from-cyan-600 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium flex items-center justify-center gap-2"
+                  >
+                    {uploading ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        جاري المعالجة...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-5 h-5" />
+                        تشغيل الفحص والتحليل
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={handleCancelPreview}
+                    className="px-4 py-3 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors font-medium"
+                  >
+                    إلغاء
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* URL Upload (Fallback) */}
+            {!previewImage && (
+              <div className="mt-4 pt-4 border-t border-gray-700">
+                <label className="block text-gray-300 text-sm mb-2">
+                  أو أدخل رابط الصورة مباشرة
+                </label>
+                <input
+                  type="text"
+                  value={uploadUrl}
+                  onChange={(e) => setUploadUrl(e.target.value)}
+                  placeholder="https://example.com/board-image.jpg"
+                  className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  onClick={handleUploadCustomImage}
+                  disabled={uploading}
+                  className="w-full mt-3 px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                >
+                  {uploading ? 'جاري الرفع...' : 'رفع من الرابط'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -568,6 +814,103 @@ export function HardwareBoardViewer({
                       preserveAspectRatio="none"
                       style={{ mixBlendMode: 'multiply' }}
                     >
+                    {/* AI Suspicious Markers */}
+                    {suspiciousMarkers.map((marker) => {
+                      const xVal = parseFloat(marker.x.replace('%', ''));
+                      const yVal = parseFloat(marker.y.replace('%', ''));
+                      const severityColor = marker.severity === 'high' ? '#ef4444' : marker.severity === 'medium' ? '#f97316' : '#eab308';
+
+                      return (
+                        <g key={marker.id}>
+                          {/* Bounding Box */}
+                          <rect
+                            x={xVal - 1.5}
+                            y={yVal - 1.5}
+                            width="3"
+                            height="3"
+                            fill="none"
+                            stroke={severityColor}
+                            strokeWidth="0.5"
+                            strokeDasharray="0.5 0.5"
+                            className="animate-pulse"
+                            style={{
+                              filter: `drop-shadow(0 0 4px ${severityColor})`,
+                            }}
+                          />
+
+                          {/* Glowing Marker Badge */}
+                          <circle
+                            cx={xVal}
+                            cy={yVal}
+                            r="1.2"
+                            fill={severityColor}
+                            className="animate-pulse"
+                            style={{
+                              filter: `drop-shadow(0 0 6px ${severityColor})`,
+                            }}
+                          />
+
+                          {/* Number Badge */}
+                          <circle
+                            cx={xVal + 1.5}
+                            cy={yVal - 1.5}
+                            r="0.8"
+                            fill={severityColor}
+                            stroke="white"
+                            strokeWidth="0.2"
+                            style={{
+                              filter: `drop-shadow(0 0 4px ${severityColor})`,
+                            }}
+                          />
+                          <text
+                            x={xVal + 1.5}
+                            y={yVal - 1.5}
+                            dy="0.3"
+                            fill="white"
+                            fontSize="0.7"
+                            fontWeight="bold"
+                            textAnchor="middle"
+                            className="pointer-events-none"
+                          >
+                            {marker.id}
+                          </text>
+
+                          {/* Tooltip/Label */}
+                          <g>
+                            <rect
+                              x={xVal + 2}
+                              y={yVal - 2.5}
+                              width="8"
+                              height="3"
+                              fill="rgba(0, 0, 0, 0.8)"
+                              rx="0.3"
+                              stroke={severityColor}
+                              strokeWidth="0.2"
+                            />
+                            <text
+                              x={xVal + 2.5}
+                              y={yVal - 1.8}
+                              fill={severityColor}
+                              fontSize="0.6"
+                              fontWeight="bold"
+                              className="pointer-events-none"
+                            >
+                              {marker.label}
+                            </text>
+                            <text
+                              x={xVal + 2.5}
+                              y={yVal - 0.8}
+                              fill="white"
+                              fontSize="0.5"
+                              className="pointer-events-none"
+                            >
+                              {marker.note}
+                            </text>
+                          </g>
+                        </g>
+                      );
+                    })}
+
                     {/* Component Markers */}
                     {Object.values(components).map((comp) => {
                       // Convert percentage to numeric value (0-100)
