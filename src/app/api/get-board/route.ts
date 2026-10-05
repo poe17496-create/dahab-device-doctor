@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
  * 1. Receive boardName from request
  * 2. Query Supabase boards table for cached image_url
  * 3. If cached, return it
- * 4. If not cached, fetch high-res image using Bing Image Search (via serpapi)
+ * 4. If not cached, fetch high-res image using Unsplash API
  * 5. Insert image_url into Supabase for permanent caching
  * 6. Return the new image_url
  */
@@ -27,48 +27,36 @@ interface GetBoardResponse {
 }
 
 /**
- * Fetch high-resolution motherboard image using Bing Image Search
- * Uses free scraping - no API key required
+ * Fetch high-resolution motherboard image using Unsplash API
  */
 async function fetchBoardImage(boardName: string): Promise<string> {
-  const query = `${boardName} motherboard PCB high resolution`;
+  const accessKey = process.env.UNSPLASH_ACCESS_KEY;
 
-  try {
-    // Use Bing Image Search via a simple scraper
-    const searchUrl = `https://www.bing.com/images/search?q=${encodeURIComponent(query)}&qft=+filterui:imagesize-large&form=IRFLTR`;
-
-    const response = await fetch(searchUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error('Bing search failed');
-    }
-
-    const html = await response.text();
-
-    // Extract image URLs from Bing's HTML
-    // Bing stores image URLs in a specific format in the HTML
-    const urlRegex = /"murl":"(https?:\/\/[^"]+)"/g;
-    const matches: string[] = [];
-    let match: RegExpExecArray | null;
-    while ((match = urlRegex.exec(html)) !== null) {
-      matches.push(match[1]);
-    }
-
-    if (matches.length === 0) {
-      throw new Error('No images found');
-    }
-
-    // Return the first high-quality image URL
-    const imageUrl = matches[0].replace(/\\u002F/g, '/');
-    return imageUrl;
-  } catch (error) {
-    console.error('Bing search error:', error);
-    throw new Error('Failed to fetch image from Bing');
+  if (!accessKey) {
+    throw new Error('Unsplash Access Key not configured');
   }
+
+  const query = `${boardName} motherboard PCB circuit board electronics`;
+  const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`;
+
+  const response = await fetch(url, {
+    headers: {
+      'Authorization': `Client-ID ${accessKey}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Unsplash API failed: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+
+  if (data.results && data.results.length > 0) {
+    // Return the regular URL (medium quality) or full URL (high quality)
+    return data.results[0].urls.regular || data.results[0].urls.full;
+  }
+
+  throw new Error('No images found on Unsplash');
 }
 
 export async function POST(req: NextRequest) {
@@ -148,7 +136,7 @@ export async function POST(req: NextRequest) {
       .upsert({
         board_name: boardName,
         image_url: imageUrl,
-        search_query: `${boardName} motherboard PCB high resolution`,
+        search_query: `${boardName} motherboard PCB circuit board electronics`,
       }, {
         onConflict: 'board_name',
         ignoreDuplicates: false,
