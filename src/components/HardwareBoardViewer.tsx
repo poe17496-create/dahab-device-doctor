@@ -564,42 +564,49 @@ export function HardwareBoardViewer({
                     <svg
                       ref={svgRef}
                       className="absolute top-0 left-0 w-full h-full pointer-events-none"
+                      viewBox="0 0 100 100"
+                      preserveAspectRatio="none"
                       style={{ mixBlendMode: 'multiply' }}
                     >
                     {/* Component Markers */}
-                    {Object.values(components).map((comp) => (
-                      <g key={comp.id}>
-                        {/* Component Box */}
-                        <rect
-                          x={comp.x}
-                          y={comp.y}
-                          width="3%"
-                          height="3%"
-                          fill={getComponentColor(comp.type)}
-                          fillOpacity={activeComponent === comp.id ? '0.8' : '0.4'}
-                          stroke={getComponentColor(comp.type)}
-                          strokeWidth={activeComponent === comp.id ? '2' : '1'}
-                          className={`transition-all duration-300 cursor-pointer ${
-                            activeComponent === comp.id ? 'opacity-100' : 'opacity-70'
-                          }`}
-                          style={{ pointerEvents: 'auto' }}
-                          onClick={() => handleComponentClick(comp)}
-                        />
-                        {/* Component Label */}
-                        <text
-                          x={comp.x}
-                          y={comp.y}
-                          dy="-0.5%"
-                          fill="white"
-                          fontSize="0.7%"
-                          className={`pointer-events-none ${
-                            activeComponent === comp.id ? 'font-bold' : ''
-                          }`}
-                        >
-                          {comp.name}
-                        </text>
-                      </g>
-                    ))}
+                    {Object.values(components).map((comp) => {
+                      // Convert percentage to numeric value (0-100)
+                      const xVal = parseFloat(comp.x.replace('%', ''));
+                      const yVal = parseFloat(comp.y.replace('%', ''));
+                      return (
+                        <g key={comp.id}>
+                          {/* Component Box */}
+                          <rect
+                            x={xVal}
+                            y={yVal}
+                            width="3"
+                            height="3"
+                            fill={getComponentColor(comp.type)}
+                            fillOpacity={activeComponent === comp.id ? '0.8' : '0.4'}
+                            stroke={getComponentColor(comp.type)}
+                            strokeWidth={activeComponent === comp.id ? '2' : '1'}
+                            className={`transition-all duration-300 cursor-pointer ${
+                              activeComponent === comp.id ? 'opacity-100' : 'opacity-70'
+                            }`}
+                            style={{ pointerEvents: 'auto' }}
+                            onClick={() => handleComponentClick(comp)}
+                          />
+                          {/* Component Label */}
+                          <text
+                            x={xVal}
+                            y={yVal}
+                            dy="-0.5"
+                            fill="white"
+                            fontSize="0.7"
+                            className={`pointer-events-none ${
+                              activeComponent === comp.id ? 'font-bold' : ''
+                            }`}
+                          >
+                            {comp.name}
+                          </text>
+                        </g>
+                      );
+                    })}
 
                     {/* Net Traces */}
                     {Object.values(nets).map((net) => (
@@ -608,7 +615,12 @@ export function HardwareBoardViewer({
                         {net.points.length > 1 && (
                           <polyline
                             points={net.points
-                              .map((p) => `${p.x} ${p.y}`)
+                              .map((p) => {
+                                // Convert percentage to numeric value (0-100)
+                                const xVal = parseFloat(p.x.replace('%', ''));
+                                const yVal = parseFloat(p.y.replace('%', ''));
+                                return `${xVal} ${yVal}`;
+                              })
                               .join(' ')}
                             fill="none"
                             stroke={net.color}
@@ -629,22 +641,26 @@ export function HardwareBoardViewer({
                         )}
 
                         {/* Net Points (for single-point nets or endpoints) */}
-                        {net.points.map((point, idx) => (
-                          <circle
-                            key={`${net.id}-point-${idx}`}
-                            cx={point.x}
-                            cy={point.y}
-                            r={activeNet === net.id ? '6' : '4'}
-                            fill={net.color}
-                            className={`transition-all duration-300 cursor-pointer ${
-                              activeNet === net.id
-                                ? 'opacity-100'
-                                : 'opacity-60'
-                            }`}
-                            style={{ pointerEvents: 'auto' }}
-                            onClick={() => handleNetClick(net)}
-                          />
-                        ))}
+                        {net.points.map((point, idx) => {
+                          const xVal = parseFloat(point.x.replace('%', ''));
+                          const yVal = parseFloat(point.y.replace('%', ''));
+                          return (
+                            <circle
+                              key={`${net.id}-point-${idx}`}
+                              cx={xVal}
+                              cy={yVal}
+                              r={activeNet === net.id ? '6' : '4'}
+                              fill={net.color}
+                              className={`transition-all duration-300 cursor-pointer ${
+                                activeNet === net.id
+                                  ? 'opacity-100'
+                                  : 'opacity-60'
+                              }`}
+                              style={{ pointerEvents: 'auto' }}
+                              onClick={() => handleNetClick(net)}
+                            />
+                          );
+                        })}
                       </g>
                     ))}
                   </svg>
