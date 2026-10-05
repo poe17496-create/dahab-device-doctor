@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllActiveKeys, getNextKeyWithRotation, recordKeyFailure, recordKeySuccess } from '@/lib/apiKeysStorage';
 import OpenAI from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 /**
  * AI Board Analysis API
@@ -40,14 +41,95 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    console.log('Board analysis request:', { imageUrl, boardName });
+
     // Get all active AI keys from the storage system
     const { openrouterKeys, geminiKeys, openaiKeys } = getAllActiveKeys();
+    console.log('Available keys:', {
+      openrouter: openrouterKeys.length,
+      gemini: geminiKeys.length,
+      openai: openaiKeys.length,
+    });
 
-    // Try OpenRouter first (has vision models)
+    // Try Gemini first (direct API)
+    if (geminiKeys.length > 0) {
+      const key = getNextKeyWithRotation('gemini', geminiKeys);
+      if (key) {
+        try {
+          console.log('Trying Gemini with key:', key.substring(0, 10) + '...');
+          const genAI = new GoogleGenerativeAI(key);
+          const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+          // Fetch image and convert to base64
+          const imageResponse = await fetch(imageUrl);
+          if (!imageResponse.ok) {
+            throw new Error('Failed to fetch image');
+          }
+          const imageBuffer = await imageResponse.arrayBuffer();
+          const base64Image = Buffer.from(imageBuffer).toString('base64');
+
+          const prompt = `Analyze this PCB board image and identify the key components. For each component you identify, provide:
+1. Component name (e.g., U1200, C1500, R1200)
+2. Component type (IC, Capacitor, Resistor, Inductor, Connector, Diode, Transistor, Other)
+3. Brief description of its function
+4. Confidence level (0-1)
+
+Return the response in JSON format with this structure:
+{
+  "components": [
+    {
+      "name": "component name",
+      "type": "component type",
+      "description": "description",
+      "confidence": 0.9
+    }
+  ],
+  "summary": "brief summary of the board"
+}
+
+Focus on identifying at least 5-10 major components visible in the image.`;
+
+          const result = await model.generateContent([
+            prompt,
+            {
+              inlineData: {
+                mimeType: 'image/jpeg',
+                data: base64Image,
+              },
+            },
+          ]);
+
+          recordKeySuccess('gemini');
+          const content = result.response.text();
+          console.log('Gemini response received');
+
+          try {
+            const parsed = JSON.parse(content || '{}');
+            return NextResponse.json<AnalyzeBoardResponse>({
+              success: true,
+              components: parsed.components || [],
+              summary: parsed.summary || '',
+            });
+          } catch (parseError) {
+            return NextResponse.json<AnalyzeBoardResponse>({
+              success: true,
+              components: [],
+              summary: content || '',
+            });
+          }
+        } catch (error: any) {
+          recordKeyFailure('gemini', error.message, geminiKeys);
+          console.error('Gemini API error:', error.message, error);
+        }
+      }
+    }
+
+    // Try OpenRouter next
     if (openrouterKeys.length > 0) {
       const key = getNextKeyWithRotation('openrouter', openrouterKeys);
       if (key) {
         try {
+          console.log('Trying OpenRouter with key:', key.substring(0, 10) + '...');
           const client = new OpenAI({
             apiKey: key,
             baseURL: 'https://openrouter.ai/api/v1',
@@ -58,7 +140,7 @@ export async function POST(req: NextRequest) {
           });
 
           const response = await client.chat.completions.create({
-            model: 'google/gemini-2.0-flash-001',
+            model: 'google/gemini-flash-1.5-8b',
             messages: [
               {
                 role: 'user',
@@ -100,6 +182,7 @@ Focus on identifying at least 5-10 major components visible in the image.`,
 
           recordKeySuccess('openrouter');
           const content = response.choices[0].message.content;
+          console.log('OpenRouter response received');
 
           try {
             const parsed = JSON.parse(content || '{}');
@@ -117,7 +200,7 @@ Focus on identifying at least 5-10 major components visible in the image.`,
           }
         } catch (error: any) {
           recordKeyFailure('openrouter', error.message, openrouterKeys);
-          console.error('OpenRouter API error:', error.message);
+          console.error('OpenRouter API error:', error.message, error);
         }
       }
     }
@@ -127,6 +210,7 @@ Focus on identifying at least 5-10 major components visible in the image.`,
       const key = getNextKeyWithRotation('openai', openaiKeys);
       if (key) {
         try {
+          console.log('Trying OpenAI with key:', key.substring(0, 10) + '...');
           const client = new OpenAI({ apiKey: key });
 
           const response = await client.chat.completions.create({
@@ -172,6 +256,7 @@ Focus on identifying at least 5-10 major components visible in the image.`,
 
           recordKeySuccess('openai');
           const content = response.choices[0].message.content;
+          console.log('OpenAI response received');
 
           try {
             const parsed = JSON.parse(content || '{}');
@@ -189,12 +274,13 @@ Focus on identifying at least 5-10 major components visible in the image.`,
           }
         } catch (error: any) {
           recordKeyFailure('openai', error.message, openaiKeys);
-          console.error('OpenAI API error:', error.message);
+          console.error('OpenAI API error:', error.message, error);
         }
       }
     }
 
     // If all providers failed
+    console.error('All AI providers failed');
     return NextResponse.json<AnalyzeBoardResponse>(
       {
         success: false,
