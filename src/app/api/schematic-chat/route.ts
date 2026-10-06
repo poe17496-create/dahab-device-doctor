@@ -153,7 +153,7 @@ If the question asks about a specific location, describe what components are at 
 
 IMPORTANT: Return ONLY valid JSON with this structure:
 {
-  "answer": "detailed answer in Arabic and English",
+  "answer": "detailed answer in Arabic only",
   "highlightedComponents": [
     {
       "name": "component name",
@@ -168,7 +168,9 @@ IMPORTANT: Return ONLY valid JSON with this structure:
       "voltage": 3.3
     }
   ]
-}`;
+}
+
+NOTE: Provide ALL answers in Arabic language only, not English.`;
 
   const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash-lite' });
   const result = await model.generateContent([
@@ -229,7 +231,7 @@ Provide a detailed, accurate answer. Include component information, related nets
 
 IMPORTANT: Return ONLY valid JSON with this structure:
 {
-  "answer": "detailed answer in Arabic and English",
+  "answer": "detailed answer in Arabic only",
   "highlightedComponents": [
     {
       "name": "component name",
@@ -244,7 +246,9 @@ IMPORTANT: Return ONLY valid JSON with this structure:
       "voltage": 3.3
     }
   ]
-}`;
+}
+
+NOTE: Provide ALL answers in Arabic language only, not English.`;
 
   const response = await client.chat.completions.create({
     model: 'google/gemini-flash-1.5-8b',
@@ -301,7 +305,7 @@ Provide a detailed, accurate answer. Include component information, related nets
 
 IMPORTANT: Return ONLY valid JSON with this structure:
 {
-  "answer": "detailed answer in Arabic and English",
+  "answer": "detailed answer in Arabic only",
   "highlightedComponents": [
     {
       "name": "component name",
@@ -316,7 +320,9 @@ IMPORTANT: Return ONLY valid JSON with this structure:
       "voltage": 3.3
     }
   ]
-}`;
+}
+
+NOTE: Provide ALL answers in Arabic language only, not English.`;
 
   const response = await client.chat.completions.create({
     model: 'gpt-4o',
