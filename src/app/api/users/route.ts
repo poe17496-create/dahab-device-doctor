@@ -261,7 +261,7 @@ export async function POST(req: NextRequest) {
       active: true,
       subscriptionDays: isUnlimited ? undefined : Number(subscriptionDays),
       expiresAt: computedExpiresAt,
-      price: price !== undefined ? Number(price) : 50,
+      price: price !== undefined ? Number(price) : 2900,
     }) as UserAccount;
 
     const { password: _, ...safeUser } = newUserResult;

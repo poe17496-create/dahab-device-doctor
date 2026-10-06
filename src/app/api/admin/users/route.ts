@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
         active: true,
         subscriptionDays: isUnlimited ? undefined : parseInt(String(durationDays), 10),
         expiresAt: expiresAt || undefined,
-        price: price !== undefined ? Number(price) : 50,
+        price: price !== undefined ? Number(price) : 2900,
       });
     } catch (localErr: any) {
       console.error('Add user error:', localErr);

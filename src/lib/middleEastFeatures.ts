@@ -59,24 +59,26 @@ export const ARABIC_TECH_TERMS: LocalizedTerm[] = [
 
 /**
  * أسعار القطع الشائعة في الشرق الأوسط
+ * الأسعار بالجنيه المصري (EGP)
+ * معامل التحويل: 1 EUR = 58 EGP
  */
 export const REGIONAL_PRICING: RegionalPricing = {
-  currency: 'SAR',
-  symbol: 'ر.س',
-  region: 'السعودية والشرق الأوسط',
+  currency: 'EGP',
+  symbol: 'ج.م',
+  region: 'مصر والشرق الأوسط',
   commonICPrices: {
-    'Tristar IC': 45,
-    'Tigris IC': 55,
-    'PMIC iPhone': 80,
-    'Audio IC': 35,
-    'Baseband CPU': 120,
-    'PMIC Android': 60,
-    'Charging IC': 40,
-    'Power Controller': 70,
-    'USB-C Controller': 50,
-    'Touch ID IC': 90,
-    'Display IC': 150,
-    'NAND Flash': 100,
+    'Tristar IC': 2610,      // 45 EUR × 58 = 2,610 EGP
+    'Tigris IC': 3190,       // 55 EUR × 58 = 3,190 EGP
+    'PMIC iPhone': 4640,    // 80 EUR × 58 = 4,640 EGP
+    'Audio IC': 2030,        // 35 EUR × 58 = 2,030 EGP
+    'Baseband CPU': 6960,    // 120 EUR × 58 = 6,960 EGP
+    'PMIC Android': 3480,    // 60 EUR × 58 = 3,480 EGP
+    'Charging IC': 2320,     // 40 EUR × 58 = 2,320 EGP
+    'Power Controller': 4060, // 70 EUR × 58 = 4,060 EGP
+    'USB-C Controller': 2900, // 50 EUR × 58 = 2,900 EGP
+    'Touch ID IC': 5220,     // 90 EUR × 58 = 5,220 EGP
+    'Display IC': 8700,      // 150 EUR × 58 = 8,700 EGP
+    'NAND Flash': 5800,      // 100 EUR × 58 = 5,800 EGP
   },
 };
 
@@ -180,6 +182,7 @@ export function getSuppliersByRegion(region: string): typeof TRUSTED_SUPPLIERS {
 
 /**
  * تحويل العملات الشائعة في الشرق الأوسط
+ * معامل التحويل الأساسي: 1 EUR = 58 EGP
  */
 export function convertCurrency(
   amount: number,
@@ -187,18 +190,20 @@ export function convertCurrency(
   to: string
 ): number {
   // أسعار تقريبية (يجب تحديثها من API حقيقي)
+  // الأسعار نسبة إلى الجنيه المصري (EGP)
   const rates: Record<string, number> = {
-    SAR: 1,
-    AED: 0.98,
-    EGP: 12.5,
-    JOD: 0.19,
-    KWD: 0.08,
-    QAR: 0.97,
-    USD: 0.27,
+    EGP: 1,
+    EUR: 58,           // 1 EUR = 58 EGP
+    USD: 58 / 3.9,     // تقريباً 14.87 EGP
+    SAR: 58 / 13.3,    // تقريباً 4.36 EGP
+    AED: 58 / 13.6,    // تقريباً 4.26 EGP
+    JOD: 58 / 70.5,    // تقريباً 0.82 EGP
+    KWD: 58 / 163,     // تقريباً 0.36 EGP
+    QAR: 58 / 13.7,    // تقريباً 4.23 EGP
   };
 
   const fromRate = rates[from] || 1;
   const toRate = rates[to] || 1;
-  
+
   return (amount / fromRate) * toRate;
 }

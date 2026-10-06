@@ -72,7 +72,7 @@ export default function AdminDashboardPage() {
 
   // إحصائيات الدخل والزوار
   const [guestCount, setGuestCount] = useState(0);
-  const [userPrice, setUserPrice] = useState('50');
+  const [userPrice, setUserPrice] = useState('2900');
 
   // سجل الزائرين المتقدم
   const [guestsList, setGuestsList] = useState<any[]>([]);
@@ -85,7 +85,7 @@ export default function AdminDashboardPage() {
   const [editName, setEditName] = useState('');
   const [editSpecialty, setEditSpecialty] = useState('');
   const [editPassword, setEditPassword] = useState('');
-  const [editPrice, setEditPrice] = useState('50');
+  const [editPrice, setEditPrice] = useState('2900');
   const [editSubscriptionDays, setEditSubscriptionDays] = useState('30');
   const [editError, setEditError] = useState('');
 
@@ -282,7 +282,7 @@ export default function AdminDashboardPage() {
           specialty,
           password,
           subscriptionDays: subscriptionDays === 'unlimited' ? 'unlimited' : Number(subscriptionDays),
-          price: Number(userPrice) || 50,
+          price: Number(userPrice) || 2900,
         }),
       });
       if (!res.ok) {
@@ -297,7 +297,7 @@ export default function AdminDashboardPage() {
       setUsername('');
       setSpecialty('');
       setSubscriptionDays('30');
-      setUserPrice('50');
+      setUserPrice('2900');
       fetchData();
     } catch (e) {
       console.error(e);
@@ -335,7 +335,7 @@ export default function AdminDashboardPage() {
           name: editName,
           specialty: editSpecialty,
           password: editPassword,
-          price: Number(editPrice) || 0,
+          price: Number(editPrice) || 2900,
           subscriptionDays: editSubscriptionDays === 'unlimited' ? 'unlimited' : Number(editSubscriptionDays),
         }),
       });
@@ -532,7 +532,7 @@ export default function AdminDashboardPage() {
       `"${u.username || ''}"`,
       `"${u.role === 'admin' ? 'مشرف عام' : 'فني'}"`,
       `"${u.specialty || 'صيانة عامة'}"`,
-      `"${u.price || 50}"`,
+      `"${u.price || 2900}"`,
       `"${u.active ? 'نشط' : 'محظور / معلق'}"`,
       `"${u.isOnline ? 'متصل' : 'غير متصل'}"`,
       `"${u.expiresAt ? new Date(u.expiresAt).toLocaleDateString('ar-EG') : 'مفتوح'}"`,
@@ -1360,7 +1360,7 @@ export default function AdminDashboardPage() {
                   <DollarSign className="w-4 h-4 text-emerald-500" />
                 </div>
                 <div className="text-3xl font-black font-mono text-emerald-600 dark:text-emerald-400">
-                  {users.filter(u => u.role !== 'admin' && u.active).reduce((sum, u) => sum + (Number(u.price) || 50), 0)} ج.م
+                  {users.filter(u => u.role !== 'admin' && u.active).reduce((sum, u) => sum + (Number(u.price) || 2900), 0)} ج.م
                 </div>
                 <div className="text-[10px] text-gray-400">إجمالي دخل اشتراكات الفنيين النشطين شهرياً</div>
               </div>
@@ -1483,7 +1483,7 @@ export default function AdminDashboardPage() {
                           </td>
 
                           <td className="p-3 text-center font-mono font-bold text-dahab-600 dark:text-dahab-400">
-                            {u.role === 'admin' ? 'مجاني' : `${u.price || 50} ج.م`}
+                            {u.role === 'admin' ? 'مجاني' : `${u.price || 2900} ج.م`}
                           </td>
 
                           <td className="p-3 text-gray-600 dark:text-gray-400 max-w-xs truncate">
@@ -1554,7 +1554,7 @@ export default function AdminDashboardPage() {
                                       setEditName(u.name);
                                       setEditSpecialty(u.specialty || '');
                                       setEditPassword('');
-                                      setEditPrice(String(u.price || 50));
+                                      setEditPrice(String(u.price || 2900));
                                       setEditSubscriptionDays(u.expiresAt ? '30' : 'unlimited');
                                     }}
                                     className="flex items-center gap-1 px-2.5 py-1 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 bg-amber-500/10 rounded-lg transition font-bold text-[11px]"
@@ -1662,7 +1662,7 @@ export default function AdminDashboardPage() {
                     type="number"
                     value={userPrice}
                     onChange={(e) => setUserPrice(e.target.value)}
-                    placeholder="50"
+                    placeholder="2900"
                     className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-xs outline-none focus:border-dahab-500 font-mono"
                   />
                 </div>
@@ -1752,6 +1752,7 @@ export default function AdminDashboardPage() {
                       type="number"
                       value={editPrice}
                       onChange={(e) => setEditPrice(e.target.value)}
+                      placeholder="2900"
                       className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-xs outline-none focus:border-dahab-500 font-mono"
                     />
                   </div>
