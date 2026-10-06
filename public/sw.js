@@ -48,8 +48,8 @@ self.addEventListener('fetch', (event) => {
 
   // --- استثناءات دائمة: طلبات الشبكة فقط (لا كاش أبداً) ---
 
-  // كل الـ APIs والأدمن
-  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/admin')) {
+  // كل الـ APIs والأدمن و boardview (لمنع التداخل مع iframe)
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/admin') || url.pathname.startsWith('/boardview')) {
     return; // تجاهل تماماً = المتصفح يتولى بدون SW
   }
 
