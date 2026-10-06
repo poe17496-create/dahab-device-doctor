@@ -258,8 +258,8 @@ export async function POST(req: NextRequest) {
 
         const prompt = generateAnalysisPrompt(schematicUrl);
 
-        // Try multiple models in order (updated model names for 2026)
-        const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-1.5-flash-8b'];
+        // Try multiple models in order
+        const models = ['gemini-1.5-flash', 'gemini-1.5-pro'];
         let lastError = null;
 
         for (const modelName of models) {
@@ -339,9 +339,14 @@ export async function POST(req: NextRequest) {
         }
 
         // If all models failed
-        console.error('All Gemini models failed:', lastError?.message);
+        console.error('=== ALL GEMINI MODELS FAILED ===');
+        console.error('Last error:', lastError?.message);
+        console.error('Last error details:', lastError);
       } catch (error: any) {
-        console.error('Gemini API error:', error.message, error);
+        console.error('=== GEMINI API ERROR ===');
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+        console.error('Full error:', error);
       }
     }
 

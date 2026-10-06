@@ -1093,7 +1093,6 @@ export default function BoardViewPage() {
           {/* Schematic Chat Component */}
           <SchematicChat
             schematicUrl={schematicUrl}
-            boardImageUrl={customImage}
             boardName={boardName}
             deviceModel={searchInput}
             onComponentHighlight={(components) => {
