@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
 // import { rateLimitMiddleware } from '@/lib/rate-limit';
-import { sanitizeUrl, sanitizeString } from '@/lib/sanitize';
+// import { sanitizeUrl, sanitizeString } from '@/lib/sanitize';
 
 /**
  * API Endpoint: Schematic AI Chat
@@ -50,12 +50,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Sanitize inputs
-    const sanitizedSchematicUrl = sanitizeUrl(schematicUrl);
-    const sanitizedQuestion = sanitizeString(question, 2000);
-    const sanitizedBoardName = context?.boardName ? sanitizeString(context.boardName, 200) : undefined;
-    const sanitizedDeviceModel = context?.deviceModel ? sanitizeString(context.deviceModel, 200) : undefined;
-
     // Get AI keys
     const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
     const openrouterKey = process.env.OPENROUTER_API_KEY;
@@ -84,9 +78,9 @@ export async function POST(req: NextRequest) {
     if (geminiKey) {
       try {
         const result = await chatWithGemini(
-          sanitizedSchematicUrl, 
-          sanitizedQuestion, 
-          { ...context, boardName: sanitizedBoardName, deviceModel: sanitizedDeviceModel }, 
+          schematicUrl, 
+          question, 
+          context, 
           geminiKey
         );
         return NextResponse.json(result);
@@ -99,9 +93,9 @@ export async function POST(req: NextRequest) {
     if (openrouterKey) {
       try {
         const result = await chatWithOpenRouter(
-          sanitizedSchematicUrl, 
-          sanitizedQuestion, 
-          { ...context, boardName: sanitizedBoardName, deviceModel: sanitizedDeviceModel }, 
+          schematicUrl, 
+          question, 
+          context, 
           openrouterKey
         );
         return NextResponse.json(result);
@@ -114,9 +108,9 @@ export async function POST(req: NextRequest) {
     if (openaiKey) {
       try {
         const result = await chatWithOpenAI(
-          sanitizedSchematicUrl, 
-          sanitizedQuestion, 
-          { ...context, boardName: sanitizedBoardName, deviceModel: sanitizedDeviceModel }, 
+          schematicUrl, 
+          question, 
+          context, 
           openaiKey
         );
         return NextResponse.json(result);

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 // import { rateLimitMiddleware } from '@/lib/rate-limit';
-import { sanitizeUrl, sanitizeString } from '@/lib/sanitize';
+// import { sanitizeUrl, sanitizeString } from '@/lib/sanitize';
 
 // Polyfill for Buffer in Vercel/Edge environment
 if (typeof Buffer === 'undefined') {
@@ -195,16 +195,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Sanitize inputs
-    const sanitizedImageUrl = sanitizeUrl(imageUrl);
-    const sanitizedBoardName = boardName ? sanitizeString(boardName, 200) : undefined;
-    const sanitizedSchematicUrl = schematicUrl ? sanitizeUrl(schematicUrl) : undefined;
-
-    console.log('Board analysis request:', { 
-      imageUrl: sanitizedImageUrl, 
-      boardName: sanitizedBoardName, 
-      schematicUrl: sanitizedSchematicUrl 
-    });
+    console.log('Board analysis request:', { imageUrl, boardName, schematicUrl });
 
     // Get keys from environment variables directly (simpler for Vercel)
     const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
@@ -236,8 +227,8 @@ export async function POST(req: NextRequest) {
         const genAI = new GoogleGenerativeAI(geminiKey);
 
         // Fetch image and convert to base64
-        console.log('Fetching image from URL:', sanitizedImageUrl);
-        const imageResponse = await fetch(sanitizedImageUrl, {
+        console.log('Fetching image from URL:', imageUrl);
+        const imageResponse = await fetch(imageUrl, {
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
           },
@@ -263,9 +254,9 @@ export async function POST(req: NextRequest) {
         }
 
         // Detect image type from URL or default to jpeg
-        const imageType = sanitizedImageUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg';
+        const imageType = imageUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg';
 
-        const prompt = generateAnalysisPrompt(sanitizedSchematicUrl);
+        const prompt = generateAnalysisPrompt(schematicUrl);
 
         // Try multiple models in order (updated to working models)
         const models = ['gemini-3.5-flash-lite', 'gemini-1.5-flash', 'gemini-1.5-pro'];
@@ -285,14 +276,14 @@ export async function POST(req: NextRequest) {
             }];
 
             // Add schematic if available
-            if (sanitizedSchematicUrl) {
-              const schematicResponse = await fetch(sanitizedSchematicUrl, {
+            if (schematicUrl) {
+              const schematicResponse = await fetch(schematicUrl, {
                 headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
               });
               if (schematicResponse.ok) {
                 const schematicBuffer = await schematicResponse.arrayBuffer();
                 const base64Schematic = Buffer.from(schematicBuffer).toString('base64');
-                const schematicType = sanitizedSchematicUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg';
+                const schematicType = schematicUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg';
                 contentParts.push({
                   inlineData: {
                     mimeType: schematicType,
@@ -371,16 +362,16 @@ export async function POST(req: NextRequest) {
           },
         });
 
-        const prompt = generateAnalysisPrompt(sanitizedSchematicUrl);
+        const prompt = generateAnalysisPrompt(schematicUrl);
 
         const messageContent: any[] = [
           { type: 'text', text: prompt },
-          { type: 'image_url', image_url: { url: sanitizedImageUrl } },
+          { type: 'image_url', image_url: { url: imageUrl } },
         ];
 
         // Add schematic if available
-        if (sanitizedSchematicUrl) {
-          messageContent.push({ type: 'image_url', image_url: { url: sanitizedSchematicUrl } });
+        if (schematicUrl) {
+          messageContent.push({ type: 'image_url', image_url: { url: schematicUrl } });
         }
 
         const response = await client.chat.completions.create({
@@ -439,16 +430,16 @@ export async function POST(req: NextRequest) {
       try {
         const client = new OpenAI({ apiKey: openaiKey });
 
-        const prompt = generateAnalysisPrompt(sanitizedSchematicUrl);
+        const prompt = generateAnalysisPrompt(schematicUrl);
 
         const messageContent: any[] = [
           { type: 'text', text: prompt },
-          { type: 'image_url', image_url: { url: sanitizedImageUrl } },
+          { type: 'image_url', image_url: { url: imageUrl } },
         ];
 
         // Add schematic if available
-        if (sanitizedSchematicUrl) {
-          messageContent.push({ type: 'image_url', image_url: { url: sanitizedSchematicUrl } });
+        if (schematicUrl) {
+          messageContent.push({ type: 'image_url', image_url: { url: schematicUrl } });
         }
 
         const response = await client.chat.completions.create({
