@@ -258,8 +258,8 @@ export async function POST(req: NextRequest) {
 
         const prompt = generateAnalysisPrompt(schematicUrl);
 
-        // Try multiple models in order
-        const models = ['gemini-1.5-flash', 'gemini-1.5-pro'];
+        // Try multiple models in order (updated to working models)
+        const models = ['gemini-3.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
         let lastError = null;
 
         for (const modelName of models) {
@@ -376,7 +376,7 @@ export async function POST(req: NextRequest) {
         }
 
         const response = await client.chat.completions.create({
-          model: 'google/gemini-2.5-flash',
+          model: 'google/gemini-2.5-flash-exp',
           messages: [
             {
               role: 'user',
