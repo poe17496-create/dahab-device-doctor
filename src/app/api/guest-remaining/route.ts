@@ -5,7 +5,9 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
+    console.log('[GuestRemaining API] Request received');
     const remaining = await getGuestRemainingTrialsFromSupabase(req);
+    console.log('[GuestRemaining API] Returning:', remaining);
     return NextResponse.json({ success: true, remaining });
   } catch (error) {
     console.error('[GuestRemaining] Error:', error);

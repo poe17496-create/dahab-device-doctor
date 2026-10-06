@@ -47,6 +47,8 @@ export async function checkAndIncrementGuestTrials(request: Request): Promise<{
   const ip = getClientIP(request);
   const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
+  console.log(`[GuestTrials] Checking IP: ${ip}, Today: ${today}`);
+
   try {
     // 1. محاولة الحصول على السجل الحالي
     const { data: existingRecord, error: fetchError } = await supabaseAdmin
@@ -139,11 +141,14 @@ export async function checkAndIncrementGuestTrials(request: Request): Promise<{
  */
 export async function getGuestRemainingTrialsFromSupabase(request: Request): Promise<number> {
   if (!isSupabaseConfigured || !supabaseAdmin) {
+    console.warn('[GuestTrials] Supabase not configured in getGuestRemainingTrials');
     return MAX_GUEST_DAILY_TRIALS;
   }
 
   const ip = getClientIP(request);
   const today = new Date().toISOString().split('T')[0];
+
+  console.log(`[GuestTrials] Getting remaining for IP: ${ip}, Today: ${today}`);
 
   try {
     const { data: record } = await supabaseAdmin
@@ -152,11 +157,16 @@ export async function getGuestRemainingTrialsFromSupabase(request: Request): Pro
       .eq('ip', ip)
       .single();
 
+    console.log(`[GuestTrials] Record found:`, record);
+
     if (!record || record.last_date !== today) {
+      console.log(`[GuestTrials] No record or old date, returning MAX: ${MAX_GUEST_DAILY_TRIALS}`);
       return MAX_GUEST_DAILY_TRIALS;
     }
 
-    return Math.max(0, MAX_GUEST_DAILY_TRIALS - record.count);
+    const remaining = Math.max(0, MAX_GUEST_DAILY_TRIALS - record.count);
+    console.log(`[GuestTrials] Returning remaining: ${remaining}`);
+    return remaining;
   } catch (error) {
     console.error('[GuestTrials] Error getting remaining trials:', error);
     return MAX_GUEST_DAILY_TRIALS;

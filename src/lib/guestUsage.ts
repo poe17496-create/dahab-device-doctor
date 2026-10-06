@@ -24,12 +24,16 @@ export async function getGuestRemainingTrials(): Promise<number> {
   if (typeof window === 'undefined') return MAX_GUEST_DAILY_TRIALS;
   try {
     // الحصول على المحاولات المتبقية من Supabase عبر API
+    console.log('[GuestUsage Frontend] Fetching remaining trials from API');
     const response = await fetch('/api/guest-remaining');
     const data = await response.json();
+    console.log('[GuestUsage Frontend] API response:', data);
     if (data.success) {
+      console.log('[GuestUsage Frontend] Returning from API:', data.remaining);
       return data.remaining;
     }
     // Fallback إلى localStorage في حالة فشل API
+    console.log('[GuestUsage Frontend] API failed, using localStorage fallback');
     const key = getTodayKey();
     const used = parseInt(localStorage.getItem(key) || '0', 10);
     return Math.max(0, MAX_GUEST_DAILY_TRIALS - used);
