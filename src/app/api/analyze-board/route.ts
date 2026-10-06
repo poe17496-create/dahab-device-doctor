@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { rateLimitMiddleware } from '@/lib/rate-limit';
+// import { rateLimitMiddleware } from '@/lib/rate-limit';
 import { sanitizeUrl, sanitizeString } from '@/lib/sanitize';
 
 // Polyfill for Buffer in Vercel/Edge environment
@@ -182,27 +182,6 @@ interface AnalyzeBoardResponse {
 
 export async function POST(req: NextRequest) {
   try {
-    // Rate limiting: 15 requests per minute per IP
-    const rateLimitResult = await rateLimitMiddleware(req, 15, 60 * 1000);
-    
-    if (!rateLimitResult.allowed) {
-      return NextResponse.json<AnalyzeBoardResponse>(
-        {
-          success: false,
-          error: 'تجاوزت الحد المسموح من الطلبات، يرجى الانتظار دقيقة.',
-        },
-        { 
-          status: 429,
-          headers: {
-            'X-RateLimit-Limit': '15',
-            'X-RateLimit-Remaining': '0',
-            'X-RateLimit-Reset': rateLimitResult.resetTime.toString(),
-            'Retry-After': Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000).toString(),
-          }
-        }
-      );
-    }
-
     const body: AnalyzeBoardRequest = await req.json();
     const { imageUrl, boardName, schematicUrl } = body;
 
