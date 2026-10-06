@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
 import { verifyLogin } from '@/lib/auth';
 import { checkLoginBruteForce } from '@/lib/securityRateLimiter';
+import { sanitizeString, validateEmail } from '@/lib/sanitize';
+import { addSecurityHeaders } from '@/lib/security-redirect';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,28 +12,32 @@ export async function POST(req: NextRequest) {
     // 🛡️ فحص حماية من هجمات التخمين والـ Brute-Force
     const bruteCheck = checkLoginBruteForce(req);
     if (!bruteCheck.allowed) {
-      return NextResponse.json(
+      const errorResponse = NextResponse.json(
         {
           success: false,
           message: `🛡️ تم إيقاف محاولات الدخول مؤقتاً لحماية الحساب من الهجمات. يرجى الانتظار ${bruteCheck.resetInMinutes} دقيقة والمحاولة لاحقاً.`,
         },
         { status: 429 }
       );
+      return addSecurityHeaders(errorResponse);
     }
 
     const body = await req.json();
     const { username, password, currentDeviceId, deviceInfo } = body;
 
     if (!username || !password) {
-      return NextResponse.json(
+      const errorResponse = NextResponse.json(
         { success: false, message: 'يرجى إدخال اسم المستخدم وكلمة المرور' },
         { status: 400 }
       );
+      return addSecurityHeaders(errorResponse);
     }
 
-    const cleanUsername = username.trim();
-    const cleanPassword = password.trim();
-    const effectiveDeviceId = currentDeviceId || deviceInfo || 'Web-Client';
+    // Sanitize inputs to prevent injection
+    const cleanUsername = sanitizeString(username.trim(), 100);
+    const cleanPassword = sanitizeString(password.trim(), 200);
+    const effectiveDeviceId = sanitizeString(currentDeviceId || deviceInfo || 'Web-Client', 200);
+    
     const masterAdminPassword = process.env.ADMIN_PASSWORD || 'X7#K9@mP2$Qw8!Rz5*Ln3';
     const isMasterAdminLogin = cleanUsername.toLowerCase() === 'd3v1n_x9_admin' && cleanPassword === masterAdminPassword;
 
@@ -47,28 +53,31 @@ export async function POST(req: NextRequest) {
         if (!error && user) {
           // التحقق من كلمة المرور (مع قبول كلمة سر الماستر للأدمن)
           if (!isMasterAdminLogin && (user as any).password !== cleanPassword) {
-            return NextResponse.json(
+            const errorResponse = NextResponse.json(
               { success: false, message: 'بيانات الدخول غير صحيحة (كلمة المرور خاطئة)' },
               { status: 401 }
             );
+            return addSecurityHeaders(errorResponse);
           }
 
           // التحقق من تفعيل الحساب
           if ((user as any).is_active === false) {
-            return NextResponse.json(
+            const errorResponse = NextResponse.json(
               { success: false, message: 'حسابك معطل حالياً من قِبل المشرف، يرجى التواصل مع الإدارة' },
               { status: 403 }
             );
+            return addSecurityHeaders(errorResponse);
           }
 
           // التحقق من صلاحية الاشتراك (تاريخ الانتهاء)
           if ((user as any).expires_at) {
             const expDate = new Date((user as any).expires_at);
             if (!isNaN(expDate.getTime()) && expDate < new Date()) {
-              return NextResponse.json(
+              const errorResponse = NextResponse.json(
                 { success: false, message: 'انتهى اشتراكك، يرجى التواصل مع الإدارة للتحويل والتجديد' },
                 { status: 403 }
               );
+              return addSecurityHeaders(errorResponse);
             }
           }
 
@@ -82,7 +91,7 @@ export async function POST(req: NextRequest) {
             } as any)
             .eq('id', user.id);
 
-          return NextResponse.json({
+          const successResponse = NextResponse.json({
             success: true,
             message: 'تم تسجيل الدخول بنجاح عبر Supabase',
             user: {
@@ -96,6 +105,7 @@ export async function POST(req: NextRequest) {
             },
             sessionToken: effectiveDeviceId,
           });
+          return addSecurityHeaders(successResponse);
         }
       } catch (sbErr) {
         console.warn('Supabase login check failed, falling back to local:', sbErr);
@@ -105,24 +115,27 @@ export async function POST(req: NextRequest) {
     // 2. الفحص الاحتياطي عبر قاعدة البيانات المحلية (Local Fallback)
     const localLogin = await verifyLogin(cleanUsername, cleanPassword, effectiveDeviceId);
     if (!localLogin.user) {
-      return NextResponse.json(
+      const errorResponse = NextResponse.json(
         { success: false, message: localLogin.error || 'بيانات الدخول غير صحيحة أو الحساب غير موجود' },
         { status: 401 }
       );
+      return addSecurityHeaders(errorResponse);
     }
 
     const { password: _, ...safeUser } = localLogin.user;
-    return NextResponse.json({
+    const successResponse = NextResponse.json({
       success: true,
       message: 'تم تسجيل الدخول بنجاح',
       user: safeUser,
       sessionToken: localLogin.user.activeSessionToken || effectiveDeviceId,
     });
+    return addSecurityHeaders(successResponse);
   } catch (err: any) {
     console.error('Login Route Error:', err);
-    return NextResponse.json(
+    const errorResponse = NextResponse.json(
       { success: false, message: err?.message || 'حدث خطأ في معالجة طلب الدخول' },
       { status: 500 }
     );
+    return addSecurityHeaders(errorResponse);
   }
 }
