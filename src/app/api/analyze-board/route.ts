@@ -239,15 +239,15 @@ export async function POST(req: NextRequest) {
       openai: !!openaiKey,
     });
 
-    // If no keys available, return error immediately
+    // If no keys available, return clear error message
     if (!geminiKey && !openrouterKey && !openaiKey) {
       console.error('No AI keys available in environment variables');
       return NextResponse.json<AnalyzeBoardResponse>(
         {
           success: false,
-          error: 'No AI provider keys configured. Please add GEMINI_API_KEY or OPENROUTER_API_KEY to environment variables.',
+          error: 'خدمة تحليل البورد غير متاحة حالياً. يرجى الاتصال بالإدارة لتفعيل مفاتيح الذكاء الاصطناعي.',
         },
-        { status: 500 }
+        { status: 503 } // Service Unavailable instead of 500
       );
     }
 

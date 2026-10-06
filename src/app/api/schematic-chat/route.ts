@@ -82,6 +82,25 @@ export async function POST(req: NextRequest) {
     const openrouterKey = process.env.OPENROUTER_API_KEY;
     const openaiKey = process.env.OPENAI_API_KEY;
 
+    // Log key availability
+    console.log('Schematic chat keys:', {
+      gemini: !!geminiKey,
+      openrouter: !!openrouterKey,
+      openai: !!openaiKey,
+    });
+
+    // If no keys available, return clear error
+    if (!geminiKey && !openrouterKey && !openaiKey) {
+      console.error('No AI keys available for schematic chat');
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'خدمة الشات الذكي غير متاحة حالياً. يرجى الاتصال بالإدارة لتفعيل مفاتيح الذكاء الاصطناعي.' 
+        },
+        { status: 503 } // Service Unavailable
+      );
+    }
+
     // Try Gemini first
     if (geminiKey) {
       try {
@@ -128,7 +147,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json(
-      { success: false, error: 'No AI provider available' },
+      { success: false, error: 'فشلت جميع محركات الذكاء الاصطناعي. يرجى المحاولة مرة أخرى لاحقاً.' },
       { status: 500 }
     );
   } catch (error: any) {
