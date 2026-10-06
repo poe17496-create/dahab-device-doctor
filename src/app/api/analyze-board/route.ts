@@ -258,38 +258,8 @@ export async function POST(req: NextRequest) {
 
         const prompt = generateAnalysisPrompt(schematicUrl);
 
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
-        // Prepare content parts
-        const contentParts: any[] = [prompt, {
-          inlineData: {
-            mimeType: imageType,
-            data: base64Image,
-          },
-        }];
-
-        // Add schematic if available
-        if (schematicUrl) {
-          const schematicResponse = await fetch(schematicUrl, {
-            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-          });
-          if (schematicResponse.ok) {
-            const schematicBuffer = await schematicResponse.arrayBuffer();
-            const base64Schematic = Buffer.from(schematicBuffer).toString('base64');
-            const schematicType = schematicUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg';
-            contentParts.push({
-              inlineData: {
-                mimeType: schematicType,
-                data: base64Schematic,
-              },
-            });
-          }
-        }
-
-        const result = await model.generateContent(contentParts);
-
-        // Try multiple models in order
-        const models = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-1.5-flash'];
+        // Try multiple models in order (correct model names)
+        const models = ['gemini-2.0-flash-exp', 'gemini-1.5-flash', 'gemini-1.5-pro'];
         let lastError = null;
 
         for (const modelName of models) {
@@ -297,15 +267,33 @@ export async function POST(req: NextRequest) {
             console.log('Trying model:', modelName);
             const model = genAI.getGenerativeModel({ model: modelName });
 
-            const result = await model.generateContent([
-              prompt,
-              {
-                inlineData: {
-                  mimeType: imageType,
-                  data: base64Image,
-                },
+            // Prepare content parts
+            const contentParts: any[] = [prompt, {
+              inlineData: {
+                mimeType: imageType,
+                data: base64Image,
               },
-            ]);
+            }];
+
+            // Add schematic if available
+            if (schematicUrl) {
+              const schematicResponse = await fetch(schematicUrl, {
+                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+              });
+              if (schematicResponse.ok) {
+                const schematicBuffer = await schematicResponse.arrayBuffer();
+                const base64Schematic = Buffer.from(schematicBuffer).toString('base64');
+                const schematicType = schematicUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg';
+                contentParts.push({
+                  inlineData: {
+                    mimeType: schematicType,
+                    data: base64Schematic,
+                  },
+                });
+              }
+            }
+
+            const result = await model.generateContent(contentParts);
 
             const content = result.response.text();
             console.log('Gemini response received from', modelName, ', length:', content.length);
