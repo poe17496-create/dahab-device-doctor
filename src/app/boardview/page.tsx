@@ -683,55 +683,104 @@ export default function BoardViewPage() {
   return (
     <div className="w-full h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-gray-900 flex flex-col">
       {/* Header & Search Bar */}
-      <div className="bg-gray-800/80 backdrop-blur-xl border-b border-gray-700/50 p-4 z-30 shadow-2xl">
-        <div className="flex items-center gap-4">
+      <div className="bg-gray-800/80 backdrop-blur-xl border-b border-gray-700/50 p-2 md:p-4 z-30 shadow-2xl">
+        <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4">
           {/* Logo/Title */}
-          <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg">
-            <Cpu className="w-6 h-6 text-white" />
-            <span className="text-white font-bold text-lg">Dahab Board AI</span>
+          <div className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg shrink-0">
+            <Cpu className="w-4 h-4 md:w-6 md:h-6 text-white" />
+            <span className="text-white font-bold text-sm md:text-lg hidden sm:block">Dahab Board AI</span>
           </div>
 
           {/* Search Input */}
-          <div className="relative flex-1 max-w-2xl">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <div className="relative flex-1 w-full order-3 md:order-2">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Search board name (e.g., iPhone 15 Pro Max Logic Board)..."
+              placeholder="Search board name..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               onKeyPress={handleKeyPress}
-              className="w-full pl-12 pr-4 py-3 bg-gray-700/50 backdrop-blur-sm border border-gray-600/50 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full pl-10 md:pl-12 pr-3 md:pr-4 py-2 md:py-3 bg-gray-700/50 backdrop-blur-sm border border-gray-600/50 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
             />
           </div>
 
-          {/* Upload Button (Primary) */}
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl hover:from-emerald-600 hover:to-teal-700 transition-all flex items-center gap-2 shadow-lg hover:shadow-emerald-500/25"
-          >
-            <Upload className="w-5 h-5" />
-            <span>Upload Board</span>
-          </button>
+          {/* Action Buttons */}
+          <div className="flex items-center gap-1 md:gap-2 order-2 md:order-3 shrink-0 flex-wrap justify-center">
+            {/* Upload Button (Primary) */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="px-3 py-2 md:px-6 md:py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg md:rounded-xl hover:from-emerald-600 hover:to-teal-700 transition-all flex items-center gap-1 md:gap-2 shadow-lg hover:shadow-emerald-500/25 text-xs md:text-sm"
+            >
+              <Upload className="w-4 h-4 md:w-5 md:h-5" />
+              <span className="hidden sm:inline">Upload</span>
+            </button>
 
-          {/* Search Button (Secondary - requires Supabase) */}
-          <button
-            onClick={handleSearch}
-            disabled={isSearching || !searchInput.trim()}
-            className="px-4 py-3 bg-gray-700/50 backdrop-blur-sm border border-gray-600/50 text-white rounded-xl hover:bg-gray-600/50 disabled:bg-gray-600/50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
-            title="Requires Supabase configuration"
-          >
-            {isSearching ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span>Loading...</span>
-              </>
-            ) : (
-              <>
-                <Search className="w-5 h-5" />
-                <span>Search</span>
-              </>
+            {/* Search Button */}
+            <button
+              onClick={handleSearch}
+              disabled={isSearching || !searchInput.trim()}
+              className="px-3 py-2 md:px-4 md:py-3 bg-gray-700/50 backdrop-blur-sm border border-gray-600/50 text-white rounded-lg md:rounded-xl hover:bg-gray-600/50 disabled:bg-gray-600/50 disabled:cursor-not-allowed transition-all flex items-center gap-1 md:gap-2 text-xs md:text-sm"
+              title="Search board"
+            >
+              {isSearching ? (
+                <Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin" />
+              ) : (
+                <Search className="w-4 h-4 md:w-5 md:h-5" />
+              )}
+            </button>
+
+            {/* AI Analyze Button */}
+            <button
+              onClick={handleAnalyzeBoard}
+              disabled={analyzing || (!customImage && !boardName)}
+              className="px-3 py-2 md:px-4 md:py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg md:rounded-xl hover:from-cyan-600 hover:to-blue-700 transition-all flex items-center gap-1 md:gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-cyan-500/25 text-xs md:text-sm"
+              title="AI Analyze"
+            >
+              {analyzing ? (
+                <Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin" />
+              ) : (
+                <CircuitBoard className="w-4 h-4 md:w-5 md:h-5" />
+              )}
+            </button>
+
+            {/* Find Schematic Button */}
+            <button
+              onClick={() => fetchExternalSchematics(boardName || searchInput)}
+              disabled={fetchingSchematic}
+              className="px-3 py-2 md:px-4 md:py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg md:rounded-xl hover:from-indigo-600 hover:to-purple-700 transition-all flex items-center gap-1 md:gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg text-xs md:text-sm"
+              title="Find Schematic"
+            >
+              {fetchingSchematic ? (
+                <Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin" />
+              ) : (
+                <Database className="w-4 h-4 md:w-5 md:h-5" />
+              )}
+            </button>
+
+            {/* Schematic Toggle - hidden on mobile if not active */}
+            {schematicUrl && (
+              <button
+                onClick={() => setShowSchematicOverlay(!showSchematicOverlay)}
+                className={`px-3 py-2 md:px-4 md:py-3 text-white rounded-lg md:rounded-xl transition-all flex items-center gap-1 md:gap-2 shadow-lg text-xs md:text-sm ${
+                  showSchematicOverlay
+                    ? 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 hover:shadow-cyan-500/25'
+                    : 'bg-gray-700/50 backdrop-blur-sm border border-gray-600/50 hover:bg-gray-600/50'
+                }`}
+                title={showSchematicOverlay ? 'Hide Schematic' : 'Show Schematic'}
+              >
+                <Layers className="w-4 h-4 md:w-5 md:h-5" />
+              </button>
             )}
-          </button>
+
+            {/* Ask AI Button - hidden on mobile */}
+            <button
+              onClick={handleAskAI}
+              className="hidden md:flex px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-xl hover:from-purple-600 hover:to-pink-700 transition-all items-center gap-2 shadow-lg hover:shadow-purple-500/25"
+            >
+              <Sparkles className="w-5 h-5" />
+              <span>Ask AI</span>
+            </button>
+          </div>
           <input
             ref={fileInputRef}
             type="file"
@@ -739,70 +788,6 @@ export default function BoardViewPage() {
             onChange={handleFileUpload}
             className="hidden"
           />
-
-
-
-          {/* AI Button */}
-          <button
-            onClick={handleAskAI}
-            className="px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-xl hover:from-purple-600 hover:to-pink-700 transition-all flex items-center gap-2 shadow-lg hover:shadow-purple-500/25"
-          >
-            <Sparkles className="w-5 h-5" />
-            <span>Ask AI</span>
-          </button>
-
-          {/* AI Analyze Button */}
-          <button
-            onClick={handleAnalyzeBoard}
-            disabled={analyzing || (!customImage && !boardName)}
-            className="px-4 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-xl hover:from-cyan-600 hover:to-blue-700 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-cyan-500/25"
-          >
-            {analyzing ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span>Analyzing...</span>
-              </>
-            ) : (
-              <>
-                <CircuitBoard className="w-5 h-5" />
-                <span>AI Analyze</span>
-              </>
-            )}
-          </button>
-
-          {/* Schematic Toggle Button */}
-          {schematicUrl && (
-            <button
-              onClick={() => setShowSchematicOverlay(!showSchematicOverlay)}
-              className={`px-4 py-3 text-white rounded-xl transition-all flex items-center gap-2 shadow-lg ${
-                showSchematicOverlay
-                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 hover:shadow-cyan-500/25'
-                  : 'bg-gray-700/50 backdrop-blur-sm border border-gray-600/50 hover:bg-gray-600/50'
-              }`}
-            >
-              <Layers className="w-5 h-5" />
-              <span>{showSchematicOverlay ? 'Hide Schematic' : 'Show Schematic'}</span>
-            </button>
-          )}
-
-          {/* Fetch External Schematic Button */}
-          <button
-            onClick={() => fetchExternalSchematics(boardName || searchInput)}
-            disabled={fetchingSchematic}
-            className="px-4 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:from-indigo-600 hover:to-purple-700 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-          >
-            {fetchingSchematic ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span>Fetching...</span>
-              </>
-            ) : (
-              <>
-                <Database className="w-5 h-5" />
-                <span>Find Schematic</span>
-              </>
-            )}
-          </button>
         </div>
       </div>
 
@@ -810,22 +795,22 @@ export default function BoardViewPage() {
       <div className="flex-1 flex overflow-hidden">
         {/* Side Panel - Net Navigator */}
         <div
-          className={`bg-gray-800/80 backdrop-blur-xl border-l border-gray-700/50 transition-all duration-300 ${
-            sidePanelOpen ? 'w-80' : 'w-0'
+          className={`bg-gray-800/80 backdrop-blur-xl border-l border-gray-700/50 transition-all duration-300 fixed md:relative z-40 h-full ${
+            sidePanelOpen ? 'w-72 md:w-80' : 'w-0'
           } overflow-hidden shadow-2xl`}
         >
-          <div className="p-4 h-full flex flex-col">
+          <div className="p-3 md:p-4 h-full flex flex-col">
             {/* Panel Header */}
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <Layers className="w-5 h-5 text-blue-400" />
-                Net Navigator
+            <div className="flex items-center justify-between mb-3 md:mb-4">
+              <h2 className="text-base md:text-lg font-bold text-white flex items-center gap-2">
+                <Layers className="w-4 h-4 md:w-5 md:h-5 text-blue-400" />
+                <span className="text-sm md:text-lg">Net Navigator</span>
               </h2>
               <button
                 onClick={() => setSidePanelOpen(false)}
                 className="p-1 text-gray-400 hover:text-white transition-colors"
               >
-                <ChevronRight className="w-5 h-5" />
+                <X className="w-4 h-4 md:w-5 md:h-5" />
               </button>
             </div>
 
@@ -975,48 +960,48 @@ export default function BoardViewPage() {
           {!sidePanelOpen && (
             <button
               onClick={() => setSidePanelOpen(true)}
-              className="absolute top-4 right-4 z-20 p-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              className="absolute top-4 right-4 z-20 p-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors shadow-lg"
             >
-              <ChevronLeft className="w-5 h-5" />
+              <Layers className="w-5 h-5" />
             </button>
           )}
 
           {/* Empty State */}
           {!boardName && !customImage && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-900 via-slate-900 to-gray-900">
-              <div className="text-center max-w-2xl px-8">
-                <div className="relative mb-8">
+            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-900 via-slate-900 to-gray-900 px-4">
+              <div className="text-center max-w-2xl px-4 md:px-8">
+                <div className="relative mb-6 md:mb-8">
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full blur-3xl opacity-20 animate-pulse"></div>
-                  <div className="relative text-8xl">🔬</div>
+                  <div className="relative text-6xl md:text-8xl">🔬</div>
                 </div>
-                <h1 className="text-4xl font-bold text-white mb-4 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                <h1 className="text-2xl md:text-4xl font-bold text-white mb-3 md:mb-4 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
                   معمل البوردفيو والمسارات
                 </h1>
-                <p className="text-gray-300 text-lg mb-4">
+                <p className="text-gray-300 text-sm md:text-lg mb-3 md:mb-4">
                   Upload a board image to view its schematic with interactive net traces
                 </p>
-                <p className="text-gray-400 text-sm mb-8">
-                  يمكنك رفع صورة البورد المخصص من خلال زر "Upload Board" في الأعلى
+                <p className="text-gray-400 text-xs md:text-sm mb-6 md:mb-8">
+                  يمكنك رفع صورة البورد المخصص من خلال زر "Upload" في الأعلى
                 </p>
 
-                <div className="flex gap-4 justify-center mb-8">
-                  <div className="flex items-center gap-2 px-4 py-2 bg-gray-800/50 rounded-lg border border-gray-700">
-                    <Cpu className="w-5 h-5 text-blue-400" />
-                    <span className="text-gray-300 text-sm">AI Analysis</span>
+                <div className="flex gap-2 md:gap-4 justify-center mb-6 md:mb-8 flex-wrap">
+                  <div className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-gray-800/50 rounded-lg border border-gray-700">
+                    <Cpu className="w-4 h-4 md:w-5 md:h-5 text-blue-400" />
+                    <span className="text-gray-300 text-xs md:text-sm">AI Analysis</span>
                   </div>
-                  <div className="flex items-center gap-2 px-4 py-2 bg-gray-800/50 rounded-lg border border-gray-700">
-                    <Layers className="w-5 h-5 text-purple-400" />
-                    <span className="text-gray-300 text-sm">Net Tracing</span>
+                  <div className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-gray-800/50 rounded-lg border border-gray-700">
+                    <Layers className="w-4 h-4 md:w-5 md:h-5 text-purple-400" />
+                    <span className="text-gray-300 text-xs md:text-sm">Net Tracing</span>
                   </div>
-                  <div className="flex items-center gap-2 px-4 py-2 bg-gray-800/50 rounded-lg border border-gray-700">
-                    <Zap className="w-5 h-5 text-yellow-400" />
-                    <span className="text-gray-300 text-sm">Component ID</span>
+                  <div className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-gray-800/50 rounded-lg border border-gray-700">
+                    <Zap className="w-4 h-4 md:w-5 md:h-5 text-yellow-400" />
+                    <span className="text-gray-300 text-xs md:text-sm">Component ID</span>
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  <p className="text-gray-300 font-medium">أو جرب البحث عن بورد (يتطلب إعداد Supabase):</p>
-                  <div className="flex flex-wrap gap-3 justify-center">
+                <div className="space-y-3 md:space-y-4">
+                  <p className="text-gray-300 font-medium text-sm md:text-base">أو جرب البحث عن بورد:</p>
+                  <div className="flex flex-wrap gap-2 md:gap-3 justify-center">
                     {sampleBoards.map((board) => (
                       <button
                         key={board}
@@ -1024,7 +1009,7 @@ export default function BoardViewPage() {
                           setSearchInput(board);
                           handleSearch();
                         }}
-                        className="px-4 py-2 bg-gradient-to-r from-gray-700 to-gray-600 text-white rounded-lg hover:from-gray-600 hover:to-gray-500 transition-all border border-gray-600"
+                        className="px-3 py-1.5 md:px-4 md:py-2 bg-gradient-to-r from-gray-700 to-gray-600 text-white rounded-lg hover:from-gray-600 hover:to-gray-500 transition-all border border-gray-600 text-xs md:text-sm"
                       >
                         {board}
                       </button>

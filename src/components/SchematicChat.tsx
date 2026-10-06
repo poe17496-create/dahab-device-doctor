@@ -140,16 +140,16 @@ export function SchematicChat({
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className={`fixed bottom-6 right-6 z-50 bg-gradient-to-r from-purple-600 to-pink-600 text-white p-4 rounded-full shadow-2xl hover:from-purple-700 hover:to-pink-700 transition-all ${className}`}
+        className={`fixed bottom-20 md:bottom-6 right-4 md:right-6 z-50 bg-gradient-to-r from-purple-600 to-pink-600 text-white p-3 md:p-4 rounded-full shadow-2xl hover:from-purple-700 hover:to-pink-700 transition-all ${className}`}
         title="Chat with Schematic AI"
       >
-        <MessageSquare className="w-6 h-6" />
+        <MessageSquare className="w-5 h-5 md:w-6 md:h-6" />
       </button>
     );
   }
 
   return (
-    <div className={`fixed bottom-6 right-6 z-50 w-96 h-[500px] bg-gray-900 rounded-2xl shadow-2xl flex flex-col border border-gray-700 ${className}`}>
+    <div className={`fixed bottom-16 md:bottom-6 right-2 md:right-6 z-50 w-[calc(100vw-16px)] md:w-96 h-[calc(100dvh-64px)] md:h-[500px] bg-gray-900 rounded-2xl shadow-2xl flex flex-col border border-gray-700 ${className}`}>
       {/* Header */}
       <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-4 rounded-t-2xl flex items-center justify-between">
         <div className="flex items-center gap-2">
