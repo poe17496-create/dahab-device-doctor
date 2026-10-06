@@ -955,36 +955,62 @@ export function HardwareBoardViewer({
                     {/* Net Traces */}
                     {Object.values(nets).map((net) => (
                       <g key={net.id}>
-                        {/* Net Trace Lines */}
+                        {/* Net Trace Lines - Thin and connected */}
                         {net.points.length > 1 && (
-                          <polyline
-                            points={net.points
-                              .map((p) => {
-                                // Handle both string (e.g., "35%") and number (e.g., 35) values
-                                const xVal = typeof p.x === 'string' ? parseFloat(p.x.replace('%', '')) : p.x;
-                                const yVal = typeof p.y === 'string' ? parseFloat(p.y.replace('%', '')) : p.y;
-                                return `${xVal} ${yVal}`;
-                              })
-                              .join(' ')}
-                            fill="none"
-                            stroke={net.color}
-                            strokeWidth={activeNet === net.id ? '3' : '2'}
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className={`transition-all duration-300 ${
-                              activeNet === net.id
-                                ? 'opacity-100 drop-shadow-lg'
-                                : 'opacity-60'
-                            }`}
-                            style={{
-                              filter: activeNet === net.id
-                                ? 'drop-shadow(0 0 8px ' + net.color + ')'
-                                : 'none',
-                            }}
-                          />
+                          <>
+                            {/* Main trace line */}
+                            <polyline
+                              points={net.points
+                                .map((p) => {
+                                  // Handle both string (e.g., "35%") and number (e.g., 35) values
+                                  const xVal = typeof p.x === 'string' ? parseFloat(p.x.replace('%', '')) : p.x;
+                                  const yVal = typeof p.y === 'string' ? parseFloat(p.y.replace('%', '')) : p.y;
+                                  return `${xVal} ${yVal}`;
+                                })
+                                .join(' ')}
+                              fill="none"
+                              stroke={net.color}
+                              strokeWidth={activeNet === net.id ? '1.5' : '0.8'}
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className={`transition-all duration-300 cursor-pointer ${
+                                activeNet === net.id
+                                  ? 'opacity-100'
+                                  : 'opacity-50'
+                              }`}
+                              style={{
+                                pointerEvents: 'stroke',
+                                filter: activeNet === net.id
+                                  ? 'drop-shadow(0 0 4px ' + net.color + ')'
+                                  : 'none',
+                              }}
+                              onClick={() => handleNetClick(net)}
+                            />
+                            {/* Glow effect for active net */}
+                            {activeNet === net.id && (
+                              <polyline
+                                points={net.points
+                                  .map((p) => {
+                                    const xVal = typeof p.x === 'string' ? parseFloat(p.x.replace('%', '')) : p.x;
+                                    const yVal = typeof p.y === 'string' ? parseFloat(p.y.replace('%', '')) : p.y;
+                                    return `${xVal} ${yVal}`;
+                                  })
+                                  .join(' ')}
+                                fill="none"
+                                stroke={net.color}
+                                strokeWidth="3"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                opacity="0.3"
+                                style={{
+                                  filter: 'drop-shadow(0 0 8px ' + net.color + ')',
+                                }}
+                              />
+                            )}
+                          </>
                         )}
 
-                        {/* Net Points (for single-point nets or endpoints) */}
+                        {/* Net Points - Small precision markers */}
                         {net.points.map((point, idx) => {
                           // Handle both string (e.g., "35%") and number (e.g., 35) values
                           const xVal = typeof point.x === 'string' ? parseFloat(point.x.replace('%', '')) : point.x;
@@ -994,12 +1020,12 @@ export function HardwareBoardViewer({
                               key={`${net.id}-point-${idx}`}
                               cx={xVal}
                               cy={yVal}
-                              r={activeNet === net.id ? '6' : '4'}
+                              r={activeNet === net.id ? '2' : '1.2'}
                               fill={net.color}
                               className={`transition-all duration-300 cursor-pointer ${
                                 activeNet === net.id
                                   ? 'opacity-100'
-                                  : 'opacity-60'
+                                  : 'opacity-50'
                               }`}
                               style={{ pointerEvents: 'auto' }}
                               onClick={() => handleNetClick(net)}
