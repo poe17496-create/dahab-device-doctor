@@ -737,9 +737,9 @@ export default function BoardViewPage() {
   ];
 
   return (
-    <div className="w-full h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-gray-900 flex flex-col">
+    <div className="w-full h-screen bg-gradient-to-br from-gray-100 via-gray-50 to-gray-100 dark:from-gray-900 dark:via-slate-900 dark:to-gray-900 flex flex-col">
       {/* Header & Search Bar */}
-      <div className="bg-gray-800/80 backdrop-blur-xl border-b border-gray-700/50 p-2 md:p-4 z-30 shadow-2xl">
+      <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-700/50 p-2 md:p-4 z-30 shadow-2xl">
         <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4">
           {/* Logo/Title */}
           <div className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg shrink-0">
@@ -749,14 +749,14 @@ export default function BoardViewPage() {
 
           {/* Search Input */}
           <div className="relative flex-1 w-full order-3 md:order-2">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-gray-400 dark:text-gray-500" />
             <input
               type="text"
               placeholder="Search board name..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               onKeyPress={handleKeyPress}
-              className="w-full pl-10 md:pl-12 pr-3 md:pr-4 py-2 md:py-3 bg-gray-700/50 backdrop-blur-sm border border-gray-600/50 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
+              className="w-full pl-10 md:pl-12 pr-3 md:pr-4 py-2 md:py-3 bg-gray-100/50 dark:bg-gray-700/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
             />
           </div>
 
@@ -851,20 +851,20 @@ export default function BoardViewPage() {
       <div className="flex-1 flex overflow-hidden">
         {/* Side Panel - Net Navigator */}
         <div
-          className={`bg-gray-800/80 backdrop-blur-xl border-l border-gray-700/50 transition-all duration-300 fixed md:relative z-40 h-full ${
+          className={`bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border-l border-gray-200/50 dark:border-gray-700/50 transition-all duration-300 fixed md:relative z-40 h-full ${
             sidePanelOpen ? 'w-72 md:w-80' : 'w-0'
           } overflow-hidden shadow-2xl`}
         >
           <div className="p-3 md:p-4 h-full flex flex-col">
             {/* Panel Header */}
             <div className="flex items-center justify-between mb-3 md:mb-4">
-              <h2 className="text-base md:text-lg font-bold text-white flex items-center gap-2">
+              <h2 className="text-base md:text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                 <Layers className="w-4 h-4 md:w-5 md:h-5 text-blue-400" />
                 <span className="text-sm md:text-lg">Net Navigator</span>
               </h2>
               <button
                 onClick={() => setSidePanelOpen(false)}
-                className="p-1 text-gray-400 hover:text-white transition-colors"
+                className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"
               >
                 <X className="w-4 h-4 md:w-5 md:h-5" />
               </button>
@@ -872,18 +872,18 @@ export default function BoardViewPage() {
 
             {/* Net Search */}
             <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
               <input
                 type="text"
                 placeholder="Filter nets..."
                 value={netSearchQuery}
                 onChange={(e) => setNetSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               {netSearchQuery && (
                 <button
                   onClick={() => setNetSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -925,7 +925,7 @@ export default function BoardViewPage() {
                       ? 'bg-blue-600 border-2 border-blue-400'
                       : editingNetId === net.id
                       ? 'bg-orange-600 border-2 border-orange-400'
-                      : 'bg-gray-700 border-2 border-transparent hover:bg-gray-600'
+                      : 'bg-gray-200 dark:bg-gray-700 border-2 border-transparent hover:bg-gray-300 dark:hover:bg-gray-600'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2 mb-1">
@@ -937,7 +937,7 @@ export default function BoardViewPage() {
                         className="w-3 h-3 rounded-full"
                         style={{ backgroundColor: net.color }}
                       />
-                      <span className="font-medium text-white">{net.name}</span>
+                      <span className="font-medium text-gray-900 dark:text-white">{net.name}</span>
                     </button>
                     <div className="flex items-center gap-1">
                       <button
@@ -945,7 +945,7 @@ export default function BoardViewPage() {
                         className={`p-1 transition-colors ${
                           editingNetId === net.id
                             ? 'text-orange-400'
-                            : 'text-gray-400 hover:text-orange-400'
+                            : 'text-gray-400 dark:text-gray-500 hover:text-orange-400'
                         }`}
                         title="رسم نقاط"
                       >
@@ -953,7 +953,7 @@ export default function BoardViewPage() {
                       </button>
                       <button
                         onClick={() => handleDeleteNet(net.id)}
-                        className="p-1 text-gray-400 hover:text-red-400 transition-colors"
+                        className="p-1 text-gray-400 dark:text-gray-500 hover:text-red-400 transition-colors"
                         title="حذف المسار"
                       >
                         <X className="w-4 h-4" />
@@ -961,9 +961,9 @@ export default function BoardViewPage() {
                     </div>
                   </div>
                   {net.description && (
-                    <p className="text-sm text-gray-400">{net.description}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{net.description}</p>
                   )}
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
                     {net.points.length} نقطة
                     {editingNetId === net.id && (
                       <span className="text-orange-400 ml-2">
@@ -974,7 +974,7 @@ export default function BoardViewPage() {
                 </div>
               ))}
               {filteredNets.length === 0 && (
-                <p className="text-gray-400 text-center py-4">لا توجد مسارات</p>
+                <p className="text-gray-500 dark:text-gray-400 text-center py-4">لا توجد مسارات</p>
               )}
             </div>
 
@@ -1016,7 +1016,7 @@ export default function BoardViewPage() {
           {!sidePanelOpen && (
             <button
               onClick={() => setSidePanelOpen(true)}
-              className="absolute top-4 right-4 z-20 p-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors shadow-lg"
+              className="absolute top-4 right-4 z-20 p-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors shadow-lg"
             >
               <Layers className="w-5 h-5" />
             </button>
@@ -1024,39 +1024,39 @@ export default function BoardViewPage() {
 
           {/* Empty State */}
           {!boardName && !customImage && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-900 via-slate-900 to-gray-900 px-4">
+            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-100 via-gray-50 to-gray-100 dark:from-gray-900 dark:via-slate-900 dark:to-gray-900 px-4">
               <div className="text-center max-w-2xl px-4 md:px-8">
                 <div className="relative mb-6 md:mb-8">
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full blur-3xl opacity-20 animate-pulse"></div>
                   <div className="relative text-6xl md:text-8xl">🔬</div>
                 </div>
-                <h1 className="text-2xl md:text-4xl font-bold text-white mb-3 md:mb-4 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                <h1 className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white mb-3 md:mb-4 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
                   معمل البوردفيو والمسارات
                 </h1>
-                <p className="text-gray-300 text-sm md:text-lg mb-3 md:mb-4">
+                <p className="text-gray-600 dark:text-gray-300 text-sm md:text-lg mb-3 md:mb-4">
                   Upload a board image to view its schematic with interactive net traces
                 </p>
-                <p className="text-gray-400 text-xs md:text-sm mb-6 md:mb-8">
+                <p className="text-gray-500 dark:text-gray-400 text-xs md:text-sm mb-6 md:mb-8">
                   يمكنك رفع صورة البورد المخصص من خلال زر "Upload" في الأعلى
                 </p>
 
                 <div className="flex gap-2 md:gap-4 justify-center mb-6 md:mb-8 flex-wrap">
-                  <div className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-gray-800/50 rounded-lg border border-gray-700">
+                  <div className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-white/50 dark:bg-gray-800/50 rounded-lg border border-gray-300 dark:border-gray-700">
                     <Cpu className="w-4 h-4 md:w-5 md:h-5 text-blue-400" />
-                    <span className="text-gray-300 text-xs md:text-sm">AI Analysis</span>
+                    <span className="text-gray-700 dark:text-gray-300 text-xs md:text-sm">AI Analysis</span>
                   </div>
-                  <div className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-gray-800/50 rounded-lg border border-gray-700">
+                  <div className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-white/50 dark:bg-gray-800/50 rounded-lg border border-gray-300 dark:border-gray-700">
                     <Layers className="w-4 h-4 md:w-5 md:h-5 text-purple-400" />
-                    <span className="text-gray-300 text-xs md:text-sm">Net Tracing</span>
+                    <span className="text-gray-700 dark:text-gray-300 text-xs md:text-sm">Net Tracing</span>
                   </div>
-                  <div className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-gray-800/50 rounded-lg border border-gray-700">
+                  <div className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-white/50 dark:bg-gray-800/50 rounded-lg border border-gray-300 dark:border-gray-700">
                     <Zap className="w-4 h-4 md:w-5 md:h-5 text-yellow-400" />
-                    <span className="text-gray-300 text-xs md:text-sm">Component ID</span>
+                    <span className="text-gray-700 dark:text-gray-300 text-xs md:text-sm">Component ID</span>
                   </div>
                 </div>
 
                 <div className="space-y-3 md:space-y-4">
-                  <p className="text-gray-300 font-medium text-sm md:text-base">أو جرب البحث عن بورد:</p>
+                  <p className="text-gray-700 dark:text-gray-300 font-medium text-sm md:text-base">أو جرب البحث عن بورد:</p>
                   <div className="flex flex-wrap gap-2 md:gap-3 justify-center">
                     {sampleBoards.map((board) => (
                       <button
@@ -1065,7 +1065,7 @@ export default function BoardViewPage() {
                           setSearchInput(board);
                           handleSearch();
                         }}
-                        className="px-3 py-1.5 md:px-4 md:py-2 bg-gradient-to-r from-gray-700 to-gray-600 text-white rounded-lg hover:from-gray-600 hover:to-gray-500 transition-all border border-gray-600 text-xs md:text-sm"
+                        className="px-3 py-1.5 md:px-4 md:py-2 bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 text-gray-900 dark:text-white rounded-lg hover:from-gray-300 hover:to-gray-400 dark:hover:from-gray-600 dark:hover:to-gray-500 transition-all border border-gray-300 dark:border-gray-600 text-xs md:text-sm"
                       >
                         {board}
                       </button>
@@ -1078,12 +1078,12 @@ export default function BoardViewPage() {
 
           {/* Path Tracing Progress Indicator */}
           {tracingPath && (
-            <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 bg-gray-800/95 backdrop-blur-sm border border-cyan-500 rounded-xl px-6 py-4 shadow-2xl">
+            <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border border-cyan-500 rounded-xl px-6 py-4 shadow-2xl">
               <div className="flex items-center gap-3">
                 <Loader2 className="w-5 h-5 text-cyan-400 animate-spin" />
                 <div>
-                  <p className="text-white font-medium">Auto-tracing net path...</p>
-                  <div className="w-48 h-2 bg-gray-700 rounded-full mt-2 overflow-hidden">
+                  <p className="text-gray-900 dark:text-white font-medium">Auto-tracing net path...</p>
+                  <div className="w-48 h-2 bg-gray-200 dark:bg-gray-700 rounded-full mt-2 overflow-hidden">
                     <div
                       className="h-full bg-gradient-to-r from-cyan-500 to-blue-600 transition-all duration-300"
                       style={{ width: `${pathTraceProgress}%` }}
@@ -1096,12 +1096,12 @@ export default function BoardViewPage() {
 
           {/* Schematic Loading Indicator */}
           {loadingSchematic && (
-            <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 bg-gray-800/95 backdrop-blur-sm border border-purple-500 rounded-xl px-6 py-4 shadow-2xl">
+            <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border border-purple-500 rounded-xl px-6 py-4 shadow-2xl">
               <div className="flex items-center gap-3">
                 <Loader2 className="w-5 h-5 text-purple-400 animate-spin" />
                 <div>
-                  <p className="text-white font-medium">Loading schematic...</p>
-                  <p className="text-gray-400 text-sm">Please wait</p>
+                  <p className="text-gray-900 dark:text-white font-medium">Loading schematic...</p>
+                  <p className="text-gray-500 dark:text-gray-400 text-sm">Please wait</p>
                 </div>
               </div>
             </div>
@@ -1109,12 +1109,12 @@ export default function BoardViewPage() {
 
           {/* Schematic Alignment Indicator */}
           {aligningSchematic && (
-            <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 bg-gray-800/95 backdrop-blur-sm border border-orange-500 rounded-xl px-6 py-4 shadow-2xl">
+            <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border border-orange-500 rounded-xl px-6 py-4 shadow-2xl">
               <div className="flex items-center gap-3">
                 <Loader2 className="w-5 h-5 text-orange-400 animate-spin" />
                 <div>
-                  <p className="text-white font-medium">Aligning schematic to board...</p>
-                  <p className="text-gray-400 text-sm">AI analyzing images</p>
+                  <p className="text-gray-900 dark:text-white font-medium">Aligning schematic to board...</p>
+                  <p className="text-gray-500 dark:text-gray-400 text-sm">AI analyzing images</p>
                 </div>
               </div>
             </div>
@@ -1123,12 +1123,12 @@ export default function BoardViewPage() {
           {/* Schematic Selector Modal */}
           {showSchematicSelector && externalSchematics.length > 0 && (
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-              <div className="bg-gray-800 rounded-xl p-6 max-w-2xl w-full border border-gray-700 shadow-2xl max-h-[80vh] overflow-hidden flex flex-col">
+              <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-2xl w-full border border-gray-300 dark:border-gray-700 shadow-2xl max-h-[80vh] overflow-hidden flex flex-col">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xl font-bold text-white">Select Schematic</h3>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">Select Schematic</h3>
                   <button
                     onClick={() => setShowSchematicSelector(false)}
-                    className="text-gray-400 hover:text-white transition-colors"
+                    className="text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -1138,18 +1138,18 @@ export default function BoardViewPage() {
                     <div
                       key={schematic.id}
                       onClick={() => handleSelectExternalSchematic(schematic)}
-                      className="p-4 bg-gray-700 rounded-lg hover:bg-gray-600 cursor-pointer transition-colors border border-gray-600 hover:border-purple-500"
+                      className="p-4 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 cursor-pointer transition-colors border border-gray-300 dark:border-gray-600 hover:border-purple-500"
                     >
                       <div className="flex items-center justify-between">
                         <div>
-                          <h4 className="text-white font-semibold">{schematic.name}</h4>
-                          <p className="text-gray-400 text-sm">{schematic.deviceModel}</p>
-                          <p className="text-gray-500 text-xs mt-1">Source: {schematic.source}</p>
+                          <h4 className="text-gray-900 dark:text-white font-semibold">{schematic.name}</h4>
+                          <p className="text-gray-600 dark:text-gray-400 text-sm">{schematic.deviceModel}</p>
+                          <p className="text-gray-500 dark:text-gray-500 text-xs mt-1">Source: {schematic.source}</p>
                         </div>
                         <CircuitBoard className="w-8 h-8 text-purple-400" />
                       </div>
                       {schematic.description && (
-                        <p className="text-gray-400 text-sm mt-2">{schematic.description}</p>
+                        <p className="text-gray-600 dark:text-gray-400 text-sm mt-2">{schematic.description}</p>
                       )}
                     </div>
                   ))}
@@ -1200,11 +1200,11 @@ export default function BoardViewPage() {
           {/* Add Net Modal */}
           {showAddNetModal && (
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-              <div className="bg-gray-800 rounded-xl p-6 max-w-md w-full border border-gray-700 shadow-2xl">
-                <h3 className="text-xl font-bold text-white mb-4">إضافة مسار جديد</h3>
+              <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full border border-gray-300 dark:border-gray-700 shadow-2xl">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">إضافة مسار جديد</h3>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       اسم المسار
                     </label>
                     <input
@@ -1212,11 +1212,11 @@ export default function BoardViewPage() {
                       value={newNetName}
                       onChange={(e) => setNewNetName(e.target.value)}
                       placeholder="مثال: PP_VDD_MAIN"
-                      className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2.5 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       اللون
                     </label>
                     <div className="flex gap-2">
@@ -1230,12 +1230,12 @@ export default function BoardViewPage() {
                         type="text"
                         value={newNetColor}
                         onChange={(e) => setNewNetColor(e.target.value)}
-                        className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       الوصف (اختياري)
                     </label>
                     <textarea
@@ -1243,7 +1243,7 @@ export default function BoardViewPage() {
                       onChange={(e) => setNewNetDescription(e.target.value)}
                       placeholder="وصف المسار والوظيفة"
                       rows={3}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                      className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                     />
                   </div>
                 </div>
@@ -1269,11 +1269,11 @@ export default function BoardViewPage() {
           {/* Add Component Modal */}
           {showAddComponentModal && (
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-              <div className="bg-gray-800 rounded-xl p-6 max-w-md w-full border border-gray-700 shadow-2xl">
-                <h3 className="text-xl font-bold text-white mb-4">إضافة مكون جديد</h3>
+              <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full border border-gray-300 dark:border-gray-700 shadow-2xl">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">إضافة مكون جديد</h3>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       اسم المكون
                     </label>
                     <input
@@ -1281,17 +1281,17 @@ export default function BoardViewPage() {
                       value={newComponentName}
                       onChange={(e) => setNewComponentName(e.target.value)}
                       placeholder="مثال: U1200, C1500, R1200"
-                      className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2.5 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       نوع المكون
                     </label>
                     <select
                       value={newComponentType}
                       onChange={(e) => setNewComponentType(e.target.value as Component['type'])}
-                      className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2.5 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="IC">IC (دائرة متكاملة)</option>
                       <option value="Capacitor">Capacitor (مكثف)</option>
@@ -1305,7 +1305,7 @@ export default function BoardViewPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         الموقع X (%)
                       </label>
                       <input
@@ -1313,11 +1313,11 @@ export default function BoardViewPage() {
                         value={newComponentX}
                         onChange={(e) => setNewComponentX(e.target.value)}
                         placeholder="50%"
-                        className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2.5 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         الموقع Y (%)
                       </label>
                       <input
@@ -1325,12 +1325,12 @@ export default function BoardViewPage() {
                         value={newComponentY}
                         onChange={(e) => setNewComponentY(e.target.value)}
                         placeholder="50%"
-                        className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2.5 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       الوصف (اختياري)
                     </label>
                     <textarea
@@ -1338,7 +1338,7 @@ export default function BoardViewPage() {
                       onChange={(e) => setNewComponentDescription(e.target.value)}
                       placeholder="وصف المكون والوظيفة"
                       rows={3}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                      className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                     />
                   </div>
                 </div>
@@ -1364,15 +1364,15 @@ export default function BoardViewPage() {
           {/* AI Analysis Result Modal */}
           {showAnalysisResult && analysisResult && (
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-              <div className="bg-gray-800 rounded-xl p-6 max-w-2xl w-full border border-gray-700 shadow-2xl max-h-[90vh] overflow-y-auto" dir="rtl">
+              <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-2xl w-full border border-gray-300 dark:border-gray-700 shadow-2xl max-h-[90vh] overflow-y-auto" dir="rtl">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                     <Sparkles className="w-6 h-6 text-cyan-400" />
                     نتائج تحليل الذكاء الاصطناعي
                   </h3>
                   <button
                     onClick={() => setShowAnalysisResult(false)}
-                    className="text-gray-400 hover:text-white transition-colors"
+                    className="text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -1382,14 +1382,14 @@ export default function BoardViewPage() {
                 {analysisResult.summary && (
                   <div className="mb-4 p-4 bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-lg border border-blue-500/30">
                     <h4 className="text-sm font-medium text-blue-300 mb-2">ملخص التحليل</h4>
-                    <p className="text-white text-sm">{analysisResult.summary}</p>
+                    <p className="text-gray-900 dark:text-white text-sm">{analysisResult.summary}</p>
                   </div>
                 )}
 
                 {/* Components Found */}
                 {analysisResult.components && analysisResult.components.length > 0 && (
                   <div className="mb-4">
-                    <h4 className="text-sm font-medium text-white mb-3 flex items-center gap-2">
+                    <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3 flex items-center gap-2">
                       <CircuitBoard className="w-4 h-4 text-green-400" />
                       المكونات المكتشفة ({analysisResult.components.length})
                     </h4>
@@ -1397,16 +1397,16 @@ export default function BoardViewPage() {
                       {analysisResult.components.map((comp: any, index: number) => (
                         <div
                           key={index}
-                          className="p-3 bg-gray-700/50 rounded-lg border border-gray-600 hover:border-gray-500 transition-colors"
+                          className="p-3 bg-gray-100 dark:bg-gray-700/50 rounded-lg border border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
                         >
                           <div className="flex items-center justify-between mb-1">
-                            <span className="font-medium text-white">{comp.name}</span>
+                            <span className="font-medium text-gray-900 dark:text-white">{comp.name}</span>
                             <span className="text-xs px-2 py-1 bg-blue-600/30 text-blue-300 rounded-full">
                               {comp.type}
                             </span>
                           </div>
-                          <p className="text-xs text-gray-400 mb-1">{comp.description}</p>
-                          <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">{comp.description}</p>
+                          <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-500">
                             <span>الثقة: {(comp.confidence * 100).toFixed(0)}%</span>
                             {comp.x !== undefined && comp.y !== undefined && (
                               <span>• الموقع: {comp.x}%, {comp.y}%</span>
@@ -1421,7 +1421,7 @@ export default function BoardViewPage() {
                 {/* Suspicious Markers */}
                 {analysisResult.suspiciousMarkers && analysisResult.suspiciousMarkers.length > 0 && (
                   <div className="mb-4">
-                    <h4 className="text-sm font-medium text-white mb-3 flex items-center gap-2">
+                    <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3 flex items-center gap-2">
                       <AlertTriangle className="w-4 h-4 text-red-400" />
                       مناطق مشبوهة ({analysisResult.suspiciousMarkers.length})
                     </h4>
@@ -1440,7 +1440,7 @@ export default function BoardViewPage() {
                             className={`p-3 ${bgColor} rounded-lg border ${borderColor} hover:opacity-80 transition-colors`}
                           >
                             <div className="flex items-center justify-between mb-1">
-                              <span className="font-medium text-white flex items-center gap-2">
+                              <span className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
                                 <span className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-xs text-white font-bold">
                                   {marker.id}
                                 </span>
@@ -1450,8 +1450,8 @@ export default function BoardViewPage() {
                                 {marker.severity === 'high' ? 'خطورة عالية' : marker.severity === 'medium' ? 'خطورة متوسطة' : 'خطورة منخفضة'}
                               </span>
                             </div>
-                            <p className="text-xs text-gray-300">{marker.note}</p>
-                            <p className="text-xs text-gray-500 mt-1">الموقع: {marker.x}%, {marker.y}%</p>
+                            <p className="text-xs text-gray-700 dark:text-gray-300">{marker.note}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">الموقع: {marker.x}%, {marker.y}%</p>
                           </div>
                         );
                       })}

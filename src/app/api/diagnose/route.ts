@@ -14,6 +14,7 @@ import { callAIEngine, createStreamingResponse, AIEngine } from '@/lib/aiEngines
 import { buildExpertPromptContext } from '@/lib/expertKnowledge';
 import { checkRateLimit, sanitizeAndCheckTokenDrain } from '@/lib/securityRateLimiter';
 import { getGuestRemainingTrials, MAX_GUEST_DAILY_TRIALS } from '@/lib/guestUsage';
+import { checkAndIncrementGuestTrials } from '@/lib/guestTrialsSupabase';
 
 export const runtime = 'nodejs';
 
@@ -31,13 +32,13 @@ export async function POST(req: NextRequest) {
     const { prompt, specialty, deviceModel, readings, imageBase64, sessionId, preferredEngine, customKeys, isGuest } =
       await req.json();
 
-    // 🛡️ التحقق من حالة الزائر وعدد التجارب المتبقية
+    // 🛡️ التحقق من حالة الزائر وعدد التجارب المتبقية (من Supabase)
     if (isGuest === true) {
-      const remaining = getGuestRemainingTrials();
-      if (remaining <= 0) {
+      const trialCheck = await checkAndIncrementGuestTrials(req);
+      if (!trialCheck.success) {
         return new Response(
-          '⚠️ انتهت تجاربك المجانية اليومية (5 من 5).\n\nللحصول على وصول غير محدود للتشخيص ومحاكي البورد فيو والمساعد، سجّل الدخول بحساب فني معتمد أو تواصل مع المطور م. إسلام دهب على واتساب: 01064147224',
-          { status: 403 }
+          trialCheck.error || '⚠️ انتهت تجاربك المجانية اليومية (5 من 5).\n\nللحصول على وصول غير محدود للتشخيص ومحاكي البورد فيو والمساعد، سجّل الدخول بحساب فني معتمد أو تواصل مع المطور م. إسلام دهب على واتساب: 01064147224',
+          { status: 429 }
         );
       }
     }

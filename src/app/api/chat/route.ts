@@ -11,6 +11,7 @@ import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
 import { generateUserIdentifier } from '@/lib/userFingerprint';
 import { validateSessionToken } from '@/lib/auth';
 import { getGuestRemainingTrials } from '@/lib/guestUsage';
+import { checkAndIncrementGuestTrials } from '@/lib/guestTrialsSupabase';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -44,17 +45,6 @@ async function chatHandler(req: NextRequest) {
   // التحقق من المستخدم المسجل (skip usage limit for logged-in users)
   const { username, sessionToken, isGuest } = body;
 
-  // 🛡️ التحقق من حالة الزائر وعدد التجارب المتبقية
-  if (isGuest === true) {
-    const remaining = getGuestRemainingTrials();
-    if (remaining <= 0) {
-      return NextResponse.json(
-        { error: '⚠️ انتهت تجاربك المجانية اليومية (5 من 5).\n\nللحصول على وصول غير محدود لمساعد الذكاء الاصطناعي ومحاكي البورد فيو والتشخيص، سجّل الدخول بحساب فني معتمد أو تواصل مع المطور م. إسلام دهب على واتساب: 01064147224' },
-        { status: 403 }
-      );
-    }
-  }
-
   let isUserLoggedIn = false;
   if (username && sessionToken && isSupabaseConfigured) {
     try {
@@ -66,6 +56,17 @@ async function chatHandler(req: NextRequest) {
     }
   } else {
     console.log('[Chat API] No auth credentials provided:', { hasUsername: !!username, hasSessionToken: !!sessionToken, isSupabaseConfigured });
+  }
+
+  // 🛡️ التحقق من حالة الزائر وعدد التجارب المتبقية (من Supabase)
+  if (isGuest === true && !isUserLoggedIn) {
+    const trialCheck = await checkAndIncrementGuestTrials(req);
+    if (!trialCheck.success) {
+      return NextResponse.json(
+        { error: trialCheck.error },
+        { status: 429 }
+      );
+    }
   }
 
   // 🎯 تتبع الاستخدام اليومي عبر Device Fingerprint المحسن (IP + User Agent + Cookie)

@@ -538,6 +538,15 @@ export default function DahabFixAiConsole() {
         }),
       });
 
+      // التعامل مع حالة 429 (تجاوز الحد المسموح للزائر)
+      if (response.status === 429) {
+        const errorText = await response.text();
+        setOutput(errorText || '⚠️ لقد استنفدت محاولاتك المجانية اليومية (5/5). يرجى تسجيل الدخول للحصول على وصول كامل.');
+        setLoading(false);
+        setLoadingMessage(null);
+        return;
+      }
+
       if (!response.body) {
         setOutput('لم يتم استلام أي تدفق بيانات من محرك الفحص.');
         setLoading(false);

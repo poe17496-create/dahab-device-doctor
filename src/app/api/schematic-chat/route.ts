@@ -3,6 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
 import { isRateLimited } from '@/lib/rateLimit';
 import { getGuestRemainingTrials } from '@/lib/guestUsage';
+import { checkAndIncrementGuestTrials } from '@/lib/guestTrialsSupabase';
 
 /**
  * API Endpoint: Schematic AI Chat
@@ -53,13 +54,13 @@ export async function POST(req: NextRequest) {
     const body: SchematicChatRequest = await req.json();
     const { schematicUrl, question, context, isGuest } = body;
 
-    // 🛡️ التحقق من حالة الزائر وعدد التجارب المتبقية
+    // 🛡️ التحقق من حالة الزائر وعدد التجارب المتبقية (من Supabase)
     if (isGuest === true) {
-      const remaining = getGuestRemainingTrials();
-      if (remaining <= 0) {
+      const trialCheck = await checkAndIncrementGuestTrials(req);
+      if (!trialCheck.success) {
         return NextResponse.json(
-          { success: false, error: '⚠️ انتهت تجاربك المجانية اليومية (5 من 5).\n\nللحصول على وصول غير محدود للتشخيص ومحاكي البورد فيو والمساعد، سجّل الدخول بحساب فني معتمد أو تواصل مع المطور م. إسلام دهب على واتساب: 01064147224' },
-          { status: 403 }
+          { success: false, error: trialCheck.error },
+          { status: 429 }
         );
       }
     }

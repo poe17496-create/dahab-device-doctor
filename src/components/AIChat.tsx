@@ -456,6 +456,20 @@ export default function AIChat({ currentUser }: AIChatProps) {
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
         console.error('[Mobile Debug] Server error response:', errData);
+
+        // التعامل مع حالة 429 (تجاوز الحد المسموح للزائر)
+        if (res.status === 429) {
+          const limitMsg: ChatMessage = {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: errData.error || '⚠️ لقد استنفدت محاولاتك المجانية اليومية (5/5). يرجى تسجيل الدخول للحصول على وصول كامل.',
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, limitMsg]);
+          setIsLoading(false);
+          return;
+        }
+
         throw new Error(errData.error || `خطأ في الخادم (${res.status})`);
       }
 
