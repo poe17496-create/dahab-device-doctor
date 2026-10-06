@@ -10,6 +10,7 @@ import { getCachedResponse, setCachedResponse, generateCacheKey } from '@/lib/ca
 import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
 import { generateUserIdentifier } from '@/lib/userFingerprint';
 import { validateSessionToken } from '@/lib/auth';
+import { getGuestRemainingTrials } from '@/lib/guestUsage';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -41,7 +42,18 @@ async function chatHandler(req: NextRequest) {
   const body = await req.json();
 
   // التحقق من المستخدم المسجل (skip usage limit for logged-in users)
-  const { username, sessionToken } = body;
+  const { username, sessionToken, isGuest } = body;
+
+  // 🛡️ التحقق من حالة الزائر وعدد التجارب المتبقية
+  if (isGuest === true) {
+    const remaining = getGuestRemainingTrials();
+    if (remaining <= 0) {
+      return NextResponse.json(
+        { error: '⚠️ انتهت تجاربك المجانية اليومية (5 من 5).\n\nللحصول على وصول غير محدود لمساعد الذكاء الاصطناعي ومحاكي البورد فيو والتشخيص، سجّل الدخول بحساب فني معتمد أو تواصل مع المطور م. إسلام دهب على واتساب: 01064147224' },
+        { status: 403 }
+      );
+    }
+  }
 
   let isUserLoggedIn = false;
   if (username && sessionToken && isSupabaseConfigured) {

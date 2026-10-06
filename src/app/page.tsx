@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ConsoleHeader from '@/components/ConsoleHeader';
 import { Image, Zap, Ticket } from 'lucide-react';
 import HardwareSoftwareIndicator from '@/components/HardwareSoftwareIndicator';
@@ -27,6 +27,7 @@ import InteractiveDiagnosticBoard from '@/components/InteractiveDiagnosticBoard'
 import SchematicBoard from '@/components/SchematicBoard';
 import RepairStatusTracker from '@/components/RepairStatusTracker';
 import CommonFaultsLibrary from '@/components/CommonFaultsLibrary';
+import GuestLockModal from '@/components/GuestLockModal';
 import {
   DeviceSpecialty,
   PowerSupplyReadings,
@@ -36,7 +37,8 @@ import {
 } from '@/lib/types';
 import { createIntegratedContext } from '@/lib/schematicIntegration';
 import { consumeGuestTrial, getGuestRemainingTrials } from '@/lib/guestUsage';
-import { Menu, Crown, AlertCircle, Cpu } from 'lucide-react';
+import { isTabAllowedForGuest } from '@/lib/guestConfig';
+import { Menu, Crown, AlertCircle, Cpu, Maximize, Minimize } from 'lucide-react';
 import { useDiagnosticContext } from '@/contexts/DiagnosticContext';
 
 export type MasterTab =
@@ -103,6 +105,9 @@ export default function DahabFixAiConsole() {
   const [showCommonFaultsLibrary, setShowCommonFaultsLibrary] = useState(false);
   const [highlightedComponent, setHighlightedComponent] = useState<string | null>(null);
   const [diagnosisStartTime, setDiagnosisStartTime] = useState<number | null>(null);
+  const [showGuestLockModal, setShowGuestLockModal] = useState(false);
+  const [boardviewFullscreen, setBoardviewFullscreen] = useState(false);
+  const boardviewRef = useRef<HTMLIFrameElement>(null);
 
   const toggleDesktopMode = () => {
     setIsDesktopMode(prev => {
@@ -321,6 +326,42 @@ export default function DahabFixAiConsole() {
     setActiveTab('diagnosis');
   };
 
+  // معالجة تغيير التبويب مع التحقق من صلاحيات الزائر
+  const handleTabChange = (tab: MasterTab) => {
+    if (currentUser?.isGuest && !isTabAllowedForGuest(tab)) {
+      setShowGuestLockModal(true);
+      return;
+    }
+    setActiveTab(tab);
+  };
+
+  // تبديل وضع ملء الشاشة للبوردفيو
+  const toggleBoardviewFullscreen = () => {
+    if (!boardviewRef.current) return;
+
+    if (!document.fullscreenElement) {
+      boardviewRef.current.requestFullscreen().catch(err => {
+        console.error('Error attempting to enable fullscreen:', err);
+      });
+      setBoardviewFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setBoardviewFullscreen(false);
+    }
+  };
+
+  // الاستماع لحدث الخروج من ملء الشاشة
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setBoardviewFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
   // حذف جلسة من ملفات الـ JSON
   const handleDeleteSession = async (sessionId: string) => {
     try {
@@ -446,6 +487,7 @@ export default function DahabFixAiConsole() {
           imageBase64,
           sessionId: activeSessionId,
           customKeys,
+          isGuest: currentUser?.isGuest === true,
         }),
       });
 
@@ -582,7 +624,7 @@ export default function DahabFixAiConsole() {
         {/* Sidebar موحد للتنقل */}
         <NavigationSidebar
           activeTab={activeTab}
-          onTabChange={setActiveTab}
+          onTabChange={handleTabChange}
           isOpen={isNavSidebarOpen}
           onClose={() => setIsNavSidebarOpen(false)}
           currentUser={currentUser}
@@ -787,22 +829,82 @@ export default function DahabFixAiConsole() {
               )}
               {/* تبويب معمل البوردفيو والمسارات */}
               {activeTab === 'boardview' && (
+                <div className="w-full h-[calc(100dvh-150px)] md:h-[calc(100dvh-115px)] lg:h-[calc(100dvh-105px)] flex flex-col bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl overflow-hidden relative">
+                  {/* Header with fullscreen button */}
+                  <div className="absolute top-4 right-4 z-10 flex gap-2">
+                    <button
+                      onClick={toggleBoardviewFullscreen}
+                      className="p-2 rounded-lg bg-gray-800/80 backdrop-blur-sm border border-gray-700/50 text-white hover:bg-gray-700/80 transition-all shadow-lg"
+                      title={boardviewFullscreen ? 'خروج من ملء الشاشة' : 'ملء الشاشة'}
+                    >
+                      {boardviewFullscreen ? (
+                        <Minimize className="w-5 h-5" />
+                      ) : (
+                        <Maximize className="w-5 h-5" />
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Loading state */}
+                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800 z-0">
+                    <div className="text-center space-y-4">
+                      <div className="animate-spin w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full mx-auto"></div>
+                      <p className="text-gray-300 text-sm">جاري تحميل معمل البوردفيو...</p>
+                    </div>
+                  </div>
+
+                  {/* Iframe for boardview */}
+                  <iframe
+                    ref={boardviewRef}
+                    src="/boardview"
+                    className="w-full h-full border-0 bg-gray-900"
+                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                    onLoad={(e) => {
+                      const target = e.target as HTMLIFrameElement;
+                      target.style.opacity = '1';
+                      const loadingDiv = target.parentElement?.querySelector('.absolute.inset-0');
+                      if (loadingDiv) {
+                        (loadingDiv as HTMLElement).style.display = 'none';
+                      }
+                    }}
+                    style={{ opacity: '0', transition: 'opacity 0.3s ease', touchAction: 'none', overscrollBehavior: 'contain' }}
+                    title="معمل البوردفيو والمسارات"
+                  />
+                </div>
+              )}
+
+              {/* شاشة القفل للزائر عند محاولة فتح قسم غير مسموح */}
+              {currentUser?.isGuest && !isTabAllowedForGuest(activeTab) && (
                 <div className="w-full h-[calc(100dvh-150px)] md:h-[calc(100dvh-115px)] lg:h-[calc(100dvh-105px)] flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl">
                   <div className="text-center space-y-6 max-w-lg px-8">
-                    <div className="text-7xl">🔬</div>
-                    <h2 className="text-3xl font-bold text-white mb-2">معمل البوردفيو والمسارات</h2>
+                    <div className="text-7xl">🔒</div>
+                    <h2 className="text-3xl font-bold text-white mb-2">هذه الميزة متاحة للفنيين المعتمدين فقط</h2>
                     <p className="text-gray-400 text-lg mb-4">
-                      Laboratory for Board View and Net Traces
+                      أنت تستخدم وضع الزائر. سجّل الدخول بحساب فني للوصول لكل أدوات منظومة دهب دكتور.
                     </p>
                     <div className="space-y-3">
-                      <p className="text-gray-300 text-sm">
-                        اضغط على الزر أدناه لفتح معمل البوردفيو في نافذة جديدة
-                      </p>
                       <button
-                        onClick={() => window.open('/boardview', '_blank')}
-                        className="w-full px-8 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:from-emerald-700 hover:to-teal-700 transition-all font-bold text-lg shadow-lg"
+                        onClick={() => {
+                          localStorage.removeItem('dahab_current_user');
+                          setCurrentUser(null);
+                        }}
+                        className="w-full px-8 py-4 bg-gradient-to-r from-dahab-500 to-amber-600 text-white rounded-xl hover:from-dahab-600 hover:to-amber-700 transition-all font-bold text-lg shadow-lg"
                       >
-                        فتح معمل البوردفيو 🔬
+                        تسجيل دخول فني
+                      </button>
+                      <a
+                        href="https://wa.me/201064147224"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full px-8 py-4 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-xl transition-all font-bold text-lg"
+                      >
+                        طلب حساب عبر واتساب
+                      </a>
+                      <button
+                        onClick={() => setActiveTab('diagnosis')}
+                        className="w-full px-8 py-4 bg-gray-700 hover:bg-gray-600 text-white rounded-xl transition-all font-bold text-lg"
+                      >
+                        رجوع
                       </button>
                     </div>
                   </div>
@@ -833,6 +935,17 @@ export default function DahabFixAiConsole() {
           💬 دعم فني
         </a>
       </div>
+
+      {/* Modal القفل للزائر */}
+      <GuestLockModal
+        isOpen={showGuestLockModal}
+        onClose={() => setShowGuestLockModal(false)}
+        onLogin={() => {
+          localStorage.removeItem('dahab_current_user');
+          setCurrentUser(null);
+          setShowGuestLockModal(false);
+        }}
+      />
 
       {/* شريط التنقل السفلي للموبايل فقط (يختفي عند تفعيل وضع الديسكتوب) */}
       {!isDesktopMode && (

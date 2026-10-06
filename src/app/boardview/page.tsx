@@ -23,6 +23,22 @@ export default function BoardViewPage() {
   const router = useRouter();
   const { boardName, setBoardName, selectedNet, setSelectedNet } = useDiagnosticContext();
 
+  // Get current user from localStorage
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const userStr = localStorage.getItem('dahab_current_user');
+      if (userStr) {
+        try {
+          setCurrentUser(JSON.parse(userStr));
+        } catch (e) {
+          console.error('Failed to parse user:', e);
+        }
+      }
+    }
+  }, []);
+
   const [searchInput, setSearchInput] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [customImage, setCustomImage] = useState<string | null>(null);
@@ -1108,6 +1124,7 @@ export default function BoardViewPage() {
             boardImageUrl={customImage}
             boardName={boardName}
             deviceModel={searchInput}
+            currentUser={currentUser}
             onComponentHighlight={(components) => {
               // Highlight components on the board
               console.log('Highlighting components:', components);

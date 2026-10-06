@@ -28,6 +28,7 @@ interface SchematicChatProps {
   onComponentHighlight?: (components: Array<{ name: string; location: { x: number; y: number } }>) => void;
   onNetHighlight?: (nets: Array<{ name: string }>) => void;
   className?: string;
+  currentUser?: { isGuest?: boolean } | null;
 }
 
 export function SchematicChat({
@@ -38,6 +39,7 @@ export function SchematicChat({
   onComponentHighlight,
   onNetHighlight,
   className = '',
+  currentUser,
 }: SchematicChatProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -95,6 +97,7 @@ export function SchematicChat({
               answer: m.role === 'assistant' ? m.content : '',
             })),
           },
+          isGuest: currentUser?.isGuest === true,
         }),
       });
 

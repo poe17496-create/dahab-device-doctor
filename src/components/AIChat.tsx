@@ -409,6 +409,8 @@ export default function AIChat({ currentUser }: AIChatProps) {
         requestBody.sessionToken = currentUser.activeSessionToken;
         console.log('[Mobile Debug] Sending authenticated user data:', { username: currentUser.username, hasToken: !!currentUser.activeSessionToken });
       } else {
+        // إضافة isGuest: true للسيرفر للتحقق من الحدود
+        requestBody.isGuest = true;
         console.log('[Mobile Debug] Not sending user auth data - conditions not met:', {
           hasUser: !!currentUser,
           hasUsername: !!currentUser?.username,

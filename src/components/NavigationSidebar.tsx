@@ -19,13 +19,14 @@ import {
   History,
 } from 'lucide-react';
 import type { MasterTab } from '@/app/page';
+import { isTabAllowedForGuest } from '@/lib/guestConfig';
 
 interface NavigationSidebarProps {
   activeTab: MasterTab;
   onTabChange: (tab: MasterTab) => void;
   isOpen: boolean;
   onClose: () => void;
-  currentUser?: { username: string; name: string; role?: string } | null;
+  currentUser?: { username: string; name: string; role?: string; isGuest?: boolean } | null;
   isDesktopMode?: boolean;
 }
 
@@ -87,22 +88,32 @@ export default function NavigationSidebar({ activeTab, onTabChange, isOpen, onCl
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
+              const isGuest = currentUser?.isGuest === true;
+              const isLocked = isGuest && !isTabAllowedForGuest(item.id);
               
               return (
                 <button
                   key={item.id}
                   onClick={() => {
+                    if (isLocked) {
+                      // الزائر لا يمكنه فتح الأقسام المقفولة
+                      return;
+                    }
                     onTabChange(item.id);
                     onClose();
                   }}
+                  disabled={isLocked}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                     isActive
                       ? `bg-gradient-to-r ${item.color} text-white shadow-lg`
-                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1F2937] hover:text-gray-900 dark:hover:text-white'
+                      : isLocked
+                        ? 'text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-800/50 cursor-not-allowed opacity-50'
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1F2937] hover:text-gray-900 dark:hover:text-white'
                   }`}
                 >
                   <Icon className="w-5 h-5" />
-                  <span>{item.label}</span>
+                  <span className="flex-1 text-right">{item.label}</span>
+                  {isLocked && <Lock className="w-4 h-4 text-gray-400" />}
                 </button>
               );
             })}

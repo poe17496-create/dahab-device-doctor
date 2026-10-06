@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
 import { isRateLimited } from '@/lib/rateLimit';
+import { getGuestRemainingTrials } from '@/lib/guestUsage';
 
 /**
  * API Endpoint: Schematic AI Chat
@@ -19,6 +20,7 @@ interface SchematicChatRequest {
     previousQuestions?: Array<{ question: string; answer: string }>;
     isBoardImage?: boolean;
   };
+  isGuest?: boolean;
 }
 
 interface SchematicChatResponse {
@@ -49,7 +51,18 @@ export async function POST(req: NextRequest) {
     }
 
     const body: SchematicChatRequest = await req.json();
-    const { schematicUrl, question, context } = body;
+    const { schematicUrl, question, context, isGuest } = body;
+
+    // 🛡️ التحقق من حالة الزائر وعدد التجارب المتبقية
+    if (isGuest === true) {
+      const remaining = getGuestRemainingTrials();
+      if (remaining <= 0) {
+        return NextResponse.json(
+          { success: false, error: '⚠️ انتهت تجاربك المجانية اليومية (5 من 5).\n\nللحصول على وصول غير محدود للتشخيص ومحاكي البورد فيو والمساعد، سجّل الدخول بحساب فني معتمد أو تواصل مع المطور م. إسلام دهب على واتساب: 01064147224' },
+          { status: 403 }
+        );
+      }
+    }
 
     if (!schematicUrl || !question) {
       return NextResponse.json(
