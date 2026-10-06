@@ -323,7 +323,7 @@ export default function AIChat({ currentUser }: AIChatProps) {
     console.log('[Mobile Debug] Has sessionToken:', !!currentUser?.activeSessionToken);
 
     if (isGuestUser) {
-      const trial = consumeGuestTrial('ai-chat');
+      const trial = await consumeGuestTrial('ai-chat');
       if (!trial.success) {
         const limitMsg: ChatMessage = {
           id: Date.now().toString(),

@@ -141,7 +141,7 @@ export default function DahabFixAiConsole() {
   }, [isDesktopMode]);
 
   // التحقق من جلسة المستخدم المحفوظة (أو وضع الزائر)
-  const checkAuth = () => {
+  const checkAuth = async () => {
     if (typeof window === 'undefined') return;
 
     const userStr = localStorage.getItem('dahab_current_user');
@@ -149,18 +149,28 @@ export default function DahabFixAiConsole() {
       try {
         const u = JSON.parse(userStr);
         if (u && u.username) {
-          // إذا كان زائراً: تحقق من المحاولات المتبقية
+          // إذا كان زائراً: تحقق من المحاولات المتبقية من Supabase
           if (u.isGuest === true || u.role === 'guest') {
-            const today = new Date().toISOString().split('T')[0];
-            const used = parseInt(localStorage.getItem(`dahab_guest_usage_${today}`) || '0', 10);
-            const remaining = Math.max(0, 5 - used);
-            if (remaining <= 0) {
-              localStorage.removeItem('dahab_current_user');
-              setCurrentUser(null);
-              setIsCheckingAuth(false);
-              return;
+            try {
+              const response = await fetch('/api/guest-remaining');
+              const data = await response.json();
+              const remaining = data.success ? data.remaining : 5;
+
+              if (remaining <= 0) {
+                localStorage.removeItem('dahab_current_user');
+                setCurrentUser(null);
+                setIsCheckingAuth(false);
+                return;
+              }
+              setGuestTrialsRemaining(remaining);
+            } catch (error) {
+              console.error('[Page] Error fetching guest remaining:', error);
+              // Fallback to localStorage if API fails
+              const today = new Date().toISOString().split('T')[0];
+              const used = parseInt(localStorage.getItem(`dahab_guest_usage_${today}`) || '0', 10);
+              const remaining = Math.max(0, 5 - used);
+              setGuestTrialsRemaining(remaining);
             }
-            setGuestTrialsRemaining(remaining);
           } else {
             // مستخدم مسجل - تأكد من isGuest: false وإضافة activeSessionToken إذا لم يكن موجوداً
             u.isGuest = false;
@@ -479,7 +489,7 @@ export default function DahabFixAiConsole() {
 
     // فحص وخصم رصيد الزائر الموحد
     if (currentUser?.isGuest) {
-      const trial = consumeGuestTrial('diagnose');
+      const trial = await consumeGuestTrial('diagnose');
       if (!trial.success) {
         setOutput('⚠️ انتهت تجاربك المجانية اليومية (5 من 5).\n\nللحصول على وصول غير محدود للتشخيص ومحاكي البورد فيو والمساعد، سجّل الدخول بحساب فني معتمد أو تواصل مع المطور م. إسلام دهب على واتساب: 01064147224');
         return;

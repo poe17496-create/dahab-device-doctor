@@ -29,11 +29,30 @@ export default function AuthGate({ onAuthenticated, onGuestAccess }: AuthGatePro
   const [error, setError] = useState('');
   const [guestTrialsRemaining, setGuestTrialsRemaining] = useState(5);
 
-  // حساب محاولات الزائر المتبقية اليومياً
+  // حساب محاولات الزائر المتبقية اليومياً من Supabase
   useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const used = parseInt(localStorage.getItem(`dahab_guest_usage_${today}`) || '0', 10);
-    setGuestTrialsRemaining(Math.max(0, 5 - used));
+    const fetchGuestRemaining = async () => {
+      try {
+        const response = await fetch('/api/guest-remaining');
+        const data = await response.json();
+        if (data.success) {
+          setGuestTrialsRemaining(data.remaining);
+        } else {
+          // Fallback to localStorage if API fails
+          const today = new Date().toISOString().split('T')[0];
+          const used = parseInt(localStorage.getItem(`dahab_guest_usage_${today}`) || '0', 10);
+          setGuestTrialsRemaining(Math.max(0, 5 - used));
+        }
+      } catch (error) {
+        console.error('[AuthGate] Error fetching guest remaining:', error);
+        // Fallback to localStorage if API fails
+        const today = new Date().toISOString().split('T')[0];
+        const used = parseInt(localStorage.getItem(`dahab_guest_usage_${today}`) || '0', 10);
+        setGuestTrialsRemaining(Math.max(0, 5 - used));
+      }
+    };
+
+    fetchGuestRemaining();
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -137,28 +156,53 @@ export default function AuthGate({ onAuthenticated, onGuestAccess }: AuthGatePro
     }
   };
 
-  const handleGuestAccess = () => {
-    const today = new Date().toISOString().split('T')[0];
-    const key = `dahab_guest_usage_${today}`;
-    const used = parseInt(localStorage.getItem(key) || '0', 10);
-    const remaining = Math.max(0, 5 - used);
+  const handleGuestAccess = async () => {
+    // تحقق من المحاولات المتبقية من Supabase
+    try {
+      const response = await fetch('/api/guest-remaining');
+      const data = await response.json();
+      const remaining = data.success ? data.remaining : 5;
 
-    if (remaining <= 0) {
-      setError('⚠️ انتهت تجاربك المجانية اليوم (5 تجارب). سجّل الدخول بحساب فني أو تواصل مع المطور للحصول على حساب دائم.');
-      return;
+      if (remaining <= 0) {
+        setError('⚠️ انتهت تجاربك المجانية اليوم (5 تجارب). سجّل الدخول بحساب فني أو تواصل مع المطور للحصول على حساب دائم.');
+        return;
+      }
+
+      // تسجيل زائر مؤقت في localStorage
+      const guestUser: any = {
+        id: `guest_${Date.now()}`,
+        username: `guest`,
+        name: `زائر (${remaining} تجربة متبقية اليوم)`,
+        role: 'guest',
+        active: true,
+        isGuest: true,
+      };
+      localStorage.setItem('dahab_current_user', JSON.stringify(guestUser));
+      onGuestAccess(remaining);
+    } catch (error) {
+      console.error('[AuthGate] Error fetching guest remaining:', error);
+      // Fallback to localStorage if API fails
+      const today = new Date().toISOString().split('T')[0];
+      const key = `dahab_guest_usage_${today}`;
+      const used = parseInt(localStorage.getItem(key) || '0', 10);
+      const remaining = Math.max(0, 5 - used);
+
+      if (remaining <= 0) {
+        setError('⚠️ انتهت تجاربك المجانية اليوم (5 تجارب). سجّل الدخول بحساب فني أو تواصل مع المطور للحصول على حساب دائم.');
+        return;
+      }
+
+      const guestUser: any = {
+        id: `guest_${Date.now()}`,
+        username: `guest`,
+        name: `زائر (${remaining} تجربة متبقية اليوم)`,
+        role: 'guest',
+        active: true,
+        isGuest: true,
+      };
+      localStorage.setItem('dahab_current_user', JSON.stringify(guestUser));
+      onGuestAccess(remaining);
     }
-
-    // تسجيل زائر مؤقت في localStorage
-    const guestUser: any = {
-      id: `guest_${Date.now()}`,
-      username: `guest`,
-      name: `زائر (${remaining} تجربة متبقية اليوم)`,
-      role: 'guest',
-      active: true,
-      isGuest: true,
-    };
-    localStorage.setItem('dahab_current_user', JSON.stringify(guestUser));
-    onGuestAccess(remaining);
   };
 
   return (
