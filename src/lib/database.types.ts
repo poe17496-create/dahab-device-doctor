@@ -351,6 +351,32 @@ export interface Database {
           notes?: string
         }
       }
+      guest_trials: {
+        Row: {
+          id: string
+          ip: string
+          count: number
+          last_date: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          ip: string
+          count?: number
+          last_date: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          ip?: string
+          count?: number
+          last_date?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
       engineering_references: {
         Row: {
           id: string
