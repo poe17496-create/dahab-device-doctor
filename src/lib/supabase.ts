@@ -3,10 +3,10 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import type { Database } from './database.types'
 
-// Environment variables
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ruxvmppycsnjhdhehtef.supabase.co'
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ1eHZtcHB5Y3NuamhkaGVodGVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA2NzA2MTgsImV4cCI6MjEwNjI0NjYxOH0.Go0B7najXxtqQAP94f5lxhWWKsg9ofouWnwsBHpDiDw'
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ1eHZtcHB5Y3NuamhkaGVodGVmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MDY3MDYxOCwiZXhwIjoyMTA2MjQ2NjE4fQ.JLVCvt7Eq2g_qfrJRNYtQWv1TsdH-1Yrcq8KsRSUcHI'
+// Environment variables - NO FALLBACK VALUES FOR SECURITY
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 // Check if Supabase is configured
 export const isSupabaseConfigured = Boolean(
@@ -14,29 +14,29 @@ export const isSupabaseConfigured = Boolean(
 )
 
 // Client-side Supabase client
-export const supabaseClient = isSupabaseConfigured
-  ? createClient<Database>(supabaseUrl!, supabaseAnonKey!)
-  : null as any
+export const supabaseClient = isSupabaseConfigured && supabaseUrl && supabaseAnonKey
+  ? createClient<Database>(supabaseUrl, supabaseAnonKey)
+  : null
 
 // Server-side Supabase client with service role key (for API routes and server actions)
-export const supabaseAdmin = isSupabaseConfigured
-  ? createClient<Database>(supabaseUrl!, supabaseServiceRoleKey!, {
+export const supabaseAdmin = isSupabaseConfigured && supabaseUrl && supabaseServiceRoleKey
+  ? createClient<Database>(supabaseUrl, supabaseServiceRoleKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false
       }
     })
-  : null as any
+  : null
 
 // Server-side Supabase client with cookies (for App Router server components)
 export function createSupabaseServerClient() {
-  if (!isSupabaseConfigured) {
+  if (!isSupabaseConfigured || !supabaseUrl || !supabaseAnonKey) {
     return null
   }
 
   const cookieStore = cookies()
 
-  return createServerClient<Database>(supabaseUrl!, supabaseAnonKey!, {
+  return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
     cookies: {
       get(name: string) {
         return cookieStore.get(name)?.value
