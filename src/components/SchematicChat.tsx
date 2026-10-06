@@ -250,6 +250,7 @@ export function SchematicChat({
         {!schematicUrl && !boardImageUrl && (
           <div className="bg-yellow-900/50 border border-yellow-700 rounded-lg p-2 mb-2">
             <p className="text-xs text-yellow-200">⚠️ No image loaded. Please load a board image or schematic first.</p>
+            <p className="text-xs text-yellow-300 mt-1">💡 Tip: Search for a board or upload an image to enable chat</p>
           </div>
         )}
         {!schematicUrl && boardImageUrl && (
@@ -263,13 +264,13 @@ export function SchematicChat({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Ask about the schematic..."
-            disabled={!schematicUrl || loading}
+            placeholder={schematicUrl ? "Ask about the schematic..." : "Ask about the board..."}
+            disabled={(!schematicUrl && !boardImageUrl) || loading}
             className="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
           />
           <button
             onClick={handleSendMessage}
-            disabled={!input.trim() || !schematicUrl || loading}
+            disabled={!input.trim() || (!schematicUrl && !boardImageUrl) || loading}
             className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send className="w-4 h-4" />

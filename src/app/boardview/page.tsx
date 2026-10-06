@@ -222,7 +222,34 @@ export default function BoardViewPage() {
 
     setIsSearching(true);
     setBoardName(searchInput);
-    setCustomImage(null);
+
+    let fetchedBoardImage = null;
+
+    // Fetch board image first
+    try {
+      console.log('Fetching board image for:', searchInput);
+      const boardResponse = await fetch('/api/get-board', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ boardName: searchInput }),
+      });
+      const boardData = await boardResponse.json();
+      console.log('Board image response:', boardData);
+
+      if (boardData.success && boardData.imageUrl) {
+        fetchedBoardImage = boardData.imageUrl;
+        setCustomImage(boardData.imageUrl);
+        console.log('Board image set successfully');
+      } else {
+        console.log('Board image fetch failed:', boardData.error);
+        setCustomImage(null);
+      }
+    } catch (error) {
+      console.error('Failed to fetch board image:', error);
+      setCustomImage(null);
+    }
 
     // Auto-fetch schematic for the board
     try {
@@ -234,8 +261,8 @@ export default function BoardViewPage() {
         setShowSchematicOverlay(true);
 
         // Auto-align schematic if board image is available
-        if (customImage) {
-          handleAlignSchematic(customImage, data.mapping.schematics.schematic_url);
+        if (fetchedBoardImage) {
+          handleAlignSchematic(fetchedBoardImage, data.mapping.schematics.schematic_url);
         }
       } else {
         // Try to fetch from external sources
