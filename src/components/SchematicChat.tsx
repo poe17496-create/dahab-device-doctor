@@ -22,6 +22,7 @@ interface ChatMessage {
 
 interface SchematicChatProps {
   schematicUrl: string | null;
+  boardImageUrl?: string | null;
   boardName?: string;
   deviceModel?: string;
   onComponentHighlight?: (components: Array<{ name: string; location: { x: number; y: number } }>) => void;
@@ -31,6 +32,7 @@ interface SchematicChatProps {
 
 export function SchematicChat({
   schematicUrl,
+  boardImageUrl,
   boardName,
   deviceModel,
   onComponentHighlight,
@@ -53,7 +55,12 @@ export function SchematicChat({
   }, [messages]);
 
   const handleSendMessage = async () => {
-    if (!input.trim() || !schematicUrl) return;
+    if (!input.trim()) return;
+
+    if (!schematicUrl) {
+      setError('⚠️ No schematic loaded. Please load a schematic first to ask about it.');
+      return;
+    }
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -68,17 +75,26 @@ export function SchematicChat({
     setError(null);
 
     try {
+      // Use board image if no schematic is loaded
+      const imageUrl = schematicUrl || boardImageUrl;
+
+      if (!imageUrl) {
+        setError('⚠️ No image loaded. Please load a board image or schematic first.');
+        return;
+      }
+
       const response = await fetch('/api/schematic-chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          schematicUrl,
+          schematicUrl: imageUrl,
           question: input,
           context: {
             boardName,
             deviceModel,
+            isBoardImage: !schematicUrl, // Flag to indicate this is a board image, not schematic
             previousQuestions: messages.map((m) => ({
               question: m.role === 'user' ? m.content : '',
               answer: m.role === 'assistant' ? m.content : '',
@@ -236,9 +252,14 @@ export function SchematicChat({
 
       {/* Input */}
       <div className="p-4 border-t border-gray-700">
-        {!schematicUrl && (
+        {!schematicUrl && !boardImageUrl && (
           <div className="bg-yellow-900/50 border border-yellow-700 rounded-lg p-2 mb-2">
-            <p className="text-xs text-yellow-200">⚠️ No schematic loaded. Please load a schematic first.</p>
+            <p className="text-xs text-yellow-200">⚠️ No image loaded. Please load a board image or schematic first.</p>
+          </div>
+        )}
+        {!schematicUrl && boardImageUrl && (
+          <div className="bg-blue-900/50 border border-blue-700 rounded-lg p-2 mb-2">
+            <p className="text-xs text-blue-200">ℹ️ Using board image for analysis (no schematic loaded)</p>
           </div>
         )}
         <div className="flex gap-2">

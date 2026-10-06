@@ -16,6 +16,7 @@ interface SchematicChatRequest {
     deviceModel?: string;
     componentLocation?: { x: number; y: number };
     previousQuestions?: Array<{ question: string; answer: string }>;
+    isBoardImage?: boolean;
   };
 }
 
@@ -131,7 +132,10 @@ async function chatWithGemini(
     });
   }
 
-  const prompt = `You are an expert electronics repair technician and schematic analyst. Analyze this electronic schematic diagram and answer the technician's question accurately.
+  const isBoardImage = context?.isBoardImage;
+  const imageType = isBoardImage ? 'PCB board image' : 'electronic schematic diagram';
+
+  const prompt = `You are an expert electronics repair technician and ${isBoardImage ? 'board analyst' : 'schematic analyst'}. Analyze this ${imageType} and answer the technician's question accurately.
 
 ${contextPrompt}
 
@@ -165,7 +169,7 @@ IMPORTANT: Return ONLY valid JSON with this structure:
   ]
 }`;
 
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
   const result = await model.generateContent([
     prompt,
     {
@@ -210,7 +214,10 @@ async function chatWithOpenRouter(
     contextPrompt += `Device Model: ${context.deviceModel}\n`;
   }
 
-  const prompt = `You are an expert electronics repair technician and schematic analyst. Analyze this electronic schematic diagram and answer the technician's question accurately.
+  const isBoardImage = context?.isBoardImage;
+  const imageType = isBoardImage ? 'PCB board image' : 'electronic schematic diagram';
+
+  const prompt = `You are an expert electronics repair technician and ${isBoardImage ? 'board analyst' : 'schematic analyst'}. Analyze this ${imageType} and answer the technician's question accurately.
 
 ${contextPrompt}
 
@@ -278,7 +285,10 @@ async function chatWithOpenAI(
     contextPrompt += `Device Model: ${context.deviceModel}\n`;
   }
 
-  const prompt = `You are an expert electronics repair technician and schematic analyst. Analyze this electronic schematic diagram and answer the technician's question accurately.
+  const isBoardImage = context?.isBoardImage;
+  const imageType = isBoardImage ? 'PCB board image' : 'electronic schematic diagram';
+
+  const prompt = `You are an expert electronics repair technician and ${isBoardImage ? 'board analyst' : 'schematic analyst'}. Analyze this ${imageType} and answer the technician's question accurately.
 
 ${contextPrompt}
 

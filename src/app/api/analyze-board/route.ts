@@ -258,8 +258,8 @@ export async function POST(req: NextRequest) {
 
         const prompt = generateAnalysisPrompt(schematicUrl);
 
-        // Try multiple models in order (correct model names)
-        const models = ['gemini-2.0-flash-exp', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+        // Try multiple models in order (updated model names for 2026)
+        const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-1.5-flash-8b'];
         let lastError = null;
 
         for (const modelName of models) {
@@ -333,6 +333,7 @@ export async function POST(req: NextRequest) {
           } catch (error: any) {
             lastError = error;
             console.error(`Model ${modelName} failed:`, error.message);
+            console.error('Full error:', error);
             continue; // Try next model
           }
         }
@@ -370,7 +371,7 @@ export async function POST(req: NextRequest) {
         }
 
         const response = await client.chat.completions.create({
-          model: 'google/gemini-flash-1.5-8b',
+          model: 'google/gemini-2.5-flash',
           messages: [
             {
               role: 'user',
