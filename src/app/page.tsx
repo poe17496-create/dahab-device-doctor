@@ -107,6 +107,7 @@ export default function DahabFixAiConsole() {
   const [diagnosisStartTime, setDiagnosisStartTime] = useState<number | null>(null);
   const [showGuestLockModal, setShowGuestLockModal] = useState(false);
   const [boardviewFullscreen, setBoardviewFullscreen] = useState(false);
+  const [isDarkTheme, setIsDarkTheme] = useState(true);
   const boardviewRef = useRef<HTMLIFrameElement>(null);
 
   const toggleDesktopMode = () => {
@@ -359,6 +360,52 @@ export default function DahabFixAiConsole() {
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  // قراءة الـ theme وإرساله للـ iframe
+  useEffect(() => {
+    const saved = localStorage.getItem('dahab_theme');
+    const isDark = saved !== 'light';
+    setIsDarkTheme(isDark);
+
+    // إرسال الـ theme للـ iframe
+    const sendThemeToIframe = () => {
+      if (boardviewRef.current && boardviewRef.current.contentWindow) {
+        boardviewRef.current.contentWindow.postMessage({
+          type: 'theme-change',
+          isDark: isDark
+        }, '*');
+      }
+    };
+
+    // إرسال عند التحميل
+    const handleIframeLoad = () => {
+      sendThemeToIframe();
+    };
+
+    const iframe = boardviewRef.current;
+    if (iframe) {
+      iframe.addEventListener('load', handleIframeLoad);
+    }
+
+    // الاستماع لتغييرات الـ theme
+    const handleThemeChange = () => {
+      const saved = localStorage.getItem('dahab_theme');
+      const isDark = saved !== 'light';
+      setIsDarkTheme(isDark);
+      sendThemeToIframe();
+    };
+
+    window.addEventListener('storage', handleThemeChange);
+    window.addEventListener('themeChanged', handleThemeChange);
+
+    return () => {
+      if (iframe) {
+        iframe.removeEventListener('load', handleIframeLoad);
+      }
+      window.removeEventListener('storage', handleThemeChange);
+      window.removeEventListener('themeChanged', handleThemeChange);
     };
   }, []);
 
@@ -856,7 +903,7 @@ export default function DahabFixAiConsole() {
                   {/* Iframe for boardview */}
                   <iframe
                     ref={boardviewRef}
-                    src="/boardview"
+                    src={`/boardview?theme=${isDarkTheme ? 'dark' : 'light'}`}
                     className="w-full h-full border-0 bg-gray-900"
                     sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
                     onLoad={(e) => {
@@ -865,6 +912,13 @@ export default function DahabFixAiConsole() {
                       const loadingDiv = target.parentElement?.querySelector('.absolute.inset-0');
                       if (loadingDiv) {
                         (loadingDiv as HTMLElement).style.display = 'none';
+                      }
+                      // إرسال الـ theme عبر postMessage بعد التحميل
+                      if (target.contentWindow) {
+                        target.contentWindow.postMessage({
+                          type: 'theme-change',
+                          isDark: isDarkTheme
+                        }, '*');
                       }
                     }}
                     style={{ opacity: '0', transition: 'opacity 0.3s ease', touchAction: 'none', overscrollBehavior: 'contain' }}

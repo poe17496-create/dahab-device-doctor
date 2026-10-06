@@ -28,6 +28,9 @@ export default function ThemeToggle() {
       localStorage.setItem('dahab_theme', 'dark');
       setIsDark(true);
     }
+
+    // إرسال حدث مخصص للإشارة بتغيير الـ theme
+    window.dispatchEvent(new CustomEvent('themeChanged', { detail: { isDark: !isDark } }));
   };
 
   return (

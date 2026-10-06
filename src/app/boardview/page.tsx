@@ -26,6 +26,46 @@ export default function BoardViewPage() {
   // Get current user from localStorage
   const [currentUser, setCurrentUser] = useState<any>(null);
 
+  // Theme sync with parent page
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // 1. Read theme from URL params (initial load)
+    const urlParams = new URLSearchParams(window.location.search);
+    const themeParam = urlParams.get('theme');
+    const isDark = themeParam !== 'light';
+
+    // Apply theme
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('dahab_theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('dahab_theme', 'light');
+    }
+
+    // 2. Listen for theme changes from parent via postMessage
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'theme-change') {
+        const isDark = event.data.isDark;
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+          localStorage.setItem('dahab_theme', 'dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+          localStorage.setItem('dahab_theme', 'light');
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, []);
+
+  // Get current user from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const userStr = localStorage.getItem('dahab_current_user');
