@@ -16,6 +16,7 @@ interface SchematicChatRequest {
     deviceModel?: string;
     componentLocation?: { x: number; y: number };
     previousQuestions?: Array<{ question: string; answer: string }>;
+    isBoardImage?: boolean;
   };
 }
 
@@ -131,7 +132,11 @@ async function chatWithGemini(
     });
   }
 
-  const prompt = `You are an expert electronics repair technician and schematic analyst. Analyze this electronic schematic diagram and answer the technician's question accurately.
+  const isBoardImage = context?.isBoardImage;
+  const imageType = isBoardImage ? 'PCB board image' : 'electronic schematic diagram';
+  const analystType = isBoardImage ? 'board analyst' : 'schematic analyst';
+
+  const prompt = `You are an expert electronics repair technician and ${analystType}. Analyze this ${imageType} and answer the technician's question accurately.
 
 ${contextPrompt}
 
@@ -210,7 +215,11 @@ async function chatWithOpenRouter(
     contextPrompt += `Device Model: ${context.deviceModel}\n`;
   }
 
-  const prompt = `You are an expert electronics repair technician and schematic analyst. Analyze this electronic schematic diagram and answer the technician's question accurately.
+  const isBoardImage = context?.isBoardImage;
+  const imageType = isBoardImage ? 'PCB board image' : 'electronic schematic diagram';
+  const analystType = isBoardImage ? 'board analyst' : 'schematic analyst';
+
+  const prompt = `You are an expert electronics repair technician and ${analystType}. Analyze this ${imageType} and answer the technician's question accurately.
 
 ${contextPrompt}
 
@@ -278,7 +287,11 @@ async function chatWithOpenAI(
     contextPrompt += `Device Model: ${context.deviceModel}\n`;
   }
 
-  const prompt = `You are an expert electronics repair technician and schematic analyst. Analyze this electronic schematic diagram and answer the technician's question accurately.
+  const isBoardImage = context?.isBoardImage;
+  const imageType = isBoardImage ? 'PCB board image' : 'electronic schematic diagram';
+  const analystType = isBoardImage ? 'board analyst' : 'schematic analyst';
+
+  const prompt = `You are an expert electronics repair technician and ${analystType}. Analyze this ${imageType} and answer the technician's question accurately.
 
 ${contextPrompt}
 
