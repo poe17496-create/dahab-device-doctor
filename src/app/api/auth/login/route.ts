@@ -38,8 +38,8 @@ export async function POST(req: NextRequest) {
     const cleanPassword = sanitizeString(password.trim(), 200);
     const effectiveDeviceId = sanitizeString(currentDeviceId || deviceInfo || 'Web-Client', 200);
     
-    const masterAdminPassword = process.env.ADMIN_PASSWORD || 'X7#K9@mP2$Qw8!Rz5*Ln3';
-    const isMasterAdminLogin = cleanUsername.toLowerCase() === 'd3v1n_x9_admin' && cleanPassword === masterAdminPassword;
+    const masterAdminPassword = process.env.ADMIN_PASSWORD;
+    const isMasterAdminLogin = masterAdminPassword && cleanUsername.toLowerCase() === 'd3v1n_x9_admin' && cleanPassword === masterAdminPassword;
 
     // 1. الفحص عبر Supabase إذا كانت مفعلة
     if (isSupabaseConfigured && supabaseAdmin) {

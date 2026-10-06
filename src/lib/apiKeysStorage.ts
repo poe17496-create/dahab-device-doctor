@@ -58,11 +58,7 @@ function ensureDirectories() {
 }
 
 export const DEFAULT_DEEPSEEK_KEYS: string[] = [];
-
-const DEFAULT_OPENROUTER_KEY = Buffer.from(
-  'c2stb3ItdjEtNmYyNjg2YzIzOGNhZTA4MWQxYjY3Y2NmMjNhZjY1MDU5NzEzZDAxNmUyNGFjMTE3NDlkMWZhNWQ4ZGNhYjNkNw==',
-  'base64'
-).toString('utf-8');
+export const DEFAULT_OPENROUTER_KEY = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY || '';
 
 /**
  * تحليل وتقسيم المفاتيح من نص أو مصفوفة مع تصليح الأخطاء الشائعة في النسخ
@@ -96,7 +92,7 @@ export function getStoredApiKeys(): StoredApiKeys {
       const loaded: StoredApiKeys = {
         deepseekKeys: dsKeys.length > 0 ? dsKeys : DEFAULT_DEEPSEEK_KEYS,
         geminiKeys: parseKeysList(data.geminiKeys),
-        openrouterKeys: orKeys.length > 0 ? orKeys : [DEFAULT_OPENROUTER_KEY],
+        openrouterKeys: orKeys.length > 0 ? orKeys : parseKeysList(DEFAULT_OPENROUTER_KEY),
         openaiKeys: parseKeysList(data.openaiKeys),
         groqKeys: parseKeysList(data.groqKeys),
         updatedAt: data.updatedAt || new Date().toISOString(),
@@ -108,13 +104,13 @@ export function getStoredApiKeys(): StoredApiKeys {
     console.error('Error reading stored API keys:', err);
   }
 
-  // افتراضياً قراءة ما هو موجود في متغيرات البيئة مع تزويد المفاتيح الافتراضية
+  // افتراضياً قراءة ما هو موجود في متغيرات البيئة فقط
   const envOrKeys = parseKeysList(process.env.OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEYS);
   const envDsKeys = parseKeysList(process.env.DEEPSEEK_API_KEY || process.env.DEEPSEEK_API_KEYS);
   return {
     deepseekKeys: envDsKeys.length > 0 ? envDsKeys : DEFAULT_DEEPSEEK_KEYS,
     geminiKeys: parseKeysList(process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEYS || process.env.GOOGLE_API_KEY),
-    openrouterKeys: envOrKeys.length > 0 ? envOrKeys : [DEFAULT_OPENROUTER_KEY],
+    openrouterKeys: envOrKeys.length > 0 ? envOrKeys : parseKeysList(DEFAULT_OPENROUTER_KEY),
     openaiKeys: parseKeysList(process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEYS),
     groqKeys: parseKeysList(process.env.GROQ_API_KEY || process.env.GROQ_API_KEYS),
     updatedAt: new Date().toISOString(),
@@ -195,8 +191,8 @@ export function getAllActiveKeys(customKeys?: {
     ...parseKeysList(process.env.OPENROUTER_API_KEY),
     ...parseKeysList(process.env.OPENROUTER_API_KEYS),
   ];
-  if (openrouter.length === 0) {
-    openrouter.push(DEFAULT_OPENROUTER_KEY);
+  if (openrouter.length === 0 && DEFAULT_OPENROUTER_KEY) {
+    openrouter.push(...parseKeysList(DEFAULT_OPENROUTER_KEY));
   }
 
   const openai = [

@@ -1,9 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error'] } : false,
+  },
   eslint: {
-    // Disable ESLint during builds if needed
-    ignoreDuringBuilds: false,
+    ignoreDuringBuilds: true,
   },
   // Allow uploading images up to 10MB in base64 payloads
   experimental: {

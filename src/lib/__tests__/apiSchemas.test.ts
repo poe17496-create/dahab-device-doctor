@@ -26,8 +26,8 @@ describe('chatRequestSchema', () => {
     expect(() => chatRequestSchema.parse(invalidData)).toThrow();
   });
 
-  it('rejects message longer than 10000 characters', () => {
-    const invalidData = { message: 'a'.repeat(10001) };
+  it('rejects message longer than 20000 characters', () => {
+    const invalidData = { message: 'a'.repeat(20001) };
     expect(() => chatRequestSchema.parse(invalidData)).toThrow();
   });
 

@@ -12,7 +12,7 @@ export async function POST() {
       }, { status: 400 });
     }
 
-    const newPassword = process.env.ADMIN_PASSWORD || 'X7#K9@mP2$Qw8!Rz5*Ln3';
+    const newPassword = process.env.ADMIN_PASSWORD;
 
     // تحديث كلمة مرور المستخدم dahab
     const { error } = await supabaseAdmin

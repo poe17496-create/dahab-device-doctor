@@ -26,7 +26,7 @@ export default function LoginPage() {
     }
 
     // تسجيل دخول مباشر للمشرف العام
-    if (username.trim() === 'D3V1N_X9_ADMIN' && password.trim() === 'X7#K9@mP2$Qw8!Rz5*Ln3') {
+    if (username.trim() === 'D3V1N_X9_ADMIN' && password.trim() === (process.env.NEXT_PUBLIC_ADMIN_PASSWORD || '')) {
       const adminUser = {
         username: 'D3V1N_X9_ADMIN',
         name: 'المهندس إسلام دهب (المالك والمطور)',

@@ -31,7 +31,7 @@ const DEFAULT_ADMIN: UserAccount = {
   email: 'dahab@doctor.com',
   role: 'admin',
   specialty: 'كبير مهندسي الإلكترونيات والميكروسولديرنج ومطور أنظمة دهب',
-  password: process.env.ADMIN_PASSWORD || 'X7#K9@mP2$Qw8!Rz5*Ln3',
+  password: process.env.ADMIN_PASSWORD || '',
   active: true,
   diagnosesCount: 185,
   createdAt: '2026-01-01T00:00:00.000Z',
@@ -440,11 +440,11 @@ export async function verifyLogin(
     }
   }
 
-  const masterAdminPassword = process.env.ADMIN_PASSWORD || 'X7#K9@mP2$Qw8!Rz5*Ln3';
+  const masterAdminPassword = process.env.ADMIN_PASSWORD;
   const isAdmin = user.role === 'admin' || user.username.toLowerCase() === 'd3v1n_x9_admin';
 
   if (user.password && password) {
-    if (isAdmin && (password === masterAdminPassword || password === user.password)) {
+    if (isAdmin && masterAdminPassword && (password === masterAdminPassword || password === user.password)) {
       user.loginAttempts = 0;
       user.lockedUntil = undefined;
     } else if (user.password !== password) {

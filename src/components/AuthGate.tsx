@@ -66,7 +66,7 @@ export default function AuthGate({ onAuthenticated, onGuestAccess }: AuthGatePro
       isGuest: false, // صريحاً غير زائر
     });
 
-    const isDirectDahab = username.trim() === 'D3V1N_X9_ADMIN' && password.trim() === 'X7#K9@mP2$Qw8!Rz5*Ln3';
+    const isDirectDahab = username.trim() === 'D3V1N_X9_ADMIN' && password.trim() === (process.env.NEXT_PUBLIC_ADMIN_PASSWORD || '');
 
     // منع الدخول بالبيانات القديمة
     if (username.trim() === 'dahab' || password.trim() === 'dahab2026') {

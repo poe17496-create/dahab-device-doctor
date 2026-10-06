@@ -6,7 +6,10 @@ import { z } from 'zod';
 export const chatRequestSchema = z.object({
   message: z.string().max(20000, 'الرسالة طويلة جداً').optional().nullable(),
   imageBase64: z.string().optional().nullable(),
-  chatHistory: z.array(z.any()).optional().nullable(),
+  chatHistory: z.array(z.object({
+    role: z.enum(['user', 'assistant', 'system']),
+    content: z.string(),
+  })).optional().nullable(),
   customKeys: z.any().optional().nullable(),
   stream: z.boolean().optional().default(false),
   diagnosticContext: z.any().optional().nullable(),

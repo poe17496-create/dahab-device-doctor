@@ -196,7 +196,7 @@ export default function AdminDashboardPage() {
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
-    const isDirectDahab = adminUsername.trim() === 'D3V1N_X9_ADMIN' && adminPassword.trim() === 'X7#K9@mP2$Qw8!Rz5*Ln3';
+    const isDirectDahab = adminUsername.trim() === 'D3V1N_X9_ADMIN' && adminPassword.trim() === (process.env.NEXT_PUBLIC_ADMIN_PASSWORD || '');
 
     try {
       const res = await fetch('/api/users', {
