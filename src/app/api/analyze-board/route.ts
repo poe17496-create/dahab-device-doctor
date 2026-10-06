@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-// import { rateLimitMiddleware } from '@/lib/rate-limit';
-// import { sanitizeUrl, sanitizeString } from '@/lib/sanitize';
+import { isRateLimited } from '@/lib/rateLimit';
 
 // Polyfill for Buffer in Vercel/Edge environment
 if (typeof Buffer === 'undefined') {
@@ -182,6 +181,15 @@ interface AnalyzeBoardResponse {
 
 export async function POST(req: NextRequest) {
   try {
+    // Rate limiting check
+    const ip = req.headers.get('x-forwarded-for') || '127.0.0.1';
+    if (isRateLimited(ip, 15, 60000)) {
+      return NextResponse.json(
+        { error: "تم تجاوز عدد الطلبات المسموح بها، يرجى الانتظار دقيقة." },
+        { status: 429 }
+      );
+    }
+
     const body: AnalyzeBoardRequest = await req.json();
     const { imageUrl, boardName, schematicUrl } = body;
 

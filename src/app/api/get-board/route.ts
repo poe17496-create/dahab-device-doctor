@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
-import { rateLimitMiddleware } from '@/lib/rate-limit';
-import { sanitizeBoardName } from '@/lib/sanitize';
+import { isRateLimited } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,24 +62,12 @@ async function fetchBoardImage(boardName: string): Promise<string> {
 
 export async function POST(req: NextRequest) {
   try {
-    // Rate limiting: 15 requests per minute per IP
-    const rateLimitResult = await rateLimitMiddleware(req, 15, 60 * 1000);
-    
-    if (!rateLimitResult.allowed) {
-      return NextResponse.json<GetBoardResponse>(
-        {
-          success: false,
-          error: 'تجاوزت الحد المسموح من الطلبات، يرجى الانتظار دقيقة.',
-        },
-        { 
-          status: 429,
-          headers: {
-            'X-RateLimit-Limit': '15',
-            'X-RateLimit-Remaining': '0',
-            'X-RateLimit-Reset': rateLimitResult.resetTime.toString(),
-            'Retry-After': Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000).toString(),
-          }
-        }
+    // Rate limiting check
+    const ip = req.headers.get('x-forwarded-for') || '127.0.0.1';
+    if (isRateLimited(ip, 15, 60000)) {
+      return NextResponse.json(
+        { error: "تم تجاوز عدد الطلبات المسموح بها، يرجى الانتظار دقيقة." },
+        { status: 429 }
       );
     }
 
@@ -109,14 +96,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Sanitize board name to prevent injection
-    const sanitizedBoardName = sanitizeBoardName(boardName);
-
     // Step 1: Check if board image is already cached in Supabase
     const { data: cachedBoard, error: fetchError } = await supabaseAdmin
       .from('boards')
       .select('image_url')
-      .eq('board_name', sanitizedBoardName)
+      .eq('board_name', boardName)
       .single();
 
     if (fetchError && fetchError.code !== 'PGRST116') {
@@ -141,10 +125,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Step 3: If not cached, fetch image using Image Search API
-    console.log(`Fetching image for board: ${sanitizedBoardName}`);
+    console.log(`Fetching image for board: ${boardName}`);
     let imageUrl: string;
     try {
-      imageUrl = await fetchBoardImage(sanitizedBoardName);
+      imageUrl = await fetchBoardImage(boardName);
     } catch (error: any) {
       // If API fails, return error with suggestion to upload custom image
       return NextResponse.json<GetBoardResponse>(
@@ -160,9 +144,9 @@ export async function POST(req: NextRequest) {
     const { error: insertError } = await supabaseAdmin
       .from('boards')
       .upsert({
-        board_name: sanitizedBoardName,
+        board_name: boardName,
         image_url: imageUrl,
-        search_query: `${sanitizedBoardName} motherboard PCB circuit board electronics`,
+        search_query: `${boardName} motherboard PCB circuit board electronics`,
       }, {
         onConflict: 'board_name',
         ignoreDuplicates: false,

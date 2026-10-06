@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
-// import { rateLimitMiddleware } from '@/lib/rate-limit';
-// import { sanitizeUrl, sanitizeString } from '@/lib/sanitize';
+import { isRateLimited } from '@/lib/rateLimit';
 
 /**
  * API Endpoint: Schematic AI Chat
@@ -40,6 +39,15 @@ interface SchematicChatResponse {
 
 export async function POST(req: NextRequest) {
   try {
+    // Rate limiting check
+    const ip = req.headers.get('x-forwarded-for') || '127.0.0.1';
+    if (isRateLimited(ip, 20, 60000)) {
+      return NextResponse.json(
+        { error: "تم تجاوز عدد الطلبات المسموح بها، يرجى الانتظار دقيقة." },
+        { status: 429 }
+      );
+    }
+
     const body: SchematicChatRequest = await req.json();
     const { schematicUrl, question, context } = body;
 
