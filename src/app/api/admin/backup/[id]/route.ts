@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,6 +11,13 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    if (!isSupabaseConfigured || !supabaseAdmin) {
+      return NextResponse.json(
+        { error: 'Supabase not configured' },
+        { status: 500 }
+      );
+    }
+
     const backupId = params.id;
 
     if (!backupId) {
@@ -20,6 +27,7 @@ export async function DELETE(
       );
     }
 
+    // @ts-ignore - supabaseAdmin is checked above
     const { error } = await supabaseAdmin
       .from('database_backups')
       .delete()
@@ -53,6 +61,13 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    if (!isSupabaseConfigured || !supabaseAdmin) {
+      return NextResponse.json(
+        { error: 'Supabase not configured' },
+        { status: 500 }
+      );
+    }
+
     const backupId = params.id;
 
     if (!backupId) {
@@ -62,6 +77,7 @@ export async function GET(
       );
     }
 
+    // @ts-ignore - supabaseAdmin is checked above
     const { data: backupRecord, error } = await supabaseAdmin
       .from('database_backups')
       .select('*')

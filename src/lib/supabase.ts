@@ -62,3 +62,11 @@ export function createSupabaseServerClient() {
     },
   })
 }
+
+// Helper function to get supabaseAdmin with null check
+export function getSupabaseAdmin() {
+  if (!isSupabaseConfigured || !supabaseAdmin) {
+    throw new Error('Supabase not configured. Please set environment variables.')
+  }
+  return supabaseAdmin
+}
