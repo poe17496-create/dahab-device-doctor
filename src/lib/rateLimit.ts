@@ -9,7 +9,9 @@ export function isRateLimited(ip: string, limit: number = 15, windowMs: number =
   const now = Date.now();
 
   // Lazy Cleanup للمداخل القديمة
-  for (const [storedIp, record] of ipStore.entries()) {
+  const entries = Array.from(ipStore.entries());
+  for (let i = 0; i < entries.length; i++) {
+    const [storedIp, record] = entries[i];
     if (now > record.resetTime) {
       ipStore.delete(storedIp);
     }
