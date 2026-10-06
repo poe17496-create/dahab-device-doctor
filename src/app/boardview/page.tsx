@@ -42,6 +42,12 @@ export default function BoardViewPage() {
   const [suspiciousMarkers, setSuspiciousMarkers] = useState<SuspiciousMarker[]>([]);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [showAnalysisResult, setShowAnalysisResult] = useState(false);
+  const [schematicUrl, setSchematicUrl] = useState<string | null>(null);
+  const [showSchematicOverlay, setShowSchematicOverlay] = useState(false);
+  const [tracingPath, setTracingPath] = useState(false);
+  const [pathTraceProgress, setPathTraceProgress] = useState(0);
+  const [loadingSchematic, setLoadingSchematic] = useState(false);
+  const [aligningSchematic, setAligningSchematic] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Example components for demonstration
@@ -209,12 +215,57 @@ export default function BoardViewPage() {
 
   const handleSearch = async () => {
     if (!searchInput.trim()) return;
-    
+
     setIsSearching(true);
     setBoardName(searchInput);
     setCustomImage(null);
-    // Note: This will try to fetch from API, but will fail gracefully if Supabase is not configured
+
+    // Auto-fetch schematic for the board
+    try {
+      const response = await fetch(`/api/map-board-schematic?boardName=${encodeURIComponent(searchInput)}`);
+      const data = await response.json();
+
+      if (data.success && data.mapping && data.mapping.schematics) {
+        setSchematicUrl(data.mapping.schematics.schematic_url);
+        setShowSchematicOverlay(true);
+
+        // Auto-align schematic if board image is available
+        if (customImage) {
+          handleAlignSchematic(customImage, data.mapping.schematics.schematic_url);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch schematic:', error);
+    }
+
     setTimeout(() => setIsSearching(false), 500);
+  };
+
+  const handleAlignSchematic = async (boardImageUrl: string, schematicUrlToAlign: string) => {
+    setAligningSchematic(true);
+    try {
+      const response = await fetch('/api/align-schematic', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          boardImageUrl,
+          schematicUrl: schematicUrlToAlign,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.alignmentData) {
+        // Apply alignment to the viewer (would need to pass this to HardwareBoardViewer)
+        console.log('Schematic aligned:', data.alignmentData);
+      }
+    } catch (error) {
+      console.error('Failed to align schematic:', error);
+    } finally {
+      setAligningSchematic(false);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -235,8 +286,46 @@ export default function BoardViewPage() {
     }
   };
 
-  const handleNetSelect = (net: NetTrace) => {
+  const handleNetSelect = async (net: NetTrace) => {
     setSelectedNet(net.id);
+
+    // Auto-trace if schematic is available
+    if (showSchematicOverlay && schematicUrl) {
+      setTracingPath(true);
+      setPathTraceProgress(0);
+
+      try {
+        const response = await fetch('/api/detect-schematic-paths', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            schematicUrl,
+            netName: net.name,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (data.success && data.detectedPaths && data.detectedPaths.length > 0) {
+          const detectedPath = data.detectedPaths[0];
+          // Update the net with detected points
+          setNets(prev => ({
+            ...prev,
+            [net.id]: {
+              ...prev[net.id],
+              points: detectedPath.points.map((p: { x: number; y: number }) => ({ x: `${p.x}%`, y: `${p.y}%` })),
+            },
+          }));
+          setPathTraceProgress(100);
+        }
+      } catch (error) {
+        console.error('Auto-trace error:', error);
+      } finally {
+        setTracingPath(false);
+      }
+    }
   };
 
   const handleAskAI = () => {
@@ -592,6 +681,21 @@ export default function BoardViewPage() {
               </>
             )}
           </button>
+
+          {/* Schematic Toggle Button */}
+          {schematicUrl && (
+            <button
+              onClick={() => setShowSchematicOverlay(!showSchematicOverlay)}
+              className={`px-4 py-3 text-white rounded-xl transition-all flex items-center gap-2 shadow-lg ${
+                showSchematicOverlay
+                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 hover:shadow-cyan-500/25'
+                  : 'bg-gray-700/50 backdrop-blur-sm border border-gray-600/50 hover:bg-gray-600/50'
+              }`}
+            >
+              <Layers className="w-5 h-5" />
+              <span>{showSchematicOverlay ? 'Hide Schematic' : 'Show Schematic'}</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -824,11 +928,56 @@ export default function BoardViewPage() {
             </div>
           )}
 
+          {/* Path Tracing Progress Indicator */}
+          {tracingPath && (
+            <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 bg-gray-800/95 backdrop-blur-sm border border-cyan-500 rounded-xl px-6 py-4 shadow-2xl">
+              <div className="flex items-center gap-3">
+                <Loader2 className="w-5 h-5 text-cyan-400 animate-spin" />
+                <div>
+                  <p className="text-white font-medium">Auto-tracing net path...</p>
+                  <div className="w-48 h-2 bg-gray-700 rounded-full mt-2 overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-cyan-500 to-blue-600 transition-all duration-300"
+                      style={{ width: `${pathTraceProgress}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Schematic Loading Indicator */}
+          {loadingSchematic && (
+            <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 bg-gray-800/95 backdrop-blur-sm border border-purple-500 rounded-xl px-6 py-4 shadow-2xl">
+              <div className="flex items-center gap-3">
+                <Loader2 className="w-5 h-5 text-purple-400 animate-spin" />
+                <div>
+                  <p className="text-white font-medium">Loading schematic...</p>
+                  <p className="text-gray-400 text-sm">Please wait</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Schematic Alignment Indicator */}
+          {aligningSchematic && (
+            <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 bg-gray-800/95 backdrop-blur-sm border border-orange-500 rounded-xl px-6 py-4 shadow-2xl">
+              <div className="flex items-center gap-3">
+                <Loader2 className="w-5 h-5 text-orange-400 animate-spin" />
+                <div>
+                  <p className="text-white font-medium">Aligning schematic to board...</p>
+                  <p className="text-gray-400 text-sm">AI analyzing images</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Hardware Board Viewer */}
           {(boardName || customImage) && (
             <HardwareBoardViewer
               boardName={boardName || 'Custom Board'}
               customImageUrl={customImage}
+              schematicUrl={schematicUrl}
               nets={nets}
               components={components}
               suspiciousMarkers={suspiciousMarkers}
@@ -839,6 +988,7 @@ export default function BoardViewPage() {
               onExportConfig={handleExportConfig}
               onImportConfig={handleImportConfig}
               onAnalyzeBoard={handleAnalyzeBoard}
+              onSchematicToggle={setShowSchematicOverlay}
               editingNetId={editingNetId}
               className="h-full"
             />

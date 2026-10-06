@@ -1139,6 +1139,76 @@ export interface Database {
           created_at?: string
         }
       }
+      schematics: {
+        Row: {
+          id: string
+          schematic_name: string
+          schematic_url: string
+          device_model?: string
+          board_type?: string
+          description?: string
+          components: Json
+          nets: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          schematic_name: string
+          schematic_url: string
+          device_model?: string
+          board_type?: string
+          description?: string
+          components?: Json
+          nets?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          schematic_name?: string
+          schematic_url?: string
+          device_model?: string
+          board_type?: string
+          description?: string
+          components?: Json
+          nets?: Json
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      board_schematic_mappings: {
+        Row: {
+          id: string
+          board_id: string
+          schematic_id: string
+          alignment_data: Json
+          confidence_score: number
+          is_primary: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          board_id: string
+          schematic_id: string
+          alignment_data?: Json
+          confidence_score?: number
+          is_primary?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          board_id?: string
+          schematic_id?: string
+          alignment_data?: Json
+          confidence_score?: number
+          is_primary?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never

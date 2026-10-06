@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
-import { Search, ZoomIn, ZoomOut, RotateCw, Download, X, Loader2, Plus, Minus, MapPin, CircuitBoard, Cpu, Zap, Dot, Upload, AlertTriangle, CheckCircle, Sparkles, Grid, Crosshair, PenTool, Move, Layers } from 'lucide-react';
+import { Search, ZoomIn, ZoomOut, RotateCw, Download, X, Loader2, Plus, Minus, MapPin, CircuitBoard, Cpu, Zap, Dot, Upload, AlertTriangle, CheckCircle, Sparkles, Grid, Crosshair, PenTool, Move, Layers, ChevronLeft, ChevronRight } from 'lucide-react';
 
 /**
  * Hardware Board Viewer - Professional Image Overlay System
@@ -84,6 +84,7 @@ export interface BoardViewerProps {
   boardName: string;
   customImageUrl?: string | null;
   comparisonImageUrl?: string | null;
+  schematicUrl?: string | null;
   nets?: Record<string, NetTrace>;
   components?: Record<string, Component>;
   suspiciousMarkers?: SuspiciousMarker[]; // AI analysis results
@@ -96,6 +97,7 @@ export interface BoardViewerProps {
   onAnalyzeBoard?: () => void;
   onExportConfig?: () => void;
   onImportConfig?: (file: File) => void;
+  onSchematicToggle?: (show: boolean) => void;
   editingNetId?: string | null;
   className?: string;
 }
@@ -108,6 +110,7 @@ export function HardwareBoardViewer({
   boardName,
   customImageUrl = null,
   comparisonImageUrl = null,
+  schematicUrl = null,
   nets = {},
   components = {},
   suspiciousMarkers = [],
@@ -120,6 +123,7 @@ export function HardwareBoardViewer({
   onAnalyzeBoard,
   onExportConfig,
   onImportConfig,
+  onSchematicToggle,
   editingNetId = null,
   className = '',
 }: BoardViewerProps) {
@@ -170,6 +174,23 @@ export function HardwareBoardViewer({
 
   // Phase 2.3: Comparison mode
   const [comparisonMode, setComparisonMode] = useState(false);
+
+  // Schematic Overlay Features
+  const [internalSchematicUrl, setInternalSchematicUrl] = useState<string | null>(null);
+  const [showSchematicOverlay, setShowSchematicOverlay] = useState(false);
+  const [schematicOpacity, setSchematicOpacity] = useState(0.5);
+  const [schematicAlignment, setSchematicAlignment] = useState({
+    offsetX: 0,
+    offsetY: 0,
+    scaleX: 1,
+    scaleY: 1,
+    rotation: 0,
+  });
+  const [loadingSchematic, setLoadingSchematic] = useState(false);
+
+  // Interactive Path Highlighting
+  const [pathHighlightStep, setPathHighlightStep] = useState(0);
+  const [showPathHighlight, setShowPathHighlight] = useState(false);
 
   // Phase 3.1: Export/Import
   const handleExportConfig = () => {
@@ -239,6 +260,14 @@ export function HardwareBoardViewer({
     }
   }, [boardName, customImageUrl]);
 
+  // Load schematic when provided
+  useEffect(() => {
+    if (schematicUrl) {
+      setInternalSchematicUrl(schematicUrl);
+      setShowSchematicOverlay(true);
+    }
+  }, [schematicUrl]);
+
   // Search nets when query changes
   useEffect(() => {
     if (searchQuery.trim()) {
@@ -283,6 +312,8 @@ export function HardwareBoardViewer({
   const handleNetClick = (net: NetTrace) => {
     setActiveNet(net.id);
     setActiveComponent(null); // Clear component selection when net is selected
+    setPathHighlightStep(0);
+    setShowPathHighlight(true);
     if (onNetSelect) {
       onNetSelect(net);
     }
@@ -1082,6 +1113,22 @@ export function HardwareBoardViewer({
                 >
                   <Move className="w-4 h-4" />
                 </button>
+                <button
+                  onClick={() => {
+                    setShowSchematicOverlay(!showSchematicOverlay);
+                    if (onSchematicToggle) {
+                      onSchematicToggle(!showSchematicOverlay);
+                    }
+                  }}
+                  className={`p-2.5 backdrop-blur-sm border rounded-lg transition-colors shadow-lg ${
+                    showSchematicOverlay
+                      ? 'bg-cyan-600/90 border-cyan-500 text-white'
+                      : 'bg-gray-800/90 border-gray-700 text-gray-400 hover:text-white'
+                  }`}
+                  title="Toggle Schematic Overlay"
+                >
+                  <Layers className="w-4 h-4" />
+                </button>
               </div>
 
               {/* Filter Panel */}
@@ -1135,6 +1182,21 @@ export function HardwareBoardViewer({
                       ))}
                     </div>
                   </div>
+                  {showSchematicOverlay && (
+                    <div>
+                      <label className="text-xs text-gray-400 mb-1 block">Schematic Opacity</label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.1"
+                        value={schematicOpacity}
+                        onChange={(e) => setSchematicOpacity(parseFloat(e.target.value))}
+                        className="w-full"
+                      />
+                      <div className="text-xs text-gray-300 mt-1">{Math.round(schematicOpacity * 100)}%</div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1181,6 +1243,26 @@ export function HardwareBoardViewer({
                         className="max-w-full max-h-full object-contain"
                         draggable={false}
                       />
+
+                      {/* Schematic Overlay */}
+                      {showSchematicOverlay && internalSchematicUrl && (
+                        <div
+                          className="absolute top-0 left-0 w-full h-full pointer-events-none"
+                          style={{
+                            opacity: schematicOpacity,
+                            transform: `translate(${schematicAlignment.offsetX}%, ${schematicAlignment.offsetY}%) scale(${schematicAlignment.scaleX}, ${schematicAlignment.scaleY}) rotate(${schematicAlignment.rotation}deg)`,
+                            transformOrigin: 'center center',
+                          }}
+                        >
+                          <img
+                            src={internalSchematicUrl}
+                            alt="Schematic overlay"
+                            className="w-full h-full object-contain"
+                            draggable={false}
+                            style={{ mixBlendMode: 'multiply' }}
+                          />
+                        </div>
+                      )}
 
                     {/* SVG Overlay with Percentage Coordinates */}
                     <svg
@@ -1459,6 +1541,28 @@ export function HardwareBoardViewer({
                               }}
                               onClick={() => handleNetClick(net)}
                             />
+                            {/* Interactive step-by-step highlighting */}
+                            {showPathHighlight && activeNet === net.id && pathHighlightStep > 0 && (
+                              <>
+                                {net.points.slice(0, pathHighlightStep + 1).map((point, idx) => {
+                                  const xVal = typeof point.x === 'string' ? parseFloat(point.x.replace('%', '')) : point.x;
+                                  const yVal = typeof point.y === 'string' ? parseFloat(point.y.replace('%', '')) : point.y;
+                                  return (
+                                    <circle
+                                      key={`highlight-${idx}`}
+                                      cx={xVal}
+                                      cy={yVal}
+                                      r="2"
+                                      fill={net.color}
+                                      className="animate-pulse"
+                                      style={{
+                                        filter: 'drop-shadow(0 0 6px ' + net.color + ')',
+                                      }}
+                                    />
+                                  );
+                                })}
+                              </>
+                            )}
                             {/* Glow effect for active net */}
                             {activeNet === net.id && (
                               <polyline
@@ -1551,7 +1655,11 @@ export function HardwareBoardViewer({
               </span>
             </div>
             <button
-              onClick={() => setActiveNet(null)}
+              onClick={() => {
+                setActiveNet(null);
+                setShowPathHighlight(false);
+                setPathHighlightStep(0);
+              }}
               className="text-gray-400 hover:text-white transition-colors"
             >
               <X className="w-4 h-4" />
@@ -1561,6 +1669,45 @@ export function HardwareBoardViewer({
             <p className="text-gray-400 text-sm mb-3">
               {nets[activeNet].description}
             </p>
+          )}
+          {/* Interactive Path Highlighting Controls */}
+          {nets[activeNet].points.length > 1 && (
+            <div className="mb-3 p-3 bg-gray-700/50 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-400">Step-by-Step Highlight</span>
+                <button
+                  onClick={() => setShowPathHighlight(!showPathHighlight)}
+                  className={`text-xs px-2 py-1 rounded transition-colors ${
+                    showPathHighlight ? 'bg-cyan-600 text-white' : 'bg-gray-600 text-gray-300'
+                  }`}
+                >
+                  {showPathHighlight ? 'ON' : 'OFF'}
+                </button>
+              </div>
+              {showPathHighlight && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPathHighlightStep(Math.max(0, pathHighlightStep - 1))}
+                    disabled={pathHighlightStep === 0}
+                    className="p-1 bg-gray-600 rounded hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft className="w-4 h-4 text-white" />
+                  </button>
+                  <div className="flex-1 text-center">
+                    <span className="text-white text-sm font-medium">
+                      {pathHighlightStep + 1} / {nets[activeNet].points.length}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setPathHighlightStep(Math.min(nets[activeNet].points.length - 1, pathHighlightStep + 1))}
+                    disabled={pathHighlightStep === nets[activeNet].points.length - 1}
+                    className="p-1 bg-gray-600 rounded hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronRight className="w-4 h-4 text-white" />
+                  </button>
+                </div>
+              )}
+            </div>
           )}
           <div className="grid grid-cols-2 gap-2 mb-3">
             <div className="bg-gray-700/50 rounded-lg p-2">
