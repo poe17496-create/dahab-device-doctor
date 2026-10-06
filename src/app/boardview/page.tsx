@@ -2,8 +2,9 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { HardwareBoardViewer, NetTrace, Component, SuspiciousMarker } from '@/components/HardwareBoardViewer';
+import { SchematicChat } from '@/components/SchematicChat';
 import { useDiagnosticContext } from '@/contexts/DiagnosticContext';
-import { Search, Upload, Sparkles, ChevronLeft, ChevronRight, X, Loader2, Plus, CircuitBoard, BarChart3, Layers, Zap, Cpu, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Search, Upload, Sparkles, ChevronLeft, ChevronRight, X, Loader2, Plus, CircuitBoard, BarChart3, Layers, Zap, Cpu, AlertTriangle, CheckCircle, Database } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 /**
@@ -48,6 +49,9 @@ export default function BoardViewPage() {
   const [pathTraceProgress, setPathTraceProgress] = useState(0);
   const [loadingSchematic, setLoadingSchematic] = useState(false);
   const [aligningSchematic, setAligningSchematic] = useState(false);
+  const [fetchingSchematic, setFetchingSchematic] = useState(false);
+  const [externalSchematics, setExternalSchematics] = useState<any[]>([]);
+  const [showSchematicSelector, setShowSchematicSelector] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Example components for demonstration
@@ -233,12 +237,68 @@ export default function BoardViewPage() {
         if (customImage) {
           handleAlignSchematic(customImage, data.mapping.schematics.schematic_url);
         }
+      } else {
+        // Try to fetch from external sources
+        await fetchExternalSchematics(searchInput);
       }
     } catch (error) {
       console.error('Failed to fetch schematic:', error);
+      // Try external sources as fallback
+      await fetchExternalSchematics(searchInput);
     }
 
     setTimeout(() => setIsSearching(false), 500);
+  };
+
+  const fetchExternalSchematics = async (boardName: string) => {
+    setFetchingSchematic(true);
+    try {
+      const response = await fetch('/api/fetch-external-schematic', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          boardName,
+          deviceModel: boardName,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.schematics && data.schematics.length > 0) {
+        setExternalSchematics(data.schematics);
+        setShowSchematicSelector(true);
+      } else if (data.suggestions) {
+        console.log('Schematic suggestions:', data.suggestions);
+        // Show suggestions to user
+      }
+    } catch (error) {
+      console.error('Failed to fetch external schematics:', error);
+    } finally {
+      setFetchingSchematic(false);
+    }
+  };
+
+  const handleSelectExternalSchematic = (schematic: any) => {
+    setSchematicUrl(schematic.url);
+    setShowSchematicOverlay(true);
+    setShowSchematicSelector(false);
+
+    // Save to database
+    fetch('/api/upload-schematic', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        schematicName: schematic.name,
+        schematicUrl: schematic.url,
+        deviceModel: schematic.deviceModel,
+        boardType: schematic.manufacturer,
+        description: schematic.description,
+      }),
+    });
   };
 
   const handleAlignSchematic = async (boardImageUrl: string, schematicUrlToAlign: string) => {
@@ -414,6 +474,7 @@ export default function BoardViewPage() {
         body: JSON.stringify({
           imageUrl,
           boardName,
+          schematicUrl: schematicUrl || undefined,
         }),
       });
 
@@ -696,6 +757,25 @@ export default function BoardViewPage() {
               <span>{showSchematicOverlay ? 'Hide Schematic' : 'Show Schematic'}</span>
             </button>
           )}
+
+          {/* Fetch External Schematic Button */}
+          <button
+            onClick={() => fetchExternalSchematics(boardName || searchInput)}
+            disabled={fetchingSchematic}
+            className="px-4 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:from-indigo-600 hover:to-purple-700 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+          >
+            {fetchingSchematic ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Fetching...</span>
+              </>
+            ) : (
+              <>
+                <Database className="w-5 h-5" />
+                <span>Find Schematic</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
 
@@ -971,6 +1051,59 @@ export default function BoardViewPage() {
               </div>
             </div>
           )}
+
+          {/* Schematic Selector Modal */}
+          {showSchematicSelector && externalSchematics.length > 0 && (
+            <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-gray-800 rounded-xl p-6 max-w-2xl w-full border border-gray-700 shadow-2xl max-h-[80vh] overflow-hidden flex flex-col">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-bold text-white">Select Schematic</h3>
+                  <button
+                    onClick={() => setShowSchematicSelector(false)}
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto space-y-3">
+                  {externalSchematics.map((schematic) => (
+                    <div
+                      key={schematic.id}
+                      onClick={() => handleSelectExternalSchematic(schematic)}
+                      className="p-4 bg-gray-700 rounded-lg hover:bg-gray-600 cursor-pointer transition-colors border border-gray-600 hover:border-purple-500"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-white font-semibold">{schematic.name}</h4>
+                          <p className="text-gray-400 text-sm">{schematic.deviceModel}</p>
+                          <p className="text-gray-500 text-xs mt-1">Source: {schematic.source}</p>
+                        </div>
+                        <CircuitBoard className="w-8 h-8 text-purple-400" />
+                      </div>
+                      {schematic.description && (
+                        <p className="text-gray-400 text-sm mt-2">{schematic.description}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Schematic Chat Component */}
+          <SchematicChat
+            schematicUrl={schematicUrl}
+            boardName={boardName}
+            deviceModel={searchInput}
+            onComponentHighlight={(components) => {
+              // Highlight components on the board
+              console.log('Highlighting components:', components);
+            }}
+            onNetHighlight={(nets) => {
+              // Highlight nets on the board
+              console.log('Highlighting nets:', nets);
+            }}
+          />
 
           {/* Hardware Board Viewer */}
           {(boardName || customImage) && (

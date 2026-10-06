@@ -11,11 +11,138 @@ if (typeof Buffer === 'undefined') {
  * AI Board Analysis API
  *
  * Uses OpenRouter or other AI providers with vision capabilities to analyze board images
+ * Can optionally use schematic diagrams to improve accuracy
  */
+
+function generateAnalysisPrompt(schematicUrl?: string): string {
+  if (schematicUrl) {
+    return `Analyze this PCB board image AND the accompanying schematic diagram. Use the schematic to improve accuracy in identifying components and traces.
+
+For each component you identify, provide:
+1. Component name (e.g., U1200, C1500, R1200)
+2. Component type (IC, Capacitor, Resistor, Inductor, Connector, Diode, Transistor, Other)
+3. Brief description of its function
+4. Confidence level (0-1)
+5. Approximate position on the board as percentage (x, y coordinates from top-left, 0-100%)
+
+Use the schematic to:
+- Cross-reference component names and locations
+- Identify power rails and signal paths more accurately
+- Pinpoint potential faults based on schematic analysis
+
+Additionally, identify any suspicious components or areas that might be faulty (e.g., burnt capacitors, damaged traces, corroded areas). For each suspicious area, provide:
+|- ID (number starting from 1)
+|- Position (x, y as percentage 0-100)
+|- Label (e.g., VCC_MAIN, U1200)
+|- Note (e.g., "مكثس محتمل", "تلف واضح")
+|- Severity (low, medium, high)
+
+IMPORTANT: Return ONLY valid JSON. Do not include any other text before or after the JSON.
+Use this exact structure:
+{
+  "components": [
+    {
+      "name": "component name",
+      "type": "component type",
+      "description": "description",
+      "confidence": 0.9,
+      "x": 50,
+      "y": 50
+    }
+  ],
+  "suspiciousMarkers": [
+    {
+      "id": 1,
+      "x": 35,
+      "y": 40,
+      "label": "VCC_MAIN",
+      "note": "مكثس محتمل",
+      "severity": "medium"
+    }
+  ],
+  "detectedNets": [
+    {
+      "name": "PP_VDD_MAIN",
+      "type": "power",
+      "points": [{"x": 10, "y": 20}, {"x": 30, "y": 25}],
+      "confidence": 0.8
+    }
+  ],
+  "suggestedSolutions": [
+    {
+      "issue": "Burnt capacitor",
+      "solution": "Replace capacitor C1500 with 10µF 6.3V",
+      "priority": "high"
+    }
+  ],
+  "summary": "brief summary of the board with schematic analysis"
+}
+
+Focus on identifying at least 5-10 major components visible in the image. Use the schematic to improve accuracy. Estimate their positions roughly on the board (0-100% from top-left). If you cannot identify components, return an empty components array but still provide a summary. Only include suspiciousMarkers if you see actual issues. Try to detect at least 2-3 major power/ground traces if visible.`;
+  }
+
+  return `Analyze this PCB board image and identify the key components and any suspicious areas. For each component you identify, provide:
+1. Component name (e.g., U1200, C1500, R1200)
+2. Component type (IC, Capacitor, Resistor, Inductor, Connector, Diode, Transistor, Other)
+3. Brief description of its function
+4. Confidence level (0-1)
+5. Approximate position on the board as percentage (x, y coordinates from top-left, 0-100%)
+
+Additionally, identify any suspicious components or areas that might be faulty (e.g., burnt capacitors, damaged traces, corroded areas). For each suspicious area, provide:
+|- ID (number starting from 1)
+|- Position (x, y as percentage 0-100)
+|- Label (e.g., VCC_MAIN, U1200)
+|- Note (e.g., "مكثس محتمل", "تلف واضح")
+|- Severity (low, medium, high)
+
+IMPORTANT: Return ONLY valid JSON. Do not include any other text before or after the JSON.
+Use this exact structure:
+{
+  "components": [
+    {
+      "name": "component name",
+      "type": "component type",
+      "description": "description",
+      "confidence": 0.9,
+      "x": 50,
+      "y": 50
+    }
+  ],
+  "suspiciousMarkers": [
+    {
+      "id": 1,
+      "x": 35,
+      "y": 40,
+      "label": "VCC_MAIN",
+      "note": "مكثس محتمل",
+      "severity": "medium"
+    }
+  ],
+  "detectedNets": [
+    {
+      "name": "PP_VDD_MAIN",
+      "type": "power",
+      "points": [{"x": 10, "y": 20}, {"x": 30, "y": 25}],
+      "confidence": 0.8
+    }
+  ],
+  "suggestedSolutions": [
+    {
+      "issue": "Burnt capacitor",
+      "solution": "Replace capacitor C1500 with 10µF 6.3V",
+      "priority": "high"
+    }
+  ],
+  "summary": "brief summary of the board"
+}
+
+Focus on identifying at least 5-10 major components visible in the image. Estimate their positions roughly on the board (0-100% from top-left). If you cannot identify components, return an empty components array but still provide a summary. Only include suspiciousMarkers if you see actual issues. Try to detect at least 2-3 major power/ground traces if visible.`;
+}
 
 interface AnalyzeBoardRequest {
   imageUrl: string;
   boardName?: string;
+  schematicUrl?: string;
 }
 
 interface AnalyzeBoardResponse {
@@ -54,7 +181,7 @@ interface AnalyzeBoardResponse {
 export async function POST(req: NextRequest) {
   try {
     const body: AnalyzeBoardRequest = await req.json();
-    const { imageUrl, boardName } = body;
+    const { imageUrl, boardName, schematicUrl } = body;
 
     if (!imageUrl) {
       return NextResponse.json<AnalyzeBoardResponse>(
@@ -65,6 +192,8 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    console.log('Board analysis request:', { imageUrl, boardName, schematicUrl });
 
     console.log('Board analysis request:', { imageUrl, boardName });
 
@@ -127,62 +256,37 @@ export async function POST(req: NextRequest) {
         // Detect image type from URL or default to jpeg
         const imageType = imageUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg';
 
-        const prompt = `Analyze this PCB board image and identify the key components and any suspicious areas. For each component you identify, provide:
-1. Component name (e.g., U1200, C1500, R1200)
-2. Component type (IC, Capacitor, Resistor, Inductor, Connector, Diode, Transistor, Other)
-3. Brief description of its function
-4. Confidence level (0-1)
-5. Approximate position on the board as percentage (x, y coordinates from top-left, 0-100%)
+        const prompt = generateAnalysisPrompt(schematicUrl);
 
-Additionally, identify any suspicious components or areas that might be faulty (e.g., burnt capacitors, damaged traces, corroded areas). For each suspicious area, provide:
-- ID (number starting from 1)
-- Position (x, y as percentage 0-100)
-- Label (e.g., VCC_MAIN, U1200)
-- Note (e.g., "مكثس محتمل", "تلف واضح")
-- Severity (low, medium, high)
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-IMPORTANT: Return ONLY valid JSON. Do not include any other text before or after the JSON.
-Use this exact structure:
-{
-  "components": [
-    {
-      "name": "component name",
-      "type": "component type",
-      "description": "description",
-      "confidence": 0.9,
-      "x": 50,
-      "y": 50
-    }
-  ],
-  "suspiciousMarkers": [
-    {
-      "id": 1,
-      "x": 35,
-      "y": 40,
-      "label": "VCC_MAIN",
-      "note": "مكثس محتمل",
-      "severity": "medium"
-    }
-  ],
-  "detectedNets": [
-    {
-      "name": "PP_VDD_MAIN",
-      "type": "power",
-      "points": [{"x": 10, "y": 20}, {"x": 30, "y": 25}],
-      "confidence": 0.8
-    }
-  ],
-  "suggestedSolutions": [
-    {
-      "issue": "Burnt capacitor",
-      "solution": "Replace capacitor C1500 with 10µF 6.3V",
-      "priority": "high"
-    }
-  ],
-  "summary": "brief summary of the board"
-}
+        // Prepare content parts
+        const contentParts: any[] = [prompt, {
+          inlineData: {
+            mimeType: imageType,
+            data: base64Image,
+          },
+        }];
 
-Focus on identifying at least 5-10 major components visible in the image. Estimate their positions roughly on the board (0-100% from top-left). If you cannot identify components, return an empty components array but still provide a summary. Only include suspiciousMarkers if you see actual issues. Try to detect at least 2-3 major power/ground traces if visible.`;
+        // Add schematic if available
+        if (schematicUrl) {
+          const schematicResponse = await fetch(schematicUrl, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+          });
+          if (schematicResponse.ok) {
+            const schematicBuffer = await schematicResponse.arrayBuffer();
+            const base64Schematic = Buffer.from(schematicBuffer).toString('base64');
+            const schematicType = schematicUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg';
+            contentParts.push({
+              inlineData: {
+                mimeType: schematicType,
+                data: base64Schematic,
+              },
+            });
+          }
+        }
+
+        const result = await model.generateContent(contentParts);
 
         // Try multiple models in order
         const models = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-1.5-flash'];
@@ -265,63 +369,24 @@ Focus on identifying at least 5-10 major components visible in the image. Estima
           },
         });
 
+        const prompt = generateAnalysisPrompt(schematicUrl);
+
+        const messageContent: any[] = [
+          { type: 'text', text: prompt },
+          { type: 'image_url', image_url: { url: imageUrl } },
+        ];
+
+        // Add schematic if available
+        if (schematicUrl) {
+          messageContent.push({ type: 'image_url', image_url: { url: schematicUrl } });
+        }
+
         const response = await client.chat.completions.create({
           model: 'google/gemini-flash-1.5-8b',
           messages: [
             {
               role: 'user',
-              content: [
-                {
-                  type: 'text',
-                  text: `Analyze this PCB board image and identify the key components and any suspicious areas. For each component you identify, provide:
-1. Component name (e.g., U1200, C1500, R1200)
-2. Component type (IC, Capacitor, Resistor, Inductor, Connector, Diode, Transistor, Other)
-3. Brief description of its function
-4. Confidence level (0-1)
-5. Approximate position on the board as percentage (x, y coordinates from top-left, 0-100%)
-
-Additionally, identify any suspicious components or areas that might be faulty (e.g., burnt capacitors, damaged traces, corroded areas). For each suspicious area, provide:
-- ID (number starting from 1)
-- Position (x, y as percentage 0-100)
-- Label (e.g., VCC_MAIN, U1200)
-- Note (e.g., "مكثس محتمل", "تلف واضح")
-- Severity (low, medium, high)
-
-IMPORTANT: Return ONLY valid JSON. Do not include any other text before or after the JSON.
-Use this exact structure:
-{
-  "components": [
-    {
-      "name": "component name",
-      "type": "component type",
-      "description": "description",
-      "confidence": 0.9,
-      "x": 50,
-      "y": 50
-    }
-  ],
-  "suspiciousMarkers": [
-    {
-      "id": 1,
-      "x": 35,
-      "y": 40,
-      "label": "VCC_MAIN",
-      "note": "مكثس محتمل",
-      "severity": "medium"
-    }
-  ],
-  "summary": "brief summary of the board"
-}
-
-Focus on identifying at least 5-10 major components visible in the image. Estimate their positions roughly on the board (0-100% from top-left). If you cannot identify components, return an empty components array but still provide a summary. Only include suspiciousMarkers if you see actual issues.`,
-                },
-                {
-                  type: 'image_url',
-                  image_url: {
-                    url: imageUrl,
-                  },
-                },
-              ],
+              content: messageContent,
             },
           ],
           max_tokens: 1000,
@@ -373,79 +438,40 @@ Focus on identifying at least 5-10 major components visible in the image. Estima
       try {
         const client = new OpenAI({ apiKey: openaiKey });
 
+        const prompt = generateAnalysisPrompt(schematicUrl);
+
+        const messageContent: any[] = [
+          { type: 'text', text: prompt },
+          { type: 'image_url', image_url: { url: imageUrl } },
+        ];
+
+        // Add schematic if available
+        if (schematicUrl) {
+          messageContent.push({ type: 'image_url', image_url: { url: schematicUrl } });
+        }
+
         const response = await client.chat.completions.create({
           model: 'gpt-4o',
           messages: [
             {
               role: 'user',
-              content: [
-                {
-                  type: 'text',
-                  text: `Analyze this PCB board image and identify the key components and any suspicious areas. For each component you identify, provide:
-1. Component name (e.g., U1200, C1500, R1200)
-2. Component type (IC, Capacitor, Resistor, Inductor, Connector, Diode, Transistor, Other)
-3. Brief description of its function
-4. Confidence level (0-1)
-5. Approximate position on the board as percentage (x, y coordinates from top-left, 0-100%)
-
-Additionally, identify any suspicious components or areas that might be faulty (e.g., burnt capacitors, damaged traces, corroded areas). For each suspicious area, provide:
-- ID (number starting from 1)
-- Position (x, y as percentage 0-100)
-- Label (e.g., VCC_MAIN, U1200)
-- Note (e.g., "مكثس محتمل", "تلف واضح")
-- Severity (low, medium, high)
-
-IMPORTANT: Return ONLY valid JSON. Do not include any other text before or after the JSON.
-Use this exact structure:
-{
-  "components": [
-    {
-      "name": "component name",
-      "type": "component type",
-      "description": "description",
-      "confidence": 0.9,
-      "x": 50,
-      "y": 50
-    }
-  ],
-  "suspiciousMarkers": [
-    {
-      "id": 1,
-      "x": 35,
-      "y": 40,
-      "label": "VCC_MAIN",
-      "note": "مكثس محتمل",
-      "severity": "medium"
-    }
-  ],
-  "summary": "brief summary of the board"
-}
-
-Focus on identifying at least 5-10 major components visible in the image. Estimate their positions roughly on the board (0-100% from top-left). If you cannot identify components, return an empty components array but still provide a summary. Only include suspiciousMarkers if you see actual issues.`,
-                },
-                {
-                  type: 'image_url',
-                  image_url: {
-                    url: imageUrl,
-                  },
-                },
-              ],
+              content: messageContent,
             },
           ],
           max_tokens: 1000,
         });
 
-        const content = response.choices[0].message.content;
+        const responseContent = response.choices[0].message.content;
         console.log('OpenAI response received');
-        console.log('Response preview:', content?.substring(0, 200));
+        console.log('Response preview:', responseContent?.substring(0, 200));
 
         // Try to extract JSON from the response
         let parsed = null;
         try {
-          parsed = JSON.parse(content || '{}');
+          parsed = JSON.parse(responseContent || '{}');
         } catch (parseError) {
           // Try to extract JSON from markdown code blocks
-          const jsonMatch = content?.match(/```json\s*([\s\S]*?)\s*```/) || content?.match(/\{[\s\S]*\}/);
+          const jsonMatch = responseContent?.match(/```json\s*([\s\S]*?)\s*```/) || responseContent?.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
             try {
               parsed = JSON.parse(jsonMatch[1] || jsonMatch[0]);
@@ -468,7 +494,7 @@ Focus on identifying at least 5-10 major components visible in the image. Estima
         return NextResponse.json<AnalyzeBoardResponse>({
           success: true,
           components: [],
-          summary: content || 'AI could not identify components in this image.',
+          summary: responseContent || 'AI could not identify components in this image.',
         });
       } catch (error: any) {
         console.error('OpenAI API error:', error.message, error);
