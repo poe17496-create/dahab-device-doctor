@@ -4,9 +4,9 @@ import { cookies } from 'next/headers'
 import type { Database } from './database.types'
 
 // Environment variables
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ruxvmppycsnjhdhehtef.supabase.co'
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ1eHZtcHB5Y3NuamhkaGVodGVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA2NzA2MTgsImV4cCI6MjEwNjI0NjYxOH0.Go0B7najXxtqQAP94f5lxhWWKsg9ofouWnwsBHpDiDw'
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ1eHZtcHB5Y3NuamhkaGVodGVmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MDY3MDYxOCwiZXhwIjoyMTA2MjQ2NjE4fQ.JLVCvt7Eq2g_qfrJRNYtQWv1TsdH-1Yrcq8KsRSUcHI'
 
 // Check if Supabase is configured
 export const isSupabaseConfigured = Boolean(
