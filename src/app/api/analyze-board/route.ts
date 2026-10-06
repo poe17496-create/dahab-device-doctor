@@ -36,6 +36,17 @@ interface AnalyzeBoardResponse {
     note: string;
     severity?: 'low' | 'medium' | 'high';
   }>;
+  detectedNets?: Array<{
+    name: string;
+    type: string;
+    points: Array<{ x: number; y: number }>;
+    confidence: number;
+  }>;
+  suggestedSolutions?: Array<{
+    issue: string;
+    solution: string;
+    priority: 'low' | 'medium' | 'high';
+  }>;
   summary?: string;
   error?: string;
 }
@@ -153,10 +164,25 @@ Use this exact structure:
       "severity": "medium"
     }
   ],
+  "detectedNets": [
+    {
+      "name": "PP_VDD_MAIN",
+      "type": "power",
+      "points": [{"x": 10, "y": 20}, {"x": 30, "y": 25}],
+      "confidence": 0.8
+    }
+  ],
+  "suggestedSolutions": [
+    {
+      "issue": "Burnt capacitor",
+      "solution": "Replace capacitor C1500 with 10µF 6.3V",
+      "priority": "high"
+    }
+  ],
   "summary": "brief summary of the board"
 }
 
-Focus on identifying at least 5-10 major components visible in the image. Estimate their positions roughly on the board (0-100% from top-left). If you cannot identify components, return an empty components array but still provide a summary. Only include suspiciousMarkers if you see actual issues.`;
+Focus on identifying at least 5-10 major components visible in the image. Estimate their positions roughly on the board (0-100% from top-left). If you cannot identify components, return an empty components array but still provide a summary. Only include suspiciousMarkers if you see actual issues. Try to detect at least 2-3 major power/ground traces if visible.`;
 
         // Try multiple models in order
         const models = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-1.5-flash'];

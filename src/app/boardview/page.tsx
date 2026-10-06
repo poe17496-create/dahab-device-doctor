@@ -403,6 +403,76 @@ export default function BoardViewPage() {
     }));
   };
 
+  const handleUpdateNetPoint = (netId: string, pointIndex: number, x: string, y: string) => {
+    setNets(prev => ({
+      ...prev,
+      [netId]: {
+        ...prev[netId],
+        points: prev[netId].points.map((point, idx) =>
+          idx === pointIndex ? { x, y } : point
+        ),
+      },
+    }));
+  };
+
+  const handleAddNote = (netId: string, note: string) => {
+    setNets(prev => ({
+      ...prev,
+      [netId]: {
+        ...prev[netId],
+        notes: [...(prev[netId].notes || []), note],
+      },
+    }));
+  };
+
+  const handleExportConfig = () => {
+    const config = {
+      boardName,
+      nets,
+      components,
+      suspiciousMarkers,
+      exportDate: new Date().toISOString(),
+    };
+
+    const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${boardName.replace(/\s+/g, '_')}_config.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportConfig = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const config = JSON.parse(event.target?.result as string);
+
+        if (config.nets) {
+          setNets(config.nets);
+        }
+        if (config.components) {
+          setComponents(config.components);
+        }
+        if (config.suspiciousMarkers) {
+          setSuspiciousMarkers(config.suspiciousMarkers);
+        }
+        if (config.boardName) {
+          setBoardName(config.boardName);
+        }
+
+        alert('Configuration imported successfully!');
+      } catch (error) {
+        console.error('Failed to import config:', error);
+        alert('Failed to import configuration file');
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const handleEditNet = (netId: string) => {
     setEditingNetId(netId);
     setSelectedNet(netId);
@@ -764,6 +834,10 @@ export default function BoardViewPage() {
               suspiciousMarkers={suspiciousMarkers}
               onNetSelect={handleNetSelect}
               onAddNetPoint={handleAddNetPoint}
+              onUpdateNetPoint={handleUpdateNetPoint}
+              onAddNote={handleAddNote}
+              onExportConfig={handleExportConfig}
+              onImportConfig={handleImportConfig}
               onAnalyzeBoard={handleAnalyzeBoard}
               editingNetId={editingNetId}
               className="h-full"

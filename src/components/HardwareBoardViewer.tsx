@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
-import { Search, ZoomIn, ZoomOut, RotateCw, Download, X, Loader2, Plus, Minus, MapPin, CircuitBoard, Cpu, Zap, Dot, Upload, AlertTriangle, CheckCircle, Sparkles } from 'lucide-react';
+import { Search, ZoomIn, ZoomOut, RotateCw, Download, X, Loader2, Plus, Minus, MapPin, CircuitBoard, Cpu, Zap, Dot, Upload, AlertTriangle, CheckCircle, Sparkles, Grid, Crosshair, PenTool, Move, Layers } from 'lucide-react';
 
 /**
  * Hardware Board Viewer - Professional Image Overlay System
@@ -22,6 +22,19 @@ import { Search, ZoomIn, ZoomOut, RotateCw, Download, X, Loader2, Plus, Minus, M
 // Type Definitions
 // ==========================================
 
+// Standard Component Library
+const STANDARD_COMPONENTS: StandardComponent[] = [
+  { name: 'CPU', type: 'IC', description: 'Central Processing Unit', commonPrefixes: ['U', 'CPU'] },
+  { name: 'PMIC', type: 'IC', description: 'Power Management IC', commonPrefixes: ['U', 'PMIC'] },
+  { name: 'Memory', type: 'IC', description: 'Memory Chip', commonPrefixes: ['U', 'RAM', 'ROM'] },
+  { name: 'Capacitor', type: 'Capacitor', description: 'Capacitor', commonPrefixes: ['C'] },
+  { name: 'Resistor', type: 'Resistor', description: 'Resistor', commonPrefixes: ['R'] },
+  { name: 'Inductor', type: 'Inductor', description: 'Inductor', commonPrefixes: ['L'] },
+  { name: 'Connector', type: 'Connector', description: 'Connector', commonPrefixes: ['J', 'CN'] },
+  { name: 'Diode', type: 'Diode', description: 'Diode', commonPrefixes: ['D'] },
+  { name: 'Transistor', type: 'Transistor', description: 'Transistor', commonPrefixes: ['Q', 'T'] },
+];
+
 export interface NetTrace {
   id: string;
   name: string;
@@ -29,6 +42,14 @@ export interface NetTrace {
   points: Array<{ x: string; y: string }>; // Percentage coordinates (e.g., "25%", "40%")
   description?: string;
   components?: Component[]; // Connected components
+  notes?: string[]; // User notes for this net
+  editHistory?: EditHistoryEntry[]; // Edit history
+}
+
+export interface EditHistoryEntry {
+  timestamp: number;
+  action: string;
+  details: string;
 }
 
 export interface Component {
@@ -39,6 +60,15 @@ export interface Component {
   y: string; // Percentage
   description?: string;
   connectedNets?: string[]; // Net IDs this component connects to
+  datasheetUrl?: string;
+  isStandard?: boolean;
+}
+
+export interface StandardComponent {
+  name: string;
+  type: Component['type'];
+  description: string;
+  commonPrefixes: string[];
 }
 
 export interface SuspiciousMarker {
@@ -53,14 +83,19 @@ export interface SuspiciousMarker {
 export interface BoardViewerProps {
   boardName: string;
   customImageUrl?: string | null;
+  comparisonImageUrl?: string | null;
   nets?: Record<string, NetTrace>;
   components?: Record<string, Component>;
   suspiciousMarkers?: SuspiciousMarker[]; // AI analysis results
   onNetSelect?: (net: NetTrace) => void;
   onComponentSelect?: (component: Component) => void;
   onAddNetPoint?: (netId: string, x: string, y: string) => void;
+  onUpdateNetPoint?: (netId: string, pointIndex: number, x: string, y: string) => void;
+  onAddNote?: (netId: string, note: string) => void;
   onImageUpload?: (compressedImage: string, originalFile: File) => void;
   onAnalyzeBoard?: () => void;
+  onExportConfig?: () => void;
+  onImportConfig?: (file: File) => void;
   editingNetId?: string | null;
   className?: string;
 }
@@ -72,14 +107,19 @@ export interface BoardViewerProps {
 export function HardwareBoardViewer({
   boardName,
   customImageUrl = null,
+  comparisonImageUrl = null,
   nets = {},
   components = {},
   suspiciousMarkers = [],
   onNetSelect,
   onComponentSelect,
   onAddNetPoint,
+  onUpdateNetPoint,
+  onAddNote,
   onImageUpload,
   onAnalyzeBoard,
+  onExportConfig,
+  onImportConfig,
   editingNetId = null,
   className = '',
 }: BoardViewerProps) {
@@ -107,6 +147,86 @@ export function HardwareBoardViewer({
   const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
   const [originalFile, setOriginalFile] = useState<File | null>(null);
   const [compressedImage, setCompressedImage] = useState<string | null>(null);
+
+  // Phase 2.1: Grid and display options
+  const [showGrid, setShowGrid] = useState(true);
+  const [showAxes, setShowAxes] = useState(true);
+  const [currentCoordinates, setCurrentCoordinates] = useState<{ x: number; y: number } | null>(null);
+  const [zoomLevel, setZoomLevel] = useState(1);
+
+  // Phase 2.1: Drawing and editing modes
+  const [drawingMode, setDrawingMode] = useState(false);
+  const [draggingPoint, setDraggingPoint] = useState<{ netId: string; pointIndex: number } | null>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+
+  // Phase 2.2: Notes system
+  const [showNotesPanel, setShowNotesPanel] = useState(false);
+  const [newNote, setNewNote] = useState('');
+
+  // Phase 2.3: Display filtering
+  const [visibleNetTypes, setVisibleNetTypes] = useState<Set<string>>(new Set());
+  const [filterVoltage, setFilterVoltage] = useState<string>('all');
+  const [showHeatMap, setShowHeatMap] = useState(false);
+
+  // Phase 2.3: Comparison mode
+  const [comparisonMode, setComparisonMode] = useState(false);
+
+  // Phase 3.1: Export/Import
+  const handleExportConfig = () => {
+    const config = {
+      boardName,
+      nets,
+      components,
+      suspiciousMarkers,
+      exportDate: new Date().toISOString(),
+    };
+
+    const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${boardName.replace(/\s+/g, '_')}_config.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    if (onExportConfig) {
+      onExportConfig();
+    }
+  };
+
+  const handleImportConfig = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const config = JSON.parse(event.target?.result as string);
+
+        if (onImportConfig) {
+          onImportConfig(file);
+        }
+      } catch (error) {
+        console.error('Failed to import config:', error);
+        alert('Failed to import configuration file');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // Phase 3.2: Component management
+  const detectComponentType = (name: string): Component['type'] => {
+    for (const stdComp of STANDARD_COMPONENTS) {
+      for (const prefix of stdComp.commonPrefixes) {
+        if (name.startsWith(prefix)) {
+          return stdComp.type;
+        }
+      }
+    }
+    return 'Other';
+  };
 
   // Fetch board image on mount (or use custom image)
   useEffect(() => {
@@ -177,6 +297,19 @@ export function HardwareBoardViewer({
   };
 
   const handleImageClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Handle drawing mode or editing
+    if (drawingMode && activeNet && onAddNetPoint) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 100;
+      const y = ((e.clientY - rect.top) / rect.height) * 100;
+
+      const clampedX = Math.max(0, Math.min(100, x));
+      const clampedY = Math.max(0, Math.min(100, y));
+
+      onAddNetPoint(activeNet, `${clampedX.toFixed(2)}%`, `${clampedY.toFixed(2)}%`);
+      return;
+    }
+
     // Only handle click if we're editing a net
     if (!editingNetId || !onAddNetPoint) return;
 
@@ -416,6 +549,94 @@ export function HardwareBoardViewer({
     setOriginalFile(null);
   };
 
+  // Phase 2.1: Point dragging handlers
+  const handlePointDragStart = (e: React.MouseEvent, netId: string, pointIndex: number) => {
+    e.stopPropagation();
+    setDraggingPoint({ netId, pointIndex });
+  };
+
+  const handlePointDragMove = (e: React.MouseEvent) => {
+    if (!draggingPoint) return;
+
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+
+    const clampedX = Math.max(0, Math.min(100, x));
+    const clampedY = Math.max(0, Math.min(100, y));
+
+    // Update the point position in the net
+    if (onUpdateNetPoint) {
+      onUpdateNetPoint(
+        draggingPoint.netId,
+        draggingPoint.pointIndex,
+        `${clampedX.toFixed(2)}%`,
+        `${clampedY.toFixed(2)}%`
+      );
+    }
+  };
+
+  const handlePointDragEnd = () => {
+    setDraggingPoint(null);
+  };
+
+  // Phase 2.1: Drawing mode handlers
+  const handleDrawStart = (e: React.MouseEvent, netId: string) => {
+    if (!drawingMode || !onAddNetPoint) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+
+    const clampedX = Math.max(0, Math.min(100, x));
+    const clampedY = Math.max(0, Math.min(100, y));
+
+    onAddNetPoint(netId, `${clampedX.toFixed(2)}%`, `${clampedY.toFixed(2)}%`);
+    setIsDrawing(true);
+  };
+
+  const handleDrawMove = (e: React.MouseEvent, netId: string) => {
+    if (!isDrawing || !drawingMode || !onAddNetPoint) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+
+    const clampedX = Math.max(0, Math.min(100, x));
+    const clampedY = Math.max(0, Math.min(100, y));
+
+    onAddNetPoint(netId, `${clampedX.toFixed(2)}%`, `${clampedY.toFixed(2)}%`);
+  };
+
+  const handleDrawEnd = () => {
+    setIsDrawing(false);
+  };
+
+  // Phase 2.1: Mouse move for coordinates
+  const handleMouseMove = (e: React.MouseEvent) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+
+    setCurrentCoordinates({
+      x: Math.max(0, Math.min(100, x)),
+      y: Math.max(0, Math.min(100, y)),
+    });
+  };
+
+  // Phase 2.2: Notes handlers
+  const handleAddNote = () => {
+    if (!newNote.trim() || !activeNet) return;
+
+    if (onAddNote) {
+      onAddNote(activeNet, newNote);
+    }
+
+    setNewNote('');
+  };
+
   // ==========================================
   // Render
   // ==========================================
@@ -463,6 +684,29 @@ export function HardwareBoardViewer({
         >
           Upload Image
         </button>
+
+        <button
+          onClick={handleExportConfig}
+          className="px-4 py-2.5 bg-purple-600/90 backdrop-blur-sm border border-purple-500 rounded-lg text-white hover:bg-purple-700 transition-colors text-sm font-medium shadow-lg"
+          title="Export configuration"
+        >
+          Export
+        </button>
+
+        <button
+          onClick={() => document.getElementById('import-config-input')?.click()}
+          className="px-4 py-2.5 bg-indigo-600/90 backdrop-blur-sm border border-indigo-500 rounded-lg text-white hover:bg-indigo-700 transition-colors text-sm font-medium shadow-lg"
+          title="Import configuration"
+        >
+          Import
+        </button>
+        <input
+          id="import-config-input"
+          type="file"
+          accept=".json"
+          onChange={handleImportConfig}
+          className="hidden"
+        />
 
         <button
           onClick={handleRefresh}
@@ -752,6 +996,7 @@ export function HardwareBoardViewer({
           maxScale={10}
           wheel={{ step: 0.1 }}
           doubleClick={{ step: 0.5 }}
+          onZoom={(ref) => setZoomLevel(ref.state.scale)}
         >
           {({ zoomIn, zoomOut, resetTransform }) => (
             <>
@@ -780,6 +1025,133 @@ export function HardwareBoardViewer({
                 </button>
               </div>
 
+              {/* Display Options */}
+              <div className="absolute bottom-4 right-16 z-20 flex flex-col gap-2">
+                <button
+                  onClick={() => setShowGrid(!showGrid)}
+                  className={`p-2.5 backdrop-blur-sm border rounded-lg transition-colors shadow-lg ${
+                    showGrid
+                      ? 'bg-blue-600/90 border-blue-500 text-white'
+                      : 'bg-gray-800/90 border-gray-700 text-gray-400 hover:text-white'
+                  }`}
+                  title="Toggle Grid"
+                >
+                  <Grid className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setShowAxes(!showAxes)}
+                  className={`p-2.5 backdrop-blur-sm border rounded-lg transition-colors shadow-lg ${
+                    showAxes
+                      ? 'bg-blue-600/90 border-blue-500 text-white'
+                      : 'bg-gray-800/90 border-gray-700 text-gray-400 hover:text-white'
+                  }`}
+                  title="Toggle Axes"
+                >
+                  <Crosshair className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setDrawingMode(!drawingMode)}
+                  className={`p-2.5 backdrop-blur-sm border rounded-lg transition-colors shadow-lg ${
+                    drawingMode
+                      ? 'bg-emerald-600/90 border-emerald-500 text-white'
+                      : 'bg-gray-800/90 border-gray-700 text-gray-400 hover:text-white'
+                  }`}
+                  title="Toggle Drawing Mode"
+                >
+                  <PenTool className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setShowHeatMap(!showHeatMap)}
+                  className={`p-2.5 backdrop-blur-sm border rounded-lg transition-colors shadow-lg ${
+                    showHeatMap
+                      ? 'bg-orange-600/90 border-orange-500 text-white'
+                      : 'bg-gray-800/90 border-gray-700 text-gray-400 hover:text-white'
+                  }`}
+                  title="Toggle Heat Map"
+                >
+                  <Zap className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setComparisonMode(!comparisonMode)}
+                  className={`p-2.5 backdrop-blur-sm border rounded-lg transition-colors shadow-lg ${
+                    comparisonMode
+                      ? 'bg-purple-600/90 border-purple-500 text-white'
+                      : 'bg-gray-800/90 border-gray-700 text-gray-400 hover:text-white'
+                  }`}
+                  title="Toggle Comparison Mode"
+                >
+                  <Move className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Filter Panel */}
+              <div className="absolute top-20 right-4 z-20 bg-gray-800/95 backdrop-blur-sm border border-gray-700 rounded-xl p-4 max-w-xs shadow-2xl">
+                <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
+                  <Layers className="w-4 h-4" />
+                  Display Filters
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs text-gray-400 mb-1 block">Voltage Range</label>
+                    <select
+                      value={filterVoltage}
+                      onChange={(e) => setFilterVoltage(e.target.value)}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="all">All Voltages</option>
+                      <option value="low">Low (0-3.3V)</option>
+                      <option value="medium">Medium (3.3-5V)</option>
+                      <option value="high">High (5V+)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 mb-1 block">Visible Net Types</label>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.values(nets).slice(0, 5).map((net) => (
+                        <button
+                          key={net.id}
+                          onClick={() => {
+                            const newSet = new Set(visibleNetTypes);
+                            if (newSet.has(net.id)) {
+                              newSet.delete(net.id);
+                            } else {
+                              newSet.add(net.id);
+                            }
+                            setVisibleNetTypes(newSet);
+                          }}
+                          className={`px-2 py-1 rounded text-xs transition-colors ${
+                            visibleNetTypes.has(net.id)
+                              ? 'opacity-30'
+                              : 'opacity-100'
+                          }`}
+                          style={{
+                            backgroundColor: net.color + '40',
+                            border: `1px solid ${net.color}`,
+                            color: 'white',
+                          }}
+                        >
+                          {net.name.split('_')[1] || net.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Coordinates Info Panel */}
+              {(currentCoordinates || zoomLevel !== 1) && (
+                <div className="absolute bottom-4 left-4 z-20 bg-gray-800/95 backdrop-blur-sm border border-gray-700 rounded-lg px-3 py-2 shadow-lg">
+                  <div className="flex items-center gap-4 text-xs text-gray-300">
+                    {currentCoordinates && (
+                      <span>X: {currentCoordinates.x.toFixed(1)}% Y: {currentCoordinates.y.toFixed(1)}%</span>
+                    )}
+                    {zoomLevel !== 1 && (
+                      <span>Zoom: {zoomLevel.toFixed(1)}x</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Image and SVG Overlay */}
               <TransformComponent
                 wrapperStyle={{
@@ -794,17 +1166,21 @@ export function HardwareBoardViewer({
                 <div
                   className="relative w-full h-full flex items-center justify-center"
                   onClick={handleImageClick}
-                  style={{ cursor: editingNetId ? 'crosshair' : 'default' }}
+                  onMouseMove={draggingPoint ? handlePointDragMove : undefined}
+                  onMouseUp={draggingPoint ? handlePointDragEnd : undefined}
+                  onMouseLeave={draggingPoint ? handlePointDragEnd : undefined}
+                  style={{ cursor: drawingMode ? 'crosshair' : (editingNetId ? 'crosshair' : 'default') }}
                 >
                   {/* Board Image Container */}
-                  <div className="relative inline-block max-w-full max-h-full">
-                    <img
-                      ref={imageRef}
-                      src={imageUrl}
-                      alt={`${boardName} board`}
-                      className="max-w-full max-h-full object-contain"
-                      draggable={false}
-                    />
+                  <div className={`relative inline-block max-w-full max-h-full ${comparisonMode ? 'flex gap-4' : ''}`}>
+                    <div className="relative">
+                      <img
+                        ref={imageRef}
+                        src={imageUrl}
+                        alt={`${boardName} board`}
+                        className="max-w-full max-h-full object-contain"
+                        draggable={false}
+                      />
 
                     {/* SVG Overlay with Percentage Coordinates */}
                     <svg
@@ -813,7 +1189,77 @@ export function HardwareBoardViewer({
                       viewBox="0 0 100 100"
                       preserveAspectRatio="none"
                       style={{ mixBlendMode: 'multiply' }}
+                      onMouseMove={handleMouseMove}
+                      onMouseLeave={() => setCurrentCoordinates(null)}
                     >
+                    {/* Grid Overlay */}
+                    {showGrid && (
+                      <g className="opacity-30">
+                        {/* Vertical lines */}
+                        {[...Array(10)].map((_, i) => (
+                          <line
+                            key={`vgrid-${i}`}
+                            x1={i * 10}
+                            y1={0}
+                            x2={i * 10}
+                            y2={100}
+                            stroke="#4a5568"
+                            strokeWidth="0.1"
+                            strokeDasharray="0.5 0.5"
+                          />
+                        ))}
+                        {/* Horizontal lines */}
+                        {[...Array(10)].map((_, i) => (
+                          <line
+                            key={`hgrid-${i}`}
+                            x1={0}
+                            y1={i * 10}
+                            x2={100}
+                            y2={i * 10}
+                            stroke="#4a5568"
+                            strokeWidth="0.1"
+                            strokeDasharray="0.5 0.5"
+                          />
+                        ))}
+                      </g>
+                    )}
+
+                    {/* Axes Overlay */}
+                    {showAxes && (
+                      <g className="opacity-50">
+                        {/* X-axis labels */}
+                        {[...Array(11)].map((_, i) => (
+                          <text
+                            key={`xlabel-${i}`}
+                            x={i * 10}
+                            y={2}
+                            fill="#a0aec0"
+                            fontSize="0.8"
+                            textAnchor="middle"
+                            className="pointer-events-none"
+                          >
+                            {i * 10}
+                          </text>
+                        ))}
+                        {/* Y-axis labels */}
+                        {[...Array(11)].map((_, i) => (
+                          <text
+                            key={`ylabel-${i}`}
+                            x={1}
+                            y={i * 10 + 0.3}
+                            fill="#a0aec0"
+                            fontSize="0.8"
+                            className="pointer-events-none"
+                          >
+                            {i * 10}
+                          </text>
+                        ))}
+                        {/* Main axes */}
+                        <line x1={0} y1={0} x2={100} y2={0} stroke="#718096" strokeWidth="0.3" />
+                        <line x1={0} y1={0} x2={0} y2={100} stroke="#718096" strokeWidth="0.3" />
+                      </g>
+                    )}
+
                     {/* AI Suspicious Markers */}
                     {suspiciousMarkers.map((marker) => {
                       // Handle both string (e.g., "35%") and number (e.g., 35) values
@@ -953,7 +1399,30 @@ export function HardwareBoardViewer({
                     })}
 
                     {/* Net Traces */}
-                    {Object.values(nets).map((net) => (
+                    {Object.values(nets)
+                      .filter((net) => {
+                        // Filter by visible net types
+                        if (visibleNetTypes.size > 0 && !visibleNetTypes.has(net.id)) {
+                          return false;
+                        }
+
+                        // Filter by voltage (based on name patterns)
+                        if (filterVoltage !== 'all') {
+                          const name = net.name.toLowerCase();
+                          if (filterVoltage === 'low' && !name.includes('1v8') && !name.includes('1v0') && !name.includes('3v3')) {
+                            return false;
+                          }
+                          if (filterVoltage === 'medium' && !name.includes('5v') && !name.includes('vbus')) {
+                            return false;
+                          }
+                          if (filterVoltage === 'high' && name.includes('1v8') && name.includes('3v3')) {
+                            return false;
+                          }
+                        }
+
+                        return true;
+                      })
+                      .map((net) => (
                       <g key={net.id}>
                         {/* Net Trace Lines - Thin and connected */}
                         {net.points.length > 1 && (
@@ -970,18 +1439,22 @@ export function HardwareBoardViewer({
                                 .join(' ')}
                               fill="none"
                               stroke={net.color}
-                              strokeWidth={activeNet === net.id ? '1.5' : '0.8'}
+                              strokeWidth={activeNet === net.id ? '1.5' : (showHeatMap ? '1.2' : '0.8')}
                               strokeLinecap="round"
                               strokeLinejoin="round"
                               className={`transition-all duration-300 cursor-pointer ${
                                 activeNet === net.id
                                   ? 'opacity-100'
+                                  : showHeatMap
+                                  ? 'opacity-70'
                                   : 'opacity-50'
                               }`}
                               style={{
                                 pointerEvents: 'stroke',
                                 filter: activeNet === net.id
                                   ? 'drop-shadow(0 0 4px ' + net.color + ')'
+                                  : showHeatMap
+                                  ? 'drop-shadow(0 0 2px ' + net.color + ')'
                                   : 'none',
                               }}
                               onClick={() => handleNetClick(net)}
@@ -1010,31 +1483,52 @@ export function HardwareBoardViewer({
                           </>
                         )}
 
-                        {/* Net Points - Small precision markers */}
+                        {/* Net Points - Small precision markers with drag support */}
                         {net.points.map((point, idx) => {
                           // Handle both string (e.g., "35%") and number (e.g., 35) values
                           const xVal = typeof point.x === 'string' ? parseFloat(point.x.replace('%', '')) : point.x;
                           const yVal = typeof point.y === 'string' ? parseFloat(point.y.replace('%', '')) : point.y;
+                          const isDraggingPoint = draggingPoint?.netId === net.id && draggingPoint?.pointIndex === idx;
+
                           return (
                             <circle
                               key={`${net.id}-point-${idx}`}
                               cx={xVal}
                               cy={yVal}
-                              r={activeNet === net.id ? '2' : '1.2'}
+                              r={isDraggingPoint ? '3' : (activeNet === net.id ? '2' : '1.2')}
                               fill={net.color}
-                              className={`transition-all duration-300 cursor-pointer ${
+                              className={`transition-all duration-300 ${
+                                drawingMode ? 'cursor-move' : 'cursor-pointer'
+                              } ${
                                 activeNet === net.id
                                   ? 'opacity-100'
                                   : 'opacity-50'
                               }`}
                               style={{ pointerEvents: 'auto' }}
                               onClick={() => handleNetClick(net)}
+                              onMouseDown={(e) => drawingMode && handlePointDragStart(e, net.id, idx)}
                             />
                           );
                         })}
                       </g>
                     ))}
                   </svg>
+                  </div>
+
+                  {/* Comparison Image */}
+                  {comparisonMode && comparisonImageUrl && (
+                    <div className="relative max-w-full max-h-full">
+                      <img
+                        src={comparisonImageUrl}
+                        alt="Comparison board"
+                        className="max-w-full max-h-full object-contain"
+                        draggable={false}
+                      />
+                      <div className="absolute top-2 right-2 bg-purple-600/90 text-white px-2 py-1 rounded text-xs">
+                        Comparison
+                      </div>
+                    </div>
+                  )}
                   </div>
                 </div>
               </TransformComponent>
@@ -1043,9 +1537,9 @@ export function HardwareBoardViewer({
         </TransformWrapper>
       )}
 
-      {/* Active Net Info Panel */}
+      {/* Active Net Info Panel - Enhanced */}
       {activeNet && nets[activeNet] && (
-        <div className="absolute bottom-4 left-4 z-20 bg-gray-800/95 backdrop-blur-sm border border-gray-700 rounded-xl p-4 max-w-sm shadow-2xl">
+        <div className="absolute bottom-4 left-4 z-20 bg-gray-800/95 backdrop-blur-sm border border-gray-700 rounded-xl p-4 max-w-md shadow-2xl">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <div
@@ -1064,9 +1558,31 @@ export function HardwareBoardViewer({
             </button>
           </div>
           {nets[activeNet].description && (
-            <p className="text-gray-400 text-sm mb-2">
+            <p className="text-gray-400 text-sm mb-3">
               {nets[activeNet].description}
             </p>
+          )}
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <div className="bg-gray-700/50 rounded-lg p-2">
+              <p className="text-xs text-gray-500">Points</p>
+              <p className="text-white font-semibold">{nets[activeNet].points.length}</p>
+            </div>
+            <div className="bg-gray-700/50 rounded-lg p-2">
+              <p className="text-xs text-gray-500">Components</p>
+              <p className="text-white font-semibold">{nets[activeNet].components?.length || 0}</p>
+            </div>
+          </div>
+          {nets[activeNet].points.length > 0 && (
+            <div className="mb-3">
+              <p className="text-xs text-gray-500 mb-2">Coordinates:</p>
+              <div className="max-h-20 overflow-y-auto space-y-1">
+                {nets[activeNet].points.map((point, idx) => (
+                  <div key={idx} className="text-xs text-gray-400 bg-gray-700/30 rounded px-2 py-1">
+                    {idx + 1}: {point.x}, {point.y}
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
           {nets[activeNet].components && nets[activeNet].components.length > 0 && (
             <div className="mt-3 pt-3 border-t border-gray-700">
@@ -1075,7 +1591,8 @@ export function HardwareBoardViewer({
                 {nets[activeNet].components.map((comp) => (
                   <span
                     key={comp.id}
-                    className="px-2 py-1 bg-gray-700 rounded text-xs text-white"
+                    className="px-2 py-1 bg-gray-700 rounded text-xs text-white hover:bg-gray-600 cursor-pointer transition-colors"
+                    onClick={() => handleComponentClick(comp)}
                   >
                     {comp.name}
                   </span>
@@ -1083,12 +1600,52 @@ export function HardwareBoardViewer({
               </div>
             </div>
           )}
+
+          {/* Notes Section */}
+          <div className="mt-3 pt-3 border-t border-gray-700">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs text-gray-500">Notes</p>
+              <button
+                onClick={() => setShowNotesPanel(!showNotesPanel)}
+                className="text-xs text-blue-400 hover:text-blue-300"
+              >
+                {showNotesPanel ? 'Hide' : 'Add Note'}
+              </button>
+            </div>
+            {showNotesPanel && (
+              <div className="space-y-2">
+                <textarea
+                  value={newNote}
+                  onChange={(e) => setNewNote(e.target.value)}
+                  placeholder="Add a note..."
+                  rows={2}
+                  className="w-full px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white text-xs placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                />
+                <button
+                  onClick={handleAddNote}
+                  disabled={!newNote.trim()}
+                  className="w-full px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
+                >
+                  Add Note
+                </button>
+                {nets[activeNet].notes && nets[activeNet].notes.length > 0 && (
+                  <div className="space-y-1 max-h-20 overflow-y-auto">
+                    {nets[activeNet].notes.map((note, idx) => (
+                      <div key={idx} className="text-xs text-gray-400 bg-gray-700/30 rounded px-2 py-1">
+                        {note}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
-      {/* Active Component Info Panel */}
+      {/* Active Component Info Panel - Enhanced */}
       {activeComponent && components[activeComponent] && (
-        <div className="absolute bottom-4 left-4 z-20 bg-gray-800/95 backdrop-blur-sm border border-gray-700 rounded-xl p-4 max-w-sm shadow-2xl">
+        <div className="absolute bottom-4 left-4 z-20 bg-gray-800/95 backdrop-blur-sm border border-gray-700 rounded-xl p-4 max-w-md shadow-2xl">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <div
@@ -1114,10 +1671,20 @@ export function HardwareBoardViewer({
             </button>
           </div>
           {components[activeComponent].description && (
-            <p className="text-gray-400 text-sm mb-2">
+            <p className="text-gray-400 text-sm mb-3">
               {components[activeComponent].description}
             </p>
           )}
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <div className="bg-gray-700/50 rounded-lg p-2">
+              <p className="text-xs text-gray-500">Position X</p>
+              <p className="text-white font-semibold">{components[activeComponent].x}</p>
+            </div>
+            <div className="bg-gray-700/50 rounded-lg p-2">
+              <p className="text-xs text-gray-500">Position Y</p>
+              <p className="text-white font-semibold">{components[activeComponent].y}</p>
+            </div>
+          </div>
           {components[activeComponent].connectedNets && components[activeComponent].connectedNets.length > 0 && (
             <div className="mt-3 pt-3 border-t border-gray-700">
               <p className="text-xs text-gray-500 mb-2">Connected Nets:</p>
@@ -1127,8 +1694,9 @@ export function HardwareBoardViewer({
                   return net ? (
                     <span
                       key={netId}
-                      className="px-2 py-1 rounded text-xs text-white"
+                      className="px-2 py-1 rounded text-xs text-white hover:opacity-80 cursor-pointer transition-opacity"
                       style={{ backgroundColor: net.color + '40', border: `1px solid ${net.color}` }}
+                      onClick={() => handleNetClick(net)}
                     >
                       {net.name}
                     </span>
