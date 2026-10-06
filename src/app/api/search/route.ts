@@ -1,10 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ReferenceSource } from '@/lib/types';
+import { rateLimitMiddleware } from '@/lib/rate-limit';
+import { sanitizeString } from '@/lib/sanitize';
 
 export async function POST(req: NextRequest) {
   try {
+    // Rate limiting: 30 requests per minute per IP (higher limit for search)
+    const rateLimitResult = await rateLimitMiddleware(req, 30, 60 * 1000);
+    
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { 
+          error: 'تجاوزت الحد المسموح من الطلبات، يرجى الانتظار دقيقة.' 
+        },
+        { 
+          status: 429,
+          headers: {
+            'X-RateLimit-Limit': '30',
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': rateLimitResult.resetTime.toString(),
+            'Retry-After': Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000).toString(),
+          }
+        }
+      );
+    }
+
     const { keyword, specialty } = await req.json();
-    const query = (keyword || '').toLowerCase();
+    
+    // Sanitize keyword to prevent injection
+    const sanitizedKeyword = keyword ? sanitizeString(keyword, 200) : '';
+    const query = sanitizedKeyword.toLowerCase();
 
     // قاعدة بيانات مراجع ومصادر هندسية ذكية
     const mockReferences: ReferenceSource[] = [

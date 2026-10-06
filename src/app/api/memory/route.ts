@@ -1,23 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { RepairSession } from '@/lib/types';
 import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
+import { rateLimitMiddleware } from '@/lib/rate-limit';
+import { sanitizeString } from '@/lib/sanitize';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
+    // Rate limiting: 30 requests per minute per IP
+    const rateLimitResult = await rateLimitMiddleware(req, 30, 60 * 1000);
+    
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { 
+          error: 'تجاوزت الحد المسموح من الطلبات، يرجى الانتظار دقيقة.' 
+        },
+        { 
+          status: 429,
+          headers: {
+            'X-RateLimit-Limit': '30',
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': rateLimitResult.resetTime.toString(),
+            'Retry-After': Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000).toString(),
+          }
+        }
+      );
+    }
+
     if (!isSupabaseConfigured || !supabaseAdmin) {
       return NextResponse.json({ sessions: [] });
     }
 
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
+    
+    // Sanitize ID if provided
+    const sanitizedId = id ? sanitizeString(id, 100) : null;
 
-    if (id) {
+    if (sanitizedId) {
       const { data, error } = await supabaseAdmin
         .from('diagnosis_history')
         .select('*')
-        .eq('id', id)
+        .eq('id', sanitizedId)
         .single();
 
       if (error || !data) {
@@ -49,6 +74,26 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    // Rate limiting: 20 requests per minute per IP (lower for write operations)
+    const rateLimitResult = await rateLimitMiddleware(req, 20, 60 * 1000);
+    
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { 
+          error: 'تجاوزت الحد المسموح من الطلبات، يرجى الانتظار دقيقة.' 
+        },
+        { 
+          status: 429,
+          headers: {
+            'X-RateLimit-Limit': '20',
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': rateLimitResult.resetTime.toString(),
+            'Retry-After': Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000).toString(),
+          }
+        }
+      );
+    }
+
     if (!isSupabaseConfigured || !supabaseAdmin) {
       return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 });
     }
@@ -57,7 +102,11 @@ export async function POST(req: NextRequest) {
 
     if (body.action === 'appendMessage') {
       const { sessionId, message } = body;
-      if (!sessionId || !message) {
+      
+      // Sanitize inputs
+      const sanitizedSessionId = sessionId ? sanitizeString(sessionId, 100) : null;
+      
+      if (!sanitizedSessionId || !message) {
         return NextResponse.json({ error: 'بيانات غير مكتملة' }, { status: 400 });
       }
 
@@ -65,7 +114,7 @@ export async function POST(req: NextRequest) {
       const { data: currentData } = await supabaseAdmin
         .from('diagnosis_history')
         .select('*')
-        .eq('id', sessionId)
+        .eq('id', sanitizedSessionId)
         .single();
 
       if (!currentData) {
@@ -98,8 +147,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'بيانات الجلسة غير صالحة' }, { status: 400 });
     }
 
+    // Sanitize session ID
+    const sanitizedSessionId = sanitizeString(session.id, 100);
+
     const { error } = await supabaseAdmin.from('diagnosis_history').upsert({
-      id: session.id,
+      id: sanitizedSessionId,
       user_id: null, // يمكن إضافة user_id لاحقاً
       device_info: session,
       symptoms: session.messages.map((m) => m.text).slice(0, 5),
@@ -123,6 +175,26 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
+    // Rate limiting: 10 requests per minute per IP (very low for delete operations)
+    const rateLimitResult = await rateLimitMiddleware(req, 10, 60 * 1000);
+    
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { 
+          error: 'تجاوزت الحد المسموح من الطلبات، يرجى الانتظار دقيقة.' 
+        },
+        { 
+          status: 429,
+          headers: {
+            'X-RateLimit-Limit': '10',
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': rateLimitResult.resetTime.toString(),
+            'Retry-After': Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000).toString(),
+          }
+        }
+      );
+    }
+
     if (!isSupabaseConfigured || !supabaseAdmin) {
       return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 });
     }
@@ -134,7 +206,10 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'معرف الجلسة مطلوب' }, { status: 400 });
     }
 
-    const { error } = await supabaseAdmin.from('diagnosis_history').delete().eq('id', id);
+    // Sanitize ID
+    const sanitizedId = sanitizeString(id, 100);
+
+    const { error } = await supabaseAdmin.from('diagnosis_history').delete().eq('id', sanitizedId);
 
     if (error) {
       console.error('Error deleting session:', error);
