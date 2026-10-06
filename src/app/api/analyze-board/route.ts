@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { rateLimitMiddleware } from '@/lib/rate-limit';
+import { sanitizeUrl, sanitizeString } from '@/lib/sanitize';
 
 // Polyfill for Buffer in Vercel/Edge environment
 if (typeof Buffer === 'undefined') {
@@ -180,6 +182,27 @@ interface AnalyzeBoardResponse {
 
 export async function POST(req: NextRequest) {
   try {
+    // Rate limiting: 15 requests per minute per IP
+    const rateLimitResult = await rateLimitMiddleware(req, 15, 60 * 1000);
+    
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json<AnalyzeBoardResponse>(
+        {
+          success: false,
+          error: 'تجاوزت الحد المسموح من الطلبات، يرجى الانتظار دقيقة.',
+        },
+        { 
+          status: 429,
+          headers: {
+            'X-RateLimit-Limit': '15',
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': rateLimitResult.resetTime.toString(),
+            'Retry-After': Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000).toString(),
+          }
+        }
+      );
+    }
+
     const body: AnalyzeBoardRequest = await req.json();
     const { imageUrl, boardName, schematicUrl } = body;
 
@@ -193,15 +216,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log('Board analysis request:', { imageUrl, boardName, schematicUrl });
+    // Sanitize inputs
+    const sanitizedImageUrl = sanitizeUrl(imageUrl);
+    const sanitizedBoardName = boardName ? sanitizeString(boardName, 200) : undefined;
+    const sanitizedSchematicUrl = schematicUrl ? sanitizeUrl(schematicUrl) : undefined;
 
-    console.log('Board analysis request:', { imageUrl, boardName });
+    console.log('Board analysis request:', { 
+      imageUrl: sanitizedImageUrl, 
+      boardName: sanitizedBoardName, 
+      schematicUrl: sanitizedSchematicUrl 
+    });
 
     // Get keys from environment variables directly (simpler for Vercel)
     const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
     const openrouterKey = process.env.OPENROUTER_API_KEY;
     const openaiKey = process.env.OPENAI_API_KEY;
 
+    // Log availability without exposing actual keys
     console.log('Available keys from env:', {
       gemini: !!geminiKey,
       openrouter: !!openrouterKey,
@@ -222,13 +253,12 @@ export async function POST(req: NextRequest) {
 
     // Try Gemini first (direct API)
     if (geminiKey) {
-      console.log('Using Gemini key:', geminiKey.substring(0, 15) + '...');
       try {
         const genAI = new GoogleGenerativeAI(geminiKey);
 
         // Fetch image and convert to base64
-        console.log('Fetching image from URL:', imageUrl);
-        const imageResponse = await fetch(imageUrl, {
+        console.log('Fetching image from URL:', sanitizedImageUrl);
+        const imageResponse = await fetch(sanitizedImageUrl, {
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
           },
@@ -254,9 +284,9 @@ export async function POST(req: NextRequest) {
         }
 
         // Detect image type from URL or default to jpeg
-        const imageType = imageUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg';
+        const imageType = sanitizedImageUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg';
 
-        const prompt = generateAnalysisPrompt(schematicUrl);
+        const prompt = generateAnalysisPrompt(sanitizedSchematicUrl);
 
         // Try multiple models in order (updated to working models)
         const models = ['gemini-3.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
@@ -276,14 +306,14 @@ export async function POST(req: NextRequest) {
             }];
 
             // Add schematic if available
-            if (schematicUrl) {
-              const schematicResponse = await fetch(schematicUrl, {
+            if (sanitizedSchematicUrl) {
+              const schematicResponse = await fetch(sanitizedSchematicUrl, {
                 headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
               });
               if (schematicResponse.ok) {
                 const schematicBuffer = await schematicResponse.arrayBuffer();
                 const base64Schematic = Buffer.from(schematicBuffer).toString('base64');
-                const schematicType = schematicUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg';
+                const schematicType = sanitizedSchematicUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg';
                 contentParts.push({
                   inlineData: {
                     mimeType: schematicType,
@@ -352,7 +382,6 @@ export async function POST(req: NextRequest) {
 
     // Try OpenRouter next
     if (openrouterKey) {
-      console.log('Trying OpenRouter with key:', openrouterKey.substring(0, 10) + '...');
       try {
         const client = new OpenAI({
           apiKey: openrouterKey,
@@ -363,16 +392,16 @@ export async function POST(req: NextRequest) {
           },
         });
 
-        const prompt = generateAnalysisPrompt(schematicUrl);
+        const prompt = generateAnalysisPrompt(sanitizedSchematicUrl);
 
         const messageContent: any[] = [
           { type: 'text', text: prompt },
-          { type: 'image_url', image_url: { url: imageUrl } },
+          { type: 'image_url', image_url: { url: sanitizedImageUrl } },
         ];
 
         // Add schematic if available
-        if (schematicUrl) {
-          messageContent.push({ type: 'image_url', image_url: { url: schematicUrl } });
+        if (sanitizedSchematicUrl) {
+          messageContent.push({ type: 'image_url', image_url: { url: sanitizedSchematicUrl } });
         }
 
         const response = await client.chat.completions.create({
@@ -428,20 +457,19 @@ export async function POST(req: NextRequest) {
 
     // Fallback to OpenAI if available
     if (openaiKey) {
-      console.log('Trying OpenAI with key:', openaiKey.substring(0, 10) + '...');
       try {
         const client = new OpenAI({ apiKey: openaiKey });
 
-        const prompt = generateAnalysisPrompt(schematicUrl);
+        const prompt = generateAnalysisPrompt(sanitizedSchematicUrl);
 
         const messageContent: any[] = [
           { type: 'text', text: prompt },
-          { type: 'image_url', image_url: { url: imageUrl } },
+          { type: 'image_url', image_url: { url: sanitizedImageUrl } },
         ];
 
         // Add schematic if available
-        if (schematicUrl) {
-          messageContent.push({ type: 'image_url', image_url: { url: schematicUrl } });
+        if (sanitizedSchematicUrl) {
+          messageContent.push({ type: 'image_url', image_url: { url: sanitizedSchematicUrl } });
         }
 
         const response = await client.chat.completions.create({

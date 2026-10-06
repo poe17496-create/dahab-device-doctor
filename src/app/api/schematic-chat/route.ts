@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
+import { rateLimitMiddleware } from '@/lib/rate-limit';
+import { sanitizeUrl, sanitizeString } from '@/lib/sanitize';
 
 /**
  * API Endpoint: Schematic AI Chat
@@ -38,6 +40,27 @@ interface SchematicChatResponse {
 
 export async function POST(req: NextRequest) {
   try {
+    // Rate limiting: 20 requests per minute per IP (higher limit for chat)
+    const rateLimitResult = await rateLimitMiddleware(req, 20, 60 * 1000);
+    
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'تجاوزت الحد المسموح من الطلبات، يرجى الانتظار دقيقة.' 
+        },
+        { 
+          status: 429,
+          headers: {
+            'X-RateLimit-Limit': '20',
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': rateLimitResult.resetTime.toString(),
+            'Retry-After': Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000).toString(),
+          }
+        }
+      );
+    }
+
     const body: SchematicChatRequest = await req.json();
     const { schematicUrl, question, context } = body;
 
@@ -48,6 +71,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Sanitize inputs
+    const sanitizedSchematicUrl = sanitizeUrl(schematicUrl);
+    const sanitizedQuestion = sanitizeString(question, 2000);
+    const sanitizedBoardName = context?.boardName ? sanitizeString(context.boardName, 200) : undefined;
+    const sanitizedDeviceModel = context?.deviceModel ? sanitizeString(context.deviceModel, 200) : undefined;
+
     // Get AI keys
     const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
     const openrouterKey = process.env.OPENROUTER_API_KEY;
@@ -56,7 +85,12 @@ export async function POST(req: NextRequest) {
     // Try Gemini first
     if (geminiKey) {
       try {
-        const result = await chatWithGemini(schematicUrl, question, context, geminiKey);
+        const result = await chatWithGemini(
+          sanitizedSchematicUrl, 
+          sanitizedQuestion, 
+          { ...context, boardName: sanitizedBoardName, deviceModel: sanitizedDeviceModel }, 
+          geminiKey
+        );
         return NextResponse.json(result);
       } catch (error: any) {
         console.error('Gemini error:', error.message);
@@ -66,7 +100,12 @@ export async function POST(req: NextRequest) {
     // Try OpenRouter next
     if (openrouterKey) {
       try {
-        const result = await chatWithOpenRouter(schematicUrl, question, context, openrouterKey);
+        const result = await chatWithOpenRouter(
+          sanitizedSchematicUrl, 
+          sanitizedQuestion, 
+          { ...context, boardName: sanitizedBoardName, deviceModel: sanitizedDeviceModel }, 
+          openrouterKey
+        );
         return NextResponse.json(result);
       } catch (error: any) {
         console.error('OpenRouter error:', error.message);
@@ -76,7 +115,12 @@ export async function POST(req: NextRequest) {
     // Try OpenAI as fallback
     if (openaiKey) {
       try {
-        const result = await chatWithOpenAI(schematicUrl, question, context, openaiKey);
+        const result = await chatWithOpenAI(
+          sanitizedSchematicUrl, 
+          sanitizedQuestion, 
+          { ...context, boardName: sanitizedBoardName, deviceModel: sanitizedDeviceModel }, 
+          openaiKey
+        );
         return NextResponse.json(result);
       } catch (error: any) {
         console.error('OpenAI error:', error.message);
