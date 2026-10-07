@@ -859,6 +859,8 @@ export default function DahabFixAiConsole() {
                               imageBase64={imageBase64}
                               testPoints={metrics?.testPoints}
                               isAnalysing={loading}
+                              specialty={specialty}
+                              deviceModel={deviceModel}
                             />
                           </div>
                         </div>

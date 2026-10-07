@@ -1378,11 +1378,50 @@ export default function BoardViewPage() {
                   </button>
                 </div>
 
+                {/* Detected Board Code Banner */}
+                {analysisResult.detectedBoardCode && (
+                  <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">💻</span>
+                      <div>
+                        <div className="text-xs text-amber-400 font-bold">كود المازربورد المكتشف من السلك سكرين:</div>
+                        <div className="text-base font-mono font-bold text-white tracking-wide">{analysisResult.detectedBoardCode}</div>
+                      </div>
+                    </div>
+                    {analysisResult.detectedBoardType && (
+                      <span className="text-xs bg-amber-500/20 text-amber-300 px-2.5 py-1 rounded-full font-bold">
+                        {analysisResult.detectedBoardType === 'laptop' ? 'لابتوب' : analysisResult.detectedBoardType === 'desktop' ? 'كمبيوتر مكتبي' : analysisResult.detectedBoardType === 'mobile' ? 'موبايل' : analysisResult.detectedBoardType}
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 {/* Summary */}
                 {analysisResult.summary && (
                   <div className="mb-4 p-4 bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-lg border border-blue-500/30">
-                    <h4 className="text-sm font-medium text-blue-300 mb-2">ملخص التحليل</h4>
-                    <p className="text-gray-900 dark:text-white text-sm">{analysisResult.summary}</p>
+                    <h4 className="text-sm font-bold text-blue-300 mb-2 flex items-center gap-2">
+                      <span>📋</span>
+                      <span>ملخص الفحص البصري والهندسي</span>
+                    </h4>
+                    <p className="text-gray-900 dark:text-white text-sm leading-relaxed">{analysisResult.summary}</p>
+                  </div>
+                )}
+
+                {/* Suggested Solutions */}
+                {analysisResult.suggestedSolutions && analysisResult.suggestedSolutions.length > 0 && (
+                  <div className="mb-4">
+                    <h4 className="text-sm font-bold text-emerald-400 mb-2 flex items-center gap-2">
+                      <span>💡</span>
+                      <span>الحلول وخطوات الإصلاح المقترحة</span>
+                    </h4>
+                    <div className="space-y-2">
+                      {analysisResult.suggestedSolutions.map((sol: any, idx: number) => (
+                        <div key={idx} className="p-3 bg-emerald-950/30 border border-emerald-500/30 rounded-lg text-xs">
+                          <div className="font-bold text-emerald-300 mb-1">{sol.issue}</div>
+                          <div className="text-gray-300 leading-relaxed">{sol.solution}</div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 

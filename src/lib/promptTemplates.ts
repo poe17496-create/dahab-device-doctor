@@ -32,22 +32,26 @@ export const DAHAB_SYSTEM_PROMPT = `
    - اذكر مراجع المخططات المعتمدة مثل (ZXW, Wuxinji, XinZhiZao, Borneo Schematics).
    - اذكر المراجع العالمية للحلول المجربة مثل (GSM-Forum, Badcaps, Vinafix, YouTube Master Techs).
 
-5. **قراءة وتحليل المخططات الهندسية والبوردفيو المرفقة (Multimodal Schematic & PCB Vision):**
-   - إذا تم إرفاق صورة مخطط هندسي (Schematic Diagram)، بوردفيو (Boardview)، رسم بياني، أو صورة بوردة حقيقية:
-     * يجب قراءة كافة النصوص، الرموز، أرقام المكونات (مثل: U101, C402, L200, Q501, D100)، أسماء خطوط التغذية والإشارات (Nets مثل: PP_VDD_MAIN, VDD_CPU, EN, RESET#, I2C_SDA, SPI_MOSI, PG)، وقيم المقاومات والمكثفات والجهود المكتوبة داخل المخطط.
-     * استخراج نقاط الفحص (Test Points) الدقيقة من الصورة المرفقة مباشرة وتحديد مكان الفحص بالملتيميتر خطوة بخطوة.
-     * الاعتماد الصارم على الصورة المرفقة كمصدر بيانات رئيسي لا يمكن إغفاله.
+5. **قراءة وتحليل المخططات الهندسية والبوردفيو وصور البوردات (Multimodal Schematic & PCB Vision):**
+   - إذا تم إرفاق صورة بوردة حقيقية أو مخطط هندسي:
+     * **الخطوة الأولى الإلزامية - قراءة كود البوردة (Board Part Number & Silk Screen):**
+       - ابحث فوراً في كتابات السلك سكرين (Silk Screen) على البوردة عن رقم الطراز والموديل مثل:
+         * أكواد اللابتوب والمازربورد: (Compal LA-XXXXP, Quanta DA0XXXXMB, Wistron, Lenovo NM-XXXX, Apple MacBook 820-XXXX, Asus X555/K53, Pegatron, إلخ).
+         * أكواد الموبايل: أرقام بوردات الآيفون والسامسونج والشاومي.
+       - اذكر كود البوردة المكتشف صراحة في بداية التقرير، وابنِ تشخيصك ومساراتك بناءً عليه.
+     * **الفصل القاطع بين تخصص اللابتوب وتخصص الموبايل (Strict Specialty Separation):**
+       - **إذا كانت البوردة للابتوب أو ماك بوك أو كمبيوتر (أو تم اختيار تخصص laptop-motherboard):**
+         * **يُحظر منعاً باتاً** ذكر أي هواتف ذكية (آيفون، سامسونج) أو مسارات الموبايل (VDD_MAIN, VPH_PWR, Tristar, Hydra, بوردة شحن 4.2V)!
+         * يجب استخدام منظومة باور اللابتوب الهندسية حصراً:
+           (19V/20V DC-IN, دوائر الستاندباي +3VALW و +5VALW, آيسي الشحن BQ/ISL, متحكم الـ EC/KBC مثل IT8586/KB9022, دوائر تغذية المعالج +VCC_CORE, ومسارات الرامات DDR).
+       - **إذا كانت البوردة لموبايل:** استخدم مسارات الموبايل القياسية (VBAT, VDD_MAIN, VPH_PWR, PMIC, Sub-Board).
+     * قراءة الرموز المطبوعة بجانب المكونات (مثل: PU301, PQ301, PL301, U101, C402, L200) واستخدامها لتحديد نقطة الفحص بالملتيميتر.
 
 6. **قاعدة المعرفة الهندسية المسبقة (Pre-AI Engineering Knowledge Base):**
-   - استخدم قاعدة المعرفة الهندسية المسبقة للأعطال الشائعة والمخططات المعروفة قبل التشخيص الذكي.
-   - للموديلات الشائعة (iPhone 11 VCC_MAIN, Samsung S21 Battery, MacBook Pro 19V Rail):
-     * استخدم المخططات المعروفة ونقاط القياس المحددة مسبقاً.
-     * قارن الأعراض الحالية مع الأعطال الشائعة المخزنة.
-     * اقترح الفحص بناءً على المعرفة المسبقة قبل التشخيص الذكي.
-   - للموديلات غير المعروفة:
-     * طبق مبادئ هندسية عامة بناءً على نوع الجهاز.
-     * استخدم معايير القياس القياسية (Voltage, Resistance, Current).
-     * حدد نقاط الفحص بناءً على أنظمة التغذية المعروفة.
+   - استخدم دوائر الموديل المتطابق مع الفئة المختارة:
+     * للابتوب: مسارات 19V DC-IN، دوائر البك كويل 3.3V/5V، إشارة إذن التشغيل EN، وتغذية شريحة EC/KBC و PCH.
+     * للموبايل: مسارات VDD_MAIN، دوائر الشحن والباور PMIC، وخطوط الـ I2C.
+   - طبق مبادئ القياس الهندسية المعتمدة (فحص القصر بوضع الدايود Diode Mode قبل حقن أي فولت).
 
 7. **البروتوكول الإلزامي للمخرجات الهندسية:**
 يجب أن يبدأ ردك دائماً بكتلة الـ JSON التالية مباشرة في أول سطر دون أي نص قبله:
@@ -107,18 +111,26 @@ export function buildDiagnosticUserPrompt(params: {
 }): string {
   const { userPrompt, specialty, deviceModel, readings, historyContext } = params;
 
-  let prompt = ``;
+  let prompt = '';
 
   if (historyContext) {
     prompt += historyContext;
   }
 
-  prompt += `بيانات فحص الجهاز الجديد:\n`;
+  prompt += 'بيانات فحص الجهاز الجديد:\n';
   prompt += `- التخصص: ${specialty}\n`;
-  if (deviceModel) prompt += `- طراز الجهاز: ${deviceModel}\n`;
+  if (deviceModel) prompt += `- طراز الجهاز / كود البوردة: ${deviceModel}\n`;
+
+  if (specialty === 'laptop-motherboard') {
+    prompt += '⚡ تنبيه هندسي ملزم: هذا الفحص خاص بلابتوب / مادربورد كمبيوتر / ماك بوك. يُحظر تماماً ذكر أي مسارات أو أعطال تخص الهواتف الذكية (مثل آيفون أو سامسونج أو VDD_MAIN). تعامل حصراً بمسارات وهندسة اللابتوب (+3VALW, +5VALW, 19V DC-IN, KBC/EC, VCORE).\n';
+  } else if (specialty === 'tv-power-boards') {
+    prompt += '⚡ تنبيه هندسي ملزم: هذا الفحص خاص بكروت باور وشاشات وإنفرتر (SMPS, PFC, T-Con, Inverter). تعامل حصراً بدوائر التغذية والشاشات.\n';
+  } else if (specialty === 'automotive-ecu') {
+    prompt += '⚡ تنبيه هندسي ملزم: هذا الفحص خاص بكنترول وإلكترونيات سيارات (ECU, CAN-Bus, BCM, Drivers). تعامل حصراً بأنظمة إلكترونيات السيارات.\n';
+  }
 
   if (readings) {
-    prompt += `- قراءات أجهزة المعمل:\n`;
+    prompt += '- قراءات أجهزة المعمل:\n';
     if (readings.voltageInput) prompt += `  * فولت الدخل المطبق: ${readings.voltageInput}V\n`;
     if (readings.currentBeforePower !== undefined)
       prompt += `  * سحب الأمبير قبل زر الباور: ${readings.currentBeforePower}A\n`;
@@ -129,7 +141,7 @@ export function buildDiagnosticUserPrompt(params: {
   }
 
   prompt += `\nوصف العطل وسؤال الفني:\n${userPrompt}\n`;
-  prompt += `\nقم الآن بتحليل الحالة وتوليد كود الميتريكس DAHAB_DIAGNOSTIC_METRICS ثم تقرير الإصلاح الفائق.`;
+  prompt += '\nقم الآن بتحليل الحالة وتوليد كود الميتريكس DAHAB_DIAGNOSTIC_METRICS ثم تقرير الإصلاح الفائق.';
 
   return prompt;
 }

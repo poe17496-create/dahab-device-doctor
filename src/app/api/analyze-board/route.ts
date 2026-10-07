@@ -15,95 +15,83 @@ if (typeof Buffer === 'undefined') {
  * Can optionally use schematic diagrams to improve accuracy
  */
 
-function generateAnalysisPrompt(schematicUrl?: string): string {
-  if (schematicUrl) {
-    return `Analyze this PCB board image AND the accompanying schematic diagram. Use the schematic to improve accuracy in identifying components and traces.
+/**
+ * ترجمة وضمان ظهور ملخص البورد باللغة العربية الهندسية الفصيحة
+ */
+function translateSummaryToArabic(summaryText: string): string {
+  if (!summaryText) return '';
+  let text = summaryText.trim();
 
-For each component you identify, provide:
-1. Component name (e.g., U1200, C1500, R1200)
-2. Component type (IC, Capacitor, Resistor, Inductor, Connector, Diode, Transistor, Other)
-3. Brief description of its function
-4. Confidence level (0-1)
-5. Approximate position on the board as percentage (x, y coordinates from top-left, 0-100%)
-
-Use the schematic to:
-- Cross-reference component names and locations
-- Identify power rails and signal paths more accurately
-- Pinpoint potential faults based on schematic analysis
-
-Additionally, identify any suspicious components or areas that might be faulty (e.g., burnt capacitors, damaged traces, corroded areas). For each suspicious area, provide:
-|- ID (number starting from 1)
-|- Position (x, y as percentage 0-100)
-|- Label (e.g., VCC_MAIN, U1200)
-|- Note (e.g., "مكثس محتمل", "تلف واضح")
-|- Severity (low, medium, high)
-
-IMPORTANT: Return ONLY valid JSON. Do not include any other text before or after the JSON.
-Use this exact structure:
-{
-  "components": [
-    {
-      "name": "component name",
-      "type": "component type",
-      "description": "description",
-      "confidence": 0.9,
-      "x": 50,
-      "y": 50
-    }
-  ],
-  "suspiciousMarkers": [
-    {
-      "id": 1,
-      "x": 35,
-      "y": 40,
-      "label": "VCC_MAIN",
-      "note": "مكثس محتمل",
-      "severity": "medium"
-    }
-  ],
-  "detectedNets": [
-    {
-      "name": "PP_VDD_MAIN",
-      "type": "power",
-      "points": [{"x": 10, "y": 20}, {"x": 30, "y": 25}],
-      "confidence": 0.8
-    }
-  ],
-  "suggestedSolutions": [
-    {
-      "issue": "Burnt capacitor",
-      "solution": "Replace capacitor C1500 with 10µF 6.3V",
-      "priority": "high"
-    }
-  ],
-  "summary": "brief summary of the board with schematic analysis"
-}
-
-Focus on identifying at least 5-10 major components visible in the image. Use the schematic to improve accuracy. Estimate their positions roughly on the board (0-100% from top-left). If you cannot identify components, return an empty components array but still provide a summary. Only include suspiciousMarkers if you see actual issues. Try to detect at least 2-3 major power/ground traces if visible.`;
+  // إذا كان النص يحتوي بالفعل على لغة عربية كافية، نعيده مباشرة
+  const arabicChars = (text.match(/[\u0600-\u06FF]/g) || []).length;
+  if (arabicChars > 25) {
+    return text;
   }
 
-  return `Analyze this PCB board image and identify the key components and any suspicious areas. For each component you identify, provide:
-1. Component name (e.g., U1200, C1500, R1200)
-2. Component type (IC, Capacitor, Resistor, Inductor, Connector, Diode, Transistor, Other)
-3. Brief description of its function
-4. Confidence level (0-1)
-5. Approximate position on the board as percentage (x, y coordinates from top-left, 0-100%)
+  // استبدال وترجمة الجمل الإنجليزية الشائعة التي تعيدها نماذج الذكاء الاصطناعي
+  const replacements: [RegExp, string][] = [
+    [/The PCB shows signs of localized burning and thermal stress around a top mounting hole\/pad\.?/gi, 'تُظهر لوحة الدوائر المطبوعة (PCB) علامات تفحم واحتراق موضعي وإجهاد حراري حول ثقب / باد التثبيت العلوي.'],
+    [/Several ICs, passives, and inductors are visible across the blue solder mask board\.?/gi, 'تظهر العديد من الدوائر المتكاملة (ICs) والمكونات غير النشطة (المكثفات والمقاومات) وملفات الطاقة موزعة عبر طبقة السولدر ماسك الزرقاء للبوردة.'],
+    [/The PCB shows signs of localized burning and thermal stress/gi, 'تُظهر لوحة الدوائر (PCB) علامات تفحم موضعي وإجهاد حراري'],
+    [/The PCB shows signs of/gi, 'تُظهر لوحة الدوائر (PCB) علامات'],
+    [/localized burning and thermal stress/gi, 'تفحم واحتراق موضعي وإجهاد حراري'],
+    [/Several ICs, passives, and inductors are visible/gi, 'تظهر عدة دوائر متكاملة (ICs) ومكثفات وملفات طاقة'],
+    [/across the blue solder mask board/gi, 'على سطح لوحة الدوائر المطبوعة الزرقاء'],
+    [/thermal stress/gi, 'إجهاد حراري وسخونة زائدة'],
+    [/burnt capacitor/gi, 'مكثف متفحم تالف'],
+    [/corroded areas/gi, 'مناطق أكسدة وتآكل'],
+    [/damaged traces/gi, 'مسارات تالفة أو مقطوعة'],
+    [/short circuit/gi, 'قصر صريح (شورت)'],
+    [/power rail/gi, 'خط تغذية'],
+    [/AI could not identify components in this image\.?/gi, 'لم يتمكن الذكاء الاصطناعي من تحديد مكونات واضحة، يرجى رفع صورة أعلى دقة للبوردة أو التركيز على موضع العطل.'],
+    [/No significant damage visible/gi, 'لا توجد أضرار ظاهرية واضحة بالعين المجردة على سطح اللوحة.'],
+  ];
 
-Additionally, identify any suspicious components or areas that might be faulty (e.g., burnt capacitors, damaged traces, corroded areas). For each suspicious area, provide:
-|- ID (number starting from 1)
-|- Position (x, y as percentage 0-100)
-|- Label (e.g., VCC_MAIN, U1200)
-|- Note (e.g., "مكثس محتمل", "تلف واضح")
-|- Severity (low, medium, high)
+  for (const [pattern, rep] of replacements) {
+    text = text.replace(pattern, rep);
+  }
 
-IMPORTANT: Return ONLY valid JSON. Do not include any other text before or after the JSON.
-Use this exact structure:
+  // إذا بقي النص بالإنجليزية بالكامل دون ترجمة، نضيف له مقدمة توضيحية بالعربية
+  if (!/[\u0600-\u06FF]/.test(text) && text.length > 10) {
+    return `تحليل البورد الهندسي: ${text}`;
+  }
+
+  return text;
+}
+
+function generateAnalysisPrompt(schematicUrl?: string): string {
+  return `أنت كبير مهندسي فحص الدوائر الإلكترونية والمازربورد في منظومة "دهب دكتور".
+قم بفحص صورة لوحة الدوائر المطبوعة المرفقة (PCB) بدقة بالغة.
+
+### المطلوب استخراجه هندسياً باللغة العربية:
+1. **التعرف على كود وطراز البوردة من السلك سكرين (Silk Screen OCR):**
+   - ابحث في الكتابات المطبوعة على البوردة عن رقم الموديل (مثل Compal LA-XXXXP, Quanta DA0XXXX, Lenovo NM-XXXX, Apple MacBook 820-XXXX, Asus, Dell, HP...).
+   - صنف نوع البوردة (لابتوب laptop / كمبيوتر مكتبي desktop / هاتف mobile / كارت شاشة gpu / باور tv).
+
+2. **فحص المكونات والأماكن المشبوهة:**
+   - حدد المكونات الرئيسية (دوائر متكاملة ICs، مكثفات Capacitors، ملفات Inductors، موسفيتات MOSFETs، موصلات Connectors).
+   - ابحث عن أي آثار تفحم أو احتراق موضعي أو شورت أو رطوبة وأكسدة (Burn marks, Overheating, Corrosion).
+
+3. **قواعد اللغة الإلزامية الصارمة:**
+   - **يجب أن يكون ملخص الفحص (summary) باللغة العربية الفصحى الهندسية الواضحة والاحترافية 100%.**
+   - **يجب أن يكون وصف المكونات (description) ووظيفتها باللغة العربية.**
+   - **يجب أن تكون ملاحظات الأماكن المشبوهة (note) باللغة العربية (مثال: "علامات احتراق وتفحم موضعي", "مكثف شورت محتمل").**
+   - **يجب أن تكون الحلول المقترحة (suggestedSolutions) باللغة العربية (المشكلة issue والحل solution).**
+   - احتفظ برموز المكونات (مثل PU301, C1500, U1200) والمسارات (19V, +3VALW, VDD_MAIN) بلغتها الإنجليزية التقنية.
+
+${schematicUrl ? 'استعن أيضاً برسم المخطط الهندسي المرفق لمطابقة المكونات ومسارات الطاقة والجهود المتوقعة.' : ''}
+
+IMPORTANT: Return ONLY valid JSON. Do not include any markdown backticks or explanation.
+Use this exact JSON structure:
 {
+  "detectedBoardCode": "كود البوردة المكتوب على السلك سكرين إن وجد مثل LA-D751P أو 820-00165",
+  "detectedBoardType": "laptop" | "mobile" | "desktop" | "tv" | "other",
+  "summary": "ملخص الفحص البصري والهندسي الشامل لحالة البوردة وملاحظات الفحص باللغة العربية الفصحى",
   "components": [
     {
-      "name": "component name",
-      "type": "component type",
-      "description": "description",
+      "name": "PU301 أو U1200",
+      "type": "IC / Capacitor / Resistor / Inductor / MOSFET / Connector",
+      "description": "وصف المركب ووظيفته باللغة العربية",
       "confidence": 0.9,
       "x": 50,
       "y": 50
@@ -114,30 +102,19 @@ Use this exact structure:
       "id": 1,
       "x": 35,
       "y": 40,
-      "label": "VCC_MAIN",
-      "note": "مكثس محتمل",
-      "severity": "medium"
-    }
-  ],
-  "detectedNets": [
-    {
-      "name": "PP_VDD_MAIN",
-      "type": "power",
-      "points": [{"x": 10, "y": 20}, {"x": 30, "y": 25}],
-      "confidence": 0.8
+      "label": "PU301 أو C101",
+      "note": "ملاحظة العطل بالعربية (مثل: آثار احتراق وتفحم موضعي)",
+      "severity": "high" | "medium" | "low"
     }
   ],
   "suggestedSolutions": [
     {
-      "issue": "Burnt capacitor",
-      "solution": "Replace capacitor C1500 with 10µF 6.3V",
-      "priority": "high"
+      "issue": "وصف العطل أو التلف باللغة العربية",
+      "solution": "خطوة الإصلاح والفحص المقترحة باللغة العربية",
+      "priority": "high" | "medium" | "low"
     }
-  ],
-  "summary": "brief summary of the board"
-}
-
-Focus on identifying at least 5-10 major components visible in the image. Estimate their positions roughly on the board (0-100% from top-left). If you cannot identify components, return an empty components array but still provide a summary. Only include suspiciousMarkers if you see actual issues. Try to detect at least 2-3 major power/ground traces if visible.`;
+  ]
+}`;
 }
 
 interface AnalyzeBoardRequest {
@@ -158,8 +135,8 @@ interface AnalyzeBoardResponse {
   }>;
   suspiciousMarkers?: Array<{
     id: number;
-    x: number;
-    y: number;
+    x: number | string;
+    y: number | string;
     label: string;
     note: string;
     severity?: 'low' | 'medium' | 'high';
@@ -176,6 +153,8 @@ interface AnalyzeBoardResponse {
     priority: 'low' | 'medium' | 'high';
   }>;
   summary?: string;
+  detectedBoardCode?: string;
+  detectedBoardType?: string;
   error?: string;
 }
 
@@ -323,20 +302,23 @@ export async function POST(req: NextRequest) {
               }
             }
 
-            if (parsed && parsed.components && parsed.components.length > 0) {
+            if (parsed && (parsed.components || parsed.summary)) {
               return NextResponse.json<AnalyzeBoardResponse>({
                 success: true,
-                components: parsed.components,
+                components: parsed.components || [],
                 suspiciousMarkers: parsed.suspiciousMarkers || [],
-                summary: parsed.summary || '',
+                suggestedSolutions: parsed.suggestedSolutions || [],
+                detectedBoardCode: parsed.detectedBoardCode || '',
+                detectedBoardType: parsed.detectedBoardType || '',
+                summary: translateSummaryToArabic(parsed.summary || ''),
               });
             }
 
-            // If no valid components found, return raw text as summary
+            // If no valid components found, return translated text as summary
             return NextResponse.json<AnalyzeBoardResponse>({
               success: true,
               components: [],
-              summary: content || 'AI could not identify components in this image.',
+              summary: translateSummaryToArabic(content || 'لم يتمكن الذكاء الاصطناعي من تحديد مكونات واضحة في الصورة.'),
             });
           } catch (error: any) {
             lastError = error;
@@ -413,20 +395,23 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        if (parsed && parsed.components && parsed.components.length > 0) {
+        if (parsed && (parsed.components || parsed.summary)) {
           return NextResponse.json<AnalyzeBoardResponse>({
             success: true,
-            components: parsed.components,
+            components: parsed.components || [],
             suspiciousMarkers: parsed.suspiciousMarkers || [],
-            summary: parsed.summary || '',
+            suggestedSolutions: parsed.suggestedSolutions || [],
+            detectedBoardCode: parsed.detectedBoardCode || '',
+            detectedBoardType: parsed.detectedBoardType || '',
+            summary: translateSummaryToArabic(parsed.summary || ''),
           });
         }
 
-        // If no valid components found, return raw text as summary
+        // If no valid components found, return translated text as summary
         return NextResponse.json<AnalyzeBoardResponse>({
           success: true,
           components: [],
-          summary: content || 'AI could not identify components in this image.',
+          summary: translateSummaryToArabic(content || 'لم يتمكن الذكاء الاصطناعي من تحديد مكونات واضحة في الصورة.'),
         });
       } catch (error: any) {
         console.error('OpenRouter API error:', error.message, error);
@@ -481,20 +466,23 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        if (parsed && parsed.components && parsed.components.length > 0) {
+        if (parsed && (parsed.components || parsed.summary)) {
           return NextResponse.json<AnalyzeBoardResponse>({
             success: true,
-            components: parsed.components,
+            components: parsed.components || [],
             suspiciousMarkers: parsed.suspiciousMarkers || [],
-            summary: parsed.summary || '',
+            suggestedSolutions: parsed.suggestedSolutions || [],
+            detectedBoardCode: parsed.detectedBoardCode || '',
+            detectedBoardType: parsed.detectedBoardType || '',
+            summary: translateSummaryToArabic(parsed.summary || ''),
           });
         }
 
-        // If no valid components found, return raw text as summary
+        // If no valid components found, return translated text as summary
         return NextResponse.json<AnalyzeBoardResponse>({
           success: true,
           components: [],
-          summary: responseContent || 'AI could not identify components in this image.',
+          summary: translateSummaryToArabic(responseContent || 'لم يتمكن الذكاء الاصطناعي من تحديد مكونات واضحة في الصورة.'),
         });
       } catch (error: any) {
         console.error('OpenAI API error:', error.message, error);

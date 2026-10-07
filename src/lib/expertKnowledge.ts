@@ -117,9 +117,20 @@ export function findRelevantPatterns(symptom: string, category?: string): Expert
     .map(p => p.pattern);
 }
 
-// بحث متقدم وشامل في مصفوفة المخططات (Hardware Schematics Matrix)
-export function findRelevantSchematics(query: string, deviceModel?: string): MatchedSchematicContext | undefined {
+// تعيين فئة التخصص لمصفوفة المخططات
+function mapSpecialtyToCategory(specialty?: string): 'laptop' | 'mobile' | 'desktop' | 'gpu' | undefined {
+  if (!specialty) return undefined;
+  const s = specialty.toLowerCase();
+  if (s.includes('laptop') || s.includes('macbook') || s.includes('لابتوب') || s.includes('ماك')) return 'laptop';
+  if (s.includes('mobile') || s.includes('phone') || s.includes('موبايل') || s.includes('هاتف') || s.includes('ios') || s.includes('android')) return 'mobile';
+  if (s.includes('desktop') || s.includes('pc') || s.includes('كمبيوتر') || s.includes('tv') || s.includes('power')) return 'desktop';
+  return undefined;
+}
+
+// بحث متقدم وشامل في مصفوفة المخططات (Hardware Schematics Matrix) مع عزل صارم للفئات
+export function findRelevantSchematics(query: string, deviceModel?: string, specialty?: string): MatchedSchematicContext | undefined {
   const matrix = loadHardwareMatrix();
+  const targetCategory = mapSpecialtyToCategory(specialty);
   const fullQuery = `${deviceModel || ''} ${query || ''}`.toLowerCase();
   const queryTerms = fullQuery.split(/[\s,._\-\/]+/).filter(t => t.length > 1);
 
@@ -128,18 +139,31 @@ export function findRelevantSchematics(query: string, deviceModel?: string): Mat
     let bestScore = 0;
 
     matrix.forEach(item => {
+      // عزل صارم: إذا كان التخصص لابتوب، لا نطابق أبداً موبايل، والعكس بالعكس
+      if (targetCategory && item.category !== targetCategory) {
+        // نسمح فقط بـ desktop مع laptop إذا لم نجد تطابق
+        if (!(targetCategory === 'laptop' && item.category === 'desktop')) {
+          return;
+        }
+      }
+
       let score = 0;
       const modelLower = item.model.toLowerCase();
       const boardLower = (item.boardCode || '').toLowerCase();
       const brandLower = item.brand.toLowerCase();
 
+      // مكافأة التطابق التام مع الفئة المطلوبة
+      if (targetCategory && item.category === targetCategory) {
+        score += 15;
+      }
+
       if (deviceModel && (modelLower.includes(deviceModel.toLowerCase()) || deviceModel.toLowerCase().includes(modelLower))) {
-        score += 20;
+        score += 30;
       }
 
       queryTerms.forEach(term => {
         if (modelLower.includes(term)) score += 5;
-        if (boardLower.includes(term)) score += 6;
+        if (boardLower.includes(term)) score += 10; // أولوية قصوى لكود البوردة
         if (brandLower === term) score += 3;
       });
 
@@ -149,7 +173,7 @@ export function findRelevantSchematics(query: string, deviceModel?: string): Mat
       }
     });
 
-    if (bestMatch && bestScore >= 3) {
+    if (bestMatch && bestScore >= 5) {
       const match: HardwareMatrixItem = bestMatch;
       return {
         deviceTitle: match.model,
@@ -173,7 +197,7 @@ export function findRelevantSchematics(query: string, deviceModel?: string): Mat
 // دمج المعرفة الفائقة في كائن واحد سريع ومضغوط
 export function getCompressedExpertKnowledge(query: string, specialty?: string, deviceModel?: string): ComprehensiveKnowledgeResult {
   const expertPatterns = findRelevantPatterns(query, specialty);
-  const schematicContext = findRelevantSchematics(query, deviceModel);
+  const schematicContext = findRelevantSchematics(query, deviceModel, specialty);
 
   return {
     expertPatterns,
