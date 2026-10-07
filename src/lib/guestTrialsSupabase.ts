@@ -54,30 +54,71 @@ export function generateSessionId(): string {
 }
 
 /**
- * إنشاء معرف فريد للزائر يجمع بين IP و Session ID
+ * استخراج معلومات Fingerprint من الطلب
  */
-export function generateGuestIdentifier(request: Request): {
+export function getFingerprintData(request: Request): {
+  userAgent: string;
+  acceptLanguage: string;
+  acceptEncoding: string;
+} {
+  return {
+    userAgent: request.headers.get('user-agent') || 'unknown',
+    acceptLanguage: request.headers.get('accept-language') || 'unknown',
+    acceptEncoding: request.headers.get('accept-encoding') || 'unknown',
+  };
+}
+
+/**
+ * إنشاء معرف فريد للزائر يجمع بين IP و Session ID و Fingerprint
+ */
+export function generateGuestIdentifier(request: Request, clientFingerprint?: {
+  screenResolution?: string;
+  timezone?: string;
+  platform?: string;
+}): {
   ip: string;
   sessionId: string;
   combinedId: string;
+  fingerprint: string;
 } {
   const ip = getClientIP(request);
   const sessionId = getOrCreateSessionId(request) || generateSessionId();
+  const serverFingerprint = getFingerprintData(request);
 
-  // دمج IP و Session ID لإنشاء معرف فريد
+  // دمج كل المعلومات لإنشاء معرف فريد قوي
+  const fingerprintString = JSON.stringify({
+    ip,
+    sessionId,
+    serverFingerprint,
+    clientFingerprint: clientFingerprint || {},
+  });
+
   const combinedId = crypto
     .createHash('sha256')
-    .update(`${ip}:${sessionId}`)
+    .update(fingerprintString)
     .digest('hex');
 
-  return { ip, sessionId, combinedId };
+  // إنشاء fingerprint مبسط (بدالة) للعرض والتخزين
+  const simpleFingerprint = crypto
+    .createHash('sha256')
+    .update(`${ip}:${serverFingerprint.userAgent}:${serverFingerprint.acceptLanguage}`)
+    .digest('hex');
+
+  return { ip, sessionId, combinedId, fingerprint: simpleFingerprint };
 }
 
 /**
  * التحقق من تجارب الزائر وزيادة العداد
  * @returns { success: boolean, remaining: number, error?: string, setCookie?: string }
  */
-export async function checkAndIncrementGuestTrials(request: Request): Promise<{
+export async function checkAndIncrementGuestTrials(
+  request: Request,
+  clientFingerprint?: {
+    screenResolution?: string;
+    timezone?: string;
+    platform?: string;
+  }
+): Promise<{
   success: boolean;
   remaining: number;
   error?: string;
@@ -89,19 +130,19 @@ export async function checkAndIncrementGuestTrials(request: Request): Promise<{
     return { success: true, remaining: MAX_GUEST_DAILY_TRIALS };
   }
 
-  const { ip, sessionId, combinedId } = generateGuestIdentifier(request);
+  const { ip, sessionId, combinedId, fingerprint } = generateGuestIdentifier(request, clientFingerprint);
   const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
-  console.log(`[GuestTrials] Checking - IP: ${ip}, Session: ${sessionId}, Combined: ${combinedId}, Today: ${today}`);
+  console.log(`[GuestTrials] Checking - IP: ${ip}, Session: ${sessionId}, Fingerprint: ${fingerprint.substring(0, 8)}..., Today: ${today}`);
 
   let setCookieHeader: string | undefined;
 
   try {
-    // 1. محاولة الحصول على السجل الحالي باستخدام المعرف المدمج
+    // 1. محاولة الحصول على السجل الحالي باستخدام Fingerprint (أكثر استقراراً)
     const { data: existingRecord, error: fetchError } = await supabaseAdmin
       .from('guest_trials')
       .select('*')
-      .eq('identifier', combinedId)
+      .eq('fingerprint', fingerprint)
       .single();
 
     if (fetchError && fetchError.code !== 'PGRST116') {
@@ -117,6 +158,7 @@ export async function checkAndIncrementGuestTrials(request: Request): Promise<{
         .from('guest_trials')
         .insert({
           identifier: combinedId,
+          fingerprint: fingerprint,
           ip,
           session_id: sessionId,
           count: 1,
@@ -131,7 +173,7 @@ export async function checkAndIncrementGuestTrials(request: Request): Promise<{
       // تعيين Cookie للجلسة الجديدة
       setCookieHeader = `dahab_guest_session=${sessionId}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=86400`;
 
-      console.log(`[GuestTrials] New guest - IP: ${ip}, Session: ${sessionId}, Count: 1/5`);
+      console.log(`[GuestTrials] New guest - IP: ${ip}, Fingerprint: ${fingerprint.substring(0, 8)}..., Count: 1/5`);
       return {
         success: true,
         remaining: MAX_GUEST_DAILY_TRIALS - 1,
@@ -147,22 +189,24 @@ export async function checkAndIncrementGuestTrials(request: Request): Promise<{
         .update({
           count: 1,
           last_date: today,
+          identifier: combinedId, // تحديث identifier في حال تغير Session ID
+          session_id: sessionId,
         } as any)
-        .eq('identifier', combinedId);
+        .eq('fingerprint', fingerprint);
 
       if (updateError) {
         console.error('[GuestTrials] Error resetting count:', updateError);
         return { success: true, remaining: MAX_GUEST_DAILY_TRIALS };
       }
 
-      console.log(`[GuestTrials] Reset for guest - Session: ${sessionId}, Count: 1/5`);
+      console.log(`[GuestTrials] Reset for guest - Fingerprint: ${fingerprint.substring(0, 8)}..., Count: 1/5`);
       return { success: true, remaining: MAX_GUEST_DAILY_TRIALS - 1 };
     }
 
     // 4. نفس اليوم - التحقق من العداد
     if (existingRecord.count >= MAX_GUEST_DAILY_TRIALS) {
       // تجاوز الحد المسموح
-      console.log(`[GuestTrials] Guest exceeded limit - Session: ${sessionId}, Count: ${existingRecord.count}/5`);
+      console.log(`[GuestTrials] Guest exceeded limit - Fingerprint: ${fingerprint.substring(0, 8)}..., Count: ${existingRecord.count}/5`);
       return {
         success: false,
         remaining: 0,
@@ -174,15 +218,19 @@ export async function checkAndIncrementGuestTrials(request: Request): Promise<{
     const newCount = existingRecord.count + 1;
     const { error: incrementError } = await supabaseAdmin
       .from('guest_trials')
-      .update({ count: newCount } as any)
-      .eq('identifier', combinedId);
+      .update({
+        count: newCount,
+        identifier: combinedId, // تحديث identifier في حال تغير Session ID
+        session_id: sessionId,
+      } as any)
+      .eq('fingerprint', fingerprint);
 
     if (incrementError) {
       console.error('[GuestTrials] Error incrementing count:', incrementError);
       return { success: true, remaining: MAX_GUEST_DAILY_TRIALS - existingRecord.count };
     }
 
-    console.log(`[GuestTrials] Guest - Session: ${sessionId}, Count: ${newCount}/5`);
+    console.log(`[GuestTrials] Guest - Fingerprint: ${fingerprint.substring(0, 8)}..., Count: ${newCount}/5`);
     return { success: true, remaining: MAX_GUEST_DAILY_TRIALS - newCount };
 
   } catch (error) {
@@ -195,22 +243,29 @@ export async function checkAndIncrementGuestTrials(request: Request): Promise<{
 /**
  * الحصول على عدد المحاولات المتبقية للزائر (للعرض فقط)
  */
-export async function getGuestRemainingTrialsFromSupabase(request: Request): Promise<number> {
+export async function getGuestRemainingTrialsFromSupabase(
+  request: Request,
+  clientFingerprint?: {
+    screenResolution?: string;
+    timezone?: string;
+    platform?: string;
+  }
+): Promise<number> {
   if (!isSupabaseConfigured || !supabaseAdmin) {
     console.warn('[GuestTrials] Supabase not configured in getGuestRemainingTrials');
     return MAX_GUEST_DAILY_TRIALS;
   }
 
-  const { ip, sessionId, combinedId } = generateGuestIdentifier(request);
+  const { ip, sessionId, combinedId, fingerprint } = generateGuestIdentifier(request, clientFingerprint);
   const today = new Date().toISOString().split('T')[0];
 
-  console.log(`[GuestTrials] Getting remaining - IP: ${ip}, Session: ${sessionId}, Combined: ${combinedId}, Today: ${today}`);
+  console.log(`[GuestTrials] Getting remaining - IP: ${ip}, Fingerprint: ${fingerprint.substring(0, 8)}..., Today: ${today}`);
 
   try {
     const { data: record } = await supabaseAdmin
       .from('guest_trials')
       .select('count, last_date')
-      .eq('identifier', combinedId)
+      .eq('fingerprint', fingerprint)
       .single();
 
     console.log(`[GuestTrials] Record found:`, record);

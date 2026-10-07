@@ -1,4 +1,6 @@
 // إدارة وتوحيد رصيد الزائر اليومي المشترك عبر كافة أدوات المنظومة
+import { collectClientFingerprint } from './clientFingerprint';
+
 export const MAX_GUEST_DAILY_TRIALS = 5;
 
 export function getTodayKey(): string {
@@ -55,11 +57,14 @@ export async function consumeGuestTrial(featureName: string = 'general'): Promis
       return { success: true, remaining: 999 };
     }
 
-    // خصم المحاولة من Supabase عبر API
+    // خصم المحاولة من Supabase عبر API مع Fingerprint
     try {
+      const fingerprint = collectClientFingerprint();
+
       const response = await fetch('/api/guest-consume', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fingerprint }),
       });
       const data = await response.json();
 

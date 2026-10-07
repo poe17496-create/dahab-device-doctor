@@ -6,7 +6,12 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   try {
     console.log('[GuestConsume API] Request received');
-    const result = await checkAndIncrementGuestTrials(req);
+
+    // استخراج client fingerprint من body الطلب
+    const body = await req.json().catch(() => ({}));
+    const clientFingerprint = body.fingerprint || {};
+
+    const result = await checkAndIncrementGuestTrials(req, clientFingerprint);
     console.log('[GuestConsume API] Result:', result);
 
     const response = NextResponse.json({
