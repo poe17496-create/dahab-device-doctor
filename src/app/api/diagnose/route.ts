@@ -13,8 +13,7 @@ import { DiagnosticMetrics, DeviceSpecialty, PowerSupplyReadings } from '@/lib/t
 import { callAIEngine, createStreamingResponse, AIEngine } from '@/lib/aiEngines';
 import { buildExpertPromptContext } from '@/lib/expertKnowledge';
 import { checkRateLimit, sanitizeAndCheckTokenDrain } from '@/lib/securityRateLimiter';
-import { getGuestRemainingTrials, MAX_GUEST_DAILY_TRIALS } from '@/lib/guestUsage';
-import { checkAndIncrementGuestTrials } from '@/lib/guestTrialsSupabase';
+import { checkAndDeductGuestTrial, refundGuestTrial, setGuestCookie } from '@/lib/guestUsageServer';
 
 export const runtime = 'nodejs';
 
@@ -32,24 +31,36 @@ export async function POST(req: NextRequest) {
     const { prompt, specialty, deviceModel, readings, imageBase64, sessionId, preferredEngine, customKeys, isGuest } =
       await req.json();
 
-    // 🛡️ التحقق من حالة الزائر وعدد التجارب المتبقية (من Supabase)
+    // 🛡️ التحقق من حالة الزائر وخصم المحاولة ذرياً (إذا كان زائراً)
+    let guestTrialInfo: { allowed: boolean; remaining: number; guestId: string; isNewCookie: boolean } | null = null;
     if (isGuest === true) {
-      const trialCheck = await checkAndIncrementGuestTrials(req);
-      if (!trialCheck.success) {
+      const trialCheck = await checkAndDeductGuestTrial(req);
+      if (!trialCheck.allowed) {
+        const errorHeaders = new Headers({ 'Content-Type': 'application/json' });
+        if (trialCheck.isNewCookie) {
+          setGuestCookie(errorHeaders, trialCheck.guestId);
+        }
         return new Response(
-          trialCheck.error || '⚠️ انتهت تجاربك المجانية اليومية (5 من 5).\n\nللحصول على وصول غير محدود للتشخيص ومحاكي البورد فيو والمساعد، سجّل الدخول بحساب فني معتمد أو تواصل مع المطور م. إسلام دهب على واتساب: 01064147224',
-          { status: 429 }
+          JSON.stringify({ error: 'LIMIT_REACHED', remaining: 0 }),
+          { status: 403, headers: errorHeaders }
         );
       }
+      guestTrialInfo = trialCheck;
     }
 
     // 🛡️ فحص حماية استنزاف التوكن (Token Drain Protection)
     const tokenCheck = sanitizeAndCheckTokenDrain(prompt || '');
     if (!tokenCheck.valid) {
+      if (guestTrialInfo) {
+        await refundGuestTrial(req, guestTrialInfo.guestId);
+      }
       return new Response(tokenCheck.error || 'النص طويل جداً', { status: 400 });
     }
 
     if (!prompt && !imageBase64) {
+      if (guestTrialInfo) {
+        await refundGuestTrial(req, guestTrialInfo.guestId);
+      }
       return new Response('يجب إدخال وصف للعطل أو رفع صورة', { status: 400 });
     }
 
@@ -82,16 +93,24 @@ export async function POST(req: NextRequest) {
       readings,
     });
 
-    // استدعاء محرك AI المختار أو الأفضل تلقائياً مع تدوير كافة المفاتيح
-    const aiResponse = await callAIEngine({
-      prompt: userPrompt,
-      specialty: specialty || 'mobile-repair',
-      deviceModel,
-      readings,
-      imageBase64,
-      preferredEngine: preferredEngine as AIEngine,
-      customKeys,
-    });
+    // استدعاء محرك AI مع استرجاع التجربة للزائر في حال حدوث أي خطأ
+    let aiResponse;
+    try {
+      aiResponse = await callAIEngine({
+        prompt: userPrompt,
+        specialty: specialty || 'mobile-repair',
+        deviceModel,
+        readings,
+        imageBase64,
+        preferredEngine: preferredEngine as AIEngine,
+        customKeys,
+      });
+    } catch (aiErr) {
+      if (guestTrialInfo) {
+        await refundGuestTrial(req, guestTrialInfo.guestId);
+      }
+      throw aiErr;
+    }
 
     // حفظ رد المساعد في ملف JSON
     appendMessageToSession(currentSessionId, {
@@ -105,13 +124,20 @@ export async function POST(req: NextRequest) {
     // إنشاء تدفق البث الحي
     const stream = createStreamingResponse(aiResponse.text);
 
-    return new Response(stream, {
-      headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'X-Session-ID': currentSessionId,
-        'X-AI-Engine': aiResponse.engine,
-      },
+    const responseHeaders = new Headers({
+      'Content-Type': 'text/plain; charset=utf-8',
+      'X-Session-ID': currentSessionId,
+      'X-AI-Engine': aiResponse.engine,
     });
+
+    if (guestTrialInfo) {
+      responseHeaders.set('X-Guest-Remaining', String(guestTrialInfo.remaining));
+      if (guestTrialInfo.isNewCookie) {
+        setGuestCookie(responseHeaders, guestTrialInfo.guestId);
+      }
+    }
+
+    return new Response(stream, { headers: responseHeaders });
   } catch (error) {
     console.error('خطأ في مسار التشخيص /api/diagnose:', error);
     return new Response('حدث خطأ أثناء إجراء الفحص الهندسي.', { status: 500 });

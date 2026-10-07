@@ -25,7 +25,6 @@ import {
   Maximize2,
   ZoomIn,
 } from 'lucide-react';
-import { consumeGuestTrial } from '@/lib/guestUsage';
 import { useDiagnosticContext } from '@/contexts/DiagnosticContext';
 
 interface ChatMessage {
@@ -66,9 +65,11 @@ const INITIAL_MESSAGE: ChatMessage = {
 
 interface AIChatProps {
   currentUser?: any;
+  guestRemaining?: number;
+  onRemainingChange?: (remaining: number) => void;
 }
 
-export default function AIChat({ currentUser }: AIChatProps) {
+export default function AIChat({ currentUser, guestRemaining, onRemainingChange }: AIChatProps) {
   const { deviceModel, specialty, readings, metrics, calculatorContext, checklistProgress } = useDiagnosticContext();
 
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
@@ -322,19 +323,16 @@ export default function AIChat({ currentUser }: AIChatProps) {
     console.log('[Mobile Debug] Has username:', !!currentUser?.username);
     console.log('[Mobile Debug] Has sessionToken:', !!currentUser?.activeSessionToken);
 
-    if (isGuestUser) {
-      const trial = await consumeGuestTrial('ai-chat');
-      if (!trial.success) {
-        const limitMsg: ChatMessage = {
-          id: Date.now().toString(),
-          role: 'assistant',
-          content:
-            '⚠️ انتهت تجاربك المجانية اليومية (5 من 5).\n\nللحصول على وصول غير محدود لمساعد الذكاء الاصطناعي ومحاكي البورد فيو والتشخيص، سجّل الدخول بحساب فني معتمد أو تواصل مع م. إسلام دهب على واتساب: 01064147224',
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, limitMsg]);
-        return;
-      }
+    if (isGuestUser && guestRemaining !== undefined && guestRemaining <= 0) {
+      const limitMsg: ChatMessage = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content:
+          '⚠️ انتهت تجاربك المجانية لليوم. سجّل كفني للاستخدام غير المحدود\n\nتواصل مع الدعم الفني عبر واتساب: https://wa.me/201064147224',
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, limitMsg]);
+      return;
     }
 
     const userMessage: ChatMessage = {
@@ -457,12 +455,13 @@ export default function AIChat({ currentUser }: AIChatProps) {
         const errData = await res.json().catch(() => ({}));
         console.error('[Mobile Debug] Server error response:', errData);
 
-        // التعامل مع حالة 429 (تجاوز الحد المسموح للزائر)
-        if (res.status === 429) {
+        // التعامل مع حالة 403 أو 429 (تجاوز الحد المسموح للزائر)
+        if (res.status === 403 || res.status === 429) {
+          onRemainingChange?.(0);
           const limitMsg: ChatMessage = {
             id: Date.now().toString(),
             role: 'assistant',
-            content: errData.error || '⚠️ لقد استنفدت محاولاتك المجانية اليومية (5/5). يرجى تسجيل الدخول للحصول على وصول كامل.',
+            content: '⚠️ انتهت تجاربك المجانية لليوم. سجّل كفني للاستخدام غير المحدود\n\nتواصل مع الدعم الفني عبر واتساب: https://wa.me/201064147224',
             timestamp: new Date(),
           };
           setMessages((prev) => [...prev, limitMsg]);
@@ -473,6 +472,15 @@ export default function AIChat({ currentUser }: AIChatProps) {
         throw new Error(errData.error || `خطأ في الخادم (${res.status})`);
       }
 
+      // تحديث الرصيد المتبقي من ترويسة الاستجابة
+      const remainingHeader = res.headers.get('X-Guest-Remaining');
+      if (remainingHeader !== null) {
+        const parsedRem = parseInt(remainingHeader, 10);
+        if (!isNaN(parsedRem) && onRemainingChange) {
+          onRemainingChange(parsedRem);
+        }
+      }
+
       console.log('[Mobile Debug] Response headers:', Object.fromEntries(res.headers.entries()));
       console.log('[Mobile Debug] Response status:', res.status);
       console.log('[Mobile Debug] Response body exists:', !!res.body);
@@ -480,12 +488,14 @@ export default function AIChat({ currentUser }: AIChatProps) {
       let fullText = '';
 
       // استخدام streaming mode للكمبيوتر والموبايل على حد سواء
-      // هذا يضمن نفس السرعة والذكاء على جميع الأجهزة
       if (!useStreaming) {
         console.log('[Mobile Debug] Using non-streaming mode (fallback)');
         try {
           const jsonData = await res.json();
           fullText = jsonData.message || jsonData.text || jsonData.response || '';
+          if (jsonData.remaining !== undefined && onRemainingChange) {
+            onRemainingChange(jsonData.remaining);
+          }
           console.log('[Mobile Debug] Non-streaming response length:', fullText.length);
           console.log('[Mobile Debug] Response data:', jsonData);
 
@@ -568,6 +578,9 @@ export default function AIChat({ currentUser }: AIChatProps) {
                     // انتهى الـ streaming
                     console.log('[Mobile Debug] Stream done signal received');
                     setStreamingMessageId(null);
+                    if (data.remaining !== undefined && onRemainingChange) {
+                      onRemainingChange(data.remaining);
+                    }
                   }
                 } catch (e) {
                   console.error('Error parsing SSE data:', e);
@@ -1047,6 +1060,21 @@ export default function AIChat({ currentUser }: AIChatProps) {
         )}
 
 
+        {/* شريط تنبيه انتهاء رصيد الزائر */}
+        {(!currentUser || currentUser.isGuest === true || currentUser.role === 'guest') && guestRemaining === 0 && (
+          <div className="mb-2 p-2.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-between gap-3 text-xs text-rose-700 dark:text-rose-300 font-bold animate-fadeIn">
+            <span>انتهت تجاربك المجانية لليوم. سجّل كفني للاستخدام غير المحدود</span>
+            <a
+              href="https://wa.me/201064147224"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black transition flex items-center gap-1 shrink-0 shadow-sm"
+            >
+              <span>واتساب 💬</span>
+            </a>
+          </div>
+        )}
+
         <div className="flex items-center gap-2">
           {/* رفع صورة */}
           <div className="relative">
@@ -1056,6 +1084,7 @@ export default function AIChat({ currentUser }: AIChatProps) {
               onChange={handleImageUpload}
               className="hidden"
               id="chat-image-upload"
+              disabled={(!currentUser || currentUser.isGuest === true || currentUser.role === 'guest') && guestRemaining === 0}
             />
             <label
               htmlFor="chat-image-upload"
@@ -1063,7 +1092,7 @@ export default function AIChat({ currentUser }: AIChatProps) {
                 imageBase64
                   ? 'bg-dahab-500 text-slate-950 font-bold shadow-md'
                   : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300'
-              }`}
+              } ${((!currentUser || currentUser.isGuest === true || currentUser.role === 'guest') && guestRemaining === 0) ? 'opacity-40 cursor-not-allowed' : ''}`}
               title="إرفاق صورة بوردة أو مخطط"
             >
               <Paperclip className="w-4 h-4" />
@@ -1083,6 +1112,7 @@ export default function AIChat({ currentUser }: AIChatProps) {
           <button
             onClick={handleVoiceInput}
             type="button"
+            disabled={(!currentUser || currentUser.isGuest === true || currentUser.role === 'guest') && guestRemaining === 0}
             title={
               isListening
                 ? 'إيقاف الاستماع'
@@ -1092,7 +1122,7 @@ export default function AIChat({ currentUser }: AIChatProps) {
               isListening || isRecordingAudio
                 ? 'bg-rose-500 text-white animate-pulse shadow-lg ring-2 ring-rose-400'
                 : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300'
-            }`}
+            } ${((!currentUser || currentUser.isGuest === true || currentUser.role === 'guest') && guestRemaining === 0) ? 'opacity-40 cursor-not-allowed' : ''}`}
           >
             <Mic className="w-4 h-4" />
           </button>
@@ -1101,22 +1131,25 @@ export default function AIChat({ currentUser }: AIChatProps) {
           <input
             type="text"
             value={input}
+            disabled={(!currentUser || currentUser.isGuest === true || currentUser.role === 'guest') && guestRemaining === 0}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
             placeholder={
-              isListening
+              (!currentUser || currentUser.isGuest === true || currentUser.role === 'guest') && guestRemaining === 0
+                ? 'انتهت تجاربك المجانية لليوم. سجّل كفني للاستخدام غير المحدود'
+                : isListening
                 ? 'جاري الاستماع إليك مباشرة... تحدث الآن'
                 : 'اكتب سؤالك عن البوردة أو العطل، أو استخدم المايك 🎙️...'
             }
-            className="flex-1 p-2.5 rounded-xl bg-gray-100 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700/80 text-xs md:text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-500 transition"
+            className="flex-1 p-2.5 rounded-xl bg-gray-100 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700/80 text-xs md:text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-500 transition disabled:opacity-50"
           />
 
           {/* زر الإرسال */}
           <button
             type="button"
             onClick={() => handleSend()}
-            disabled={(!input.trim() && !imageBase64) || isLoading}
-            className="p-2.5 rounded-xl bg-gradient-to-r from-dahab-500 to-amber-600 hover:from-dahab-600 hover:to-amber-700 text-slate-950 font-black transition disabled:opacity-40 shadow-md flex items-center justify-center"
+            disabled={(!input.trim() && !imageBase64) || isLoading || ((!currentUser || currentUser.isGuest === true || currentUser.role === 'guest') && guestRemaining === 0)}
+            className="p-2.5 rounded-xl bg-gradient-to-r from-dahab-500 to-amber-600 hover:from-dahab-600 hover:to-amber-700 text-slate-950 font-black transition disabled:opacity-40 shadow-md flex items-center justify-center cursor-pointer disabled:cursor-not-allowed"
             title="إرسال"
           >
             <Send className="w-4 h-4" />

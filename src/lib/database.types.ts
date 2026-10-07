@@ -351,6 +351,29 @@ export interface Database {
           notes?: string
         }
       }
+      guest_usage: {
+        Row: {
+          key: string
+          day: string
+          used: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          key: string
+          day: string
+          used?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          key?: string
+          day?: string
+          used?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
       guest_trials: {
         Row: {
           id: string

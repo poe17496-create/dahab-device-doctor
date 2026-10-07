@@ -7,11 +7,8 @@ import { checkRateLimit, sanitizeAndCheckTokenDrain } from '@/lib/securityRateLi
 import { withErrorHandling, ErrorCode, withTimeout } from '@/lib/apiErrorHandler';
 import { chatRequestSchema } from '@/lib/apiSchemas';
 import { getCachedResponse, setCachedResponse, generateCacheKey } from '@/lib/cache';
-import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
-import { generateUserIdentifier } from '@/lib/userFingerprint';
 import { validateSessionToken } from '@/lib/auth';
-import { getGuestRemainingTrials } from '@/lib/guestUsage';
-import { checkAndIncrementGuestTrials } from '@/lib/guestTrialsSupabase';
+import { checkAndDeductGuestTrial, refundGuestTrial, setGuestCookie } from '@/lib/guestUsageServer';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -42,83 +39,34 @@ async function chatHandler(req: NextRequest) {
 
   const body = await req.json();
 
-  // التحقق من المستخدم المسجل (skip usage limit for logged-in users)
+  // التحقق من المستخدم المسجل (الفنيون المسجلون معفون تماماً من أي حدود)
   const { username, sessionToken, isGuest } = body;
 
   let isUserLoggedIn = false;
-  if (username && sessionToken && isSupabaseConfigured) {
+  if (username && sessionToken) {
     try {
       isUserLoggedIn = await validateSessionToken(username, sessionToken);
-      console.log(`[Chat API] User ${username} login validation: ${isUserLoggedIn}`);
-      console.log(`[Chat API] Provided sessionToken: ${sessionToken.substring(0, 15)}...`);
+      console.log(`[Chat API] Technician ${username} validation: ${isUserLoggedIn}`);
     } catch (error) {
-      console.error('[Chat API] Error validating session:', error);
-    }
-  } else {
-    console.log('[Chat API] No auth credentials provided:', { hasUsername: !!username, hasSessionToken: !!sessionToken, isSupabaseConfigured });
-  }
-
-  // 🛡️ التحقق من حالة الزائر وعدد التجارب المتبقية (من Supabase)
-  if (isGuest === true && !isUserLoggedIn) {
-    const trialCheck = await checkAndIncrementGuestTrials(req);
-    if (!trialCheck.success) {
-      return NextResponse.json(
-        { error: trialCheck.error },
-        { status: 429 }
-      );
+      console.error('[Chat API] Error validating technician session:', error);
     }
   }
 
-  // 🎯 تتبع الاستخدام اليومي عبر Device Fingerprint المحسن (IP + User Agent + Cookie)
-  // يتم تطبيق الحد فقط على الزوار غير المسجلين
-  let needsCookie = false;
-  let sessionId = '';
-  console.log(`[Chat API] Checking usage limit - isUserLoggedIn: ${isUserLoggedIn}, isSupabaseConfigured: ${isSupabaseConfigured}`);
-
-  if (isSupabaseConfigured && supabaseAdmin && !isUserLoggedIn) {
-    console.log('[Chat API] Applying guest usage limit (user not authenticated)');
-    try {
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Usage check timeout')), 3000)
-      );
-
-      // Generate comprehensive user identifier
-      const { combinedId, sessionId: newSessionId } = generateUserIdentifier(req);
-      sessionId = newSessionId;
-
-      // التحقق من الاستخدام وزيادة العداد مع timeout
-      const usageCheckPromise = supabaseAdmin.rpc('check_and_increment_usage', {
-        p_ip_address: combinedId // Use combined ID instead of just IP
-      } as any);
-
-      const { data: usageResult, error: usageError } = await Promise.race([usageCheckPromise, timeoutPromise]);
-
-      if (usageError) {
-        console.error('[Chat API] Usage tracking error:', usageError);
-        // في حالة الخطأ، نسمح بالطلب ولكن نسجل الخطأ
-      } else if (usageResult && !usageResult.allowed) {
-        // تم تجاوز الحد المسموح
-        console.log('[Chat API] Guest limit exceeded:', usageResult);
-        return NextResponse.json(
-          {
-            error: usageResult.message,
-            currentCount: usageResult.current_count,
-            maxAllowed: usageResult.max_allowed,
-            requiresReset: true
-          },
-          { status: 429 }
-        );
+  // 🛡️ فحص رصيد الزائر والخصم الذري (فقط لمن ليس فنياً مسجلاً)
+  let guestTrialInfo: { allowed: boolean; remaining: number; guestId: string; isNewCookie: boolean } | null = null;
+  if (!isUserLoggedIn) {
+    const trialCheck = await checkAndDeductGuestTrial(req);
+    if (!trialCheck.allowed) {
+      const errHeaders = new Headers();
+      if (trialCheck.isNewCookie) {
+        setGuestCookie(errHeaders, trialCheck.guestId);
       }
-
-      // Check if we need to set session cookie
-      const existingCookie = req.headers.get('cookie') || '';
-      needsCookie = !existingCookie.includes('dahab_session=');
-    } catch (error) {
-      console.error('[Chat API] Error checking usage:', error);
-      // في حالة الخطأ، نسمح بالطلب لتجنب تعطيل الخدمة
+      return NextResponse.json(
+        { error: 'LIMIT_REACHED', remaining: 0 },
+        { status: 403, headers: errHeaders }
+      );
     }
-  } else if (isUserLoggedIn) {
-    console.log('[Chat API] Skipping usage limit - user is authenticated');
+    guestTrialInfo = trialCheck;
   }
   
   // التحقق من صحة البيانات باستخدام Zod
@@ -331,23 +279,31 @@ async function chatHandler(req: NextRequest) {
     });
   }
 
-  // استدعاء محرك الذكاء الاصطناعي مع timeout safeguard
-  const aiResponse = await withTimeout(
-    callAIEngine({
-      prompt: contextPrompt + contextInfo + expertSystemContext + message + expertContext,
-      specialty: (diagnosticContext?.specialty as any) || 'mobile-repair',
-      deviceModel: diagnosticContext?.deviceModel || 'General',
-      readings: diagnosticContext?.readings || {},
-      imageBase64: imageBase64 || undefined,
-      preferredEngine: 'gemini',
-      systemPrompt,
-      skipEnhancement: true,
-      stream,
-      customKeys,
-    }),
-    120000, // 2 minutes timeout (increased for mobile stability)
-    'انتهت مهلة طلب الذكاء الاصطناعي'
-  );
+  // استدعاء محرك الذكاء الاصطناعي مع rollback تلقائي للزائر عند حدوث أي خطأ
+  let aiResponse: any;
+  try {
+    aiResponse = await withTimeout(
+      callAIEngine({
+        prompt: contextPrompt + contextInfo + expertSystemContext + message + expertContext,
+        specialty: (diagnosticContext?.specialty as any) || 'mobile-repair',
+        deviceModel: diagnosticContext?.deviceModel || 'General',
+        readings: diagnosticContext?.readings || {},
+        imageBase64: imageBase64 || undefined,
+        preferredEngine: 'gemini',
+        systemPrompt,
+        skipEnhancement: true,
+        stream,
+        customKeys,
+      }),
+      120000, // 2 minutes timeout (increased for mobile stability)
+      'انتهت مهلة طلب الذكاء الاصطناعي'
+    );
+  } catch (aiErr) {
+    if (guestTrialInfo) {
+      await refundGuestTrial(req, guestTrialInfo.guestId);
+    }
+    throw aiErr;
+  }
 
   // Streaming mode - return SSE stream
   if (stream && aiResponse.stream) {
@@ -373,8 +329,14 @@ async function chatHandler(req: NextRequest) {
             }
           }
 
-          // Send completion event with engine info
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true, engine: aiResponse.engine, modelUsed: aiResponse.modelUsed, metrics: aiResponse.metrics })}\n\n`));
+          // Send completion event with engine info and remaining trials
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            done: true,
+            engine: aiResponse.engine,
+            modelUsed: aiResponse.modelUsed,
+            metrics: aiResponse.metrics,
+            remaining: guestTrialInfo ? guestTrialInfo.remaining : undefined,
+          })}\n\n`));
           controller.close();
         } catch (err) {
           // Send error event
@@ -393,18 +355,12 @@ async function chatHandler(req: NextRequest) {
         'Pragma': 'no-cache',
         'Expires': '0',
         'X-Content-Type-Options': 'nosniff',
+        'X-Guest-Remaining': String(guestTrialInfo ? guestTrialInfo.remaining : 999),
       },
     });
 
-    // Set session cookie if needed
-    if (needsCookie && sessionId) {
-      response.cookies.set('dahab_session', sessionId, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 30, // 30 days
-        path: '/',
-      });
+    if (guestTrialInfo?.isNewCookie) {
+      setGuestCookie(response.headers, guestTrialInfo.guestId);
     }
 
     return response;
@@ -429,23 +385,21 @@ async function chatHandler(req: NextRequest) {
     modelUsed: aiResponse.modelUsed || 'default',
     errorLog: aiResponse.errorLog,
     fromCache: false,
+    remaining: guestTrialInfo ? guestTrialInfo.remaining : undefined,
     debug: {
       cacheHit: false,
       geminiKeysCount: (process.env.GEMINI_API_KEY || '').split(/[\n,;]+/).filter(Boolean).length,
       openaiKeysCount: (process.env.OPENAI_API_KEY || '').split(/[\n,;]+/).filter(Boolean).length,
       openrouterKeysCount: (process.env.OPENROUTER_API_KEY || '').split(/[\n,;]+/).filter(Boolean).length,
     },
+  }, {
+    headers: {
+      'X-Guest-Remaining': String(guestTrialInfo ? guestTrialInfo.remaining : 999),
+    }
   });
 
-  // Set session cookie if needed
-  if (needsCookie && sessionId) {
-    response.cookies.set('dahab_session', sessionId, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 30, // 30 days
-      path: '/',
-    });
+  if (guestTrialInfo?.isNewCookie) {
+    setGuestCookie(response.headers, guestTrialInfo.guestId);
   }
 
   return response;

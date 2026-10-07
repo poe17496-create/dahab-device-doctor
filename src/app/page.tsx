@@ -149,27 +149,17 @@ export default function DahabFixAiConsole() {
       try {
         const u = JSON.parse(userStr);
         if (u && u.username) {
-          // إذا كان زائراً: تحقق من المحاولات المتبقية من Supabase
+          // إذا كان زائراً: تحقق من المحاولات المتبقية من السيرفر مباشرة
           if (u.isGuest === true || u.role === 'guest') {
             try {
-              const response = await fetch('/api/guest-remaining');
-              const data = await response.json();
-              const remaining = data.success ? data.remaining : 5;
-
-              if (remaining <= 0) {
-                localStorage.removeItem('dahab_current_user');
-                setCurrentUser(null);
-                setIsCheckingAuth(false);
-                return;
+              const response = await fetch('/api/guest/remaining', { cache: 'no-store' });
+              if (response.ok) {
+                const data = await response.json();
+                const remaining = typeof data.remaining === 'number' ? data.remaining : 0;
+                setGuestTrialsRemaining(remaining);
               }
-              setGuestTrialsRemaining(remaining);
             } catch (error) {
-              console.error('[Page] Error fetching guest remaining:', error);
-              // Fallback to localStorage if API fails
-              const today = new Date().toISOString().split('T')[0];
-              const used = parseInt(localStorage.getItem(`dahab_guest_usage_${today}`) || '0', 10);
-              const remaining = Math.max(0, 5 - used);
-              setGuestTrialsRemaining(remaining);
+              console.error('[Page] Error fetching guest remaining from server:', error);
             }
           } else {
             // مستخدم مسجل - تأكد من isGuest: false وإضافة activeSessionToken إذا لم يكن موجوداً
@@ -197,17 +187,14 @@ export default function DahabFixAiConsole() {
 
   // معالجة دخول الزائر من AuthGate
   const handleGuestAccess = (remaining: number) => {
-    const guestId = `guest_${Date.now()}`;
     const guestUser: any = {
-      id: guestId,
       username: 'guest',
-      name: `زائر (${remaining} تجربة متبقية اليوم)`,
+      name: `زائر تجريبي`,
       role: 'guest',
       active: true,
       isGuest: true,
     };
     localStorage.setItem('dahab_current_user', JSON.stringify(guestUser));
-    localStorage.setItem('dahab_guest_id', guestId); // حفظ guestId بشكل منفصل
     setGuestTrialsRemaining(remaining);
     setCurrentUser(guestUser);
 
@@ -218,7 +205,7 @@ export default function DahabFixAiConsole() {
     fetch('/api/guests', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ guestId, action: 'enter', deviceInfo, remaining }),
+      body: JSON.stringify({ guestId: 'guest_user', action: 'enter', deviceInfo, remaining }),
     }).catch(() => {});
   };
 
@@ -487,11 +474,10 @@ export default function DahabFixAiConsole() {
       return;
     }
 
-    // فحص وخصم رصيد الزائر الموحد
+    // فحص رصيد الزائر
     if (currentUser?.isGuest) {
-      const trial = await consumeGuestTrial('diagnose');
-      if (!trial.success) {
-        setOutput('⚠️ انتهت تجاربك المجانية اليومية (5 من 5).\n\nللحصول على وصول غير محدود للتشخيص ومحاكي البورد فيو والمساعد، سجّل الدخول بحساب فني معتمد أو تواصل مع المطور م. إسلام دهب على واتساب: 01064147224');
+      if (guestTrialsRemaining <= 0) {
+        setOutput('⚠️ انتهت تجاربك المجانية لليوم. سجّل كفني للاستخدام غير المحدود\n\nتواصل مع الدعم الفني عبر واتساب: https://wa.me/201064147224');
         return;
       }
     }
@@ -548,13 +534,22 @@ export default function DahabFixAiConsole() {
         }),
       });
 
-      // التعامل مع حالة 429 (تجاوز الحد المسموح للزائر)
-      if (response.status === 429) {
-        const errorText = await response.text();
-        setOutput(errorText || '⚠️ لقد استنفدت محاولاتك المجانية اليومية (5/5). يرجى تسجيل الدخول للحصول على وصول كامل.');
+      // التعامل مع حالة 403 أو 429 (تجاوز الحد المسموح للزائر)
+      if (response.status === 403 || response.status === 429) {
+        setGuestTrialsRemaining(0);
+        setOutput('⚠️ انتهت تجاربك المجانية لليوم. سجّل كفني للاستخدام غير المحدود\n\nتواصل مع الدعم الفني عبر واتساب: https://wa.me/201064147224');
         setLoading(false);
         setLoadingMessage(null);
         return;
+      }
+
+      // تحديث رصيد الزائر المتبقي من ترويسة الاستجابة مباشرة
+      const remHeader = response.headers.get('X-Guest-Remaining');
+      if (remHeader !== null) {
+        const parsed = parseInt(remHeader, 10);
+        if (!isNaN(parsed)) {
+          setGuestTrialsRemaining(parsed);
+        }
       }
 
       if (!response.body) {
@@ -645,16 +640,38 @@ export default function DahabFixAiConsole() {
 
   return (
     <div className={`min-h-screen flex flex-col font-sans bg-gradient-to-br from-dahab-50 via-amber-50 to-orange-50 dark:from-[#0B0F17] dark:via-[#111827] dark:to-[#0B0F17] text-gray-900 dark:text-gray-100 transition-colors duration-300 ${isDesktopMode ? 'w-[1200px] max-w-[1200px] mx-auto overflow-x-visible' : 'w-full overflow-x-hidden'}`}>
-      {/* شريط الزائر المؤقت - مدمج ومختصر */}
+      {/* شريط الزائر المؤقت */}
       {currentUser?.isGuest && (
-        <div className="bg-gradient-to-r from-dahab-500 to-amber-600 text-white text-center py-1.5 px-3 text-xs font-bold flex items-center justify-between gap-2 z-[60] relative">
-          <span className="truncate">🧪 وضع الزائر: متبقي لك <strong>{guestTrialsRemaining}</strong> تجارب اليوم</span>
-          <button
-            onClick={() => { localStorage.removeItem('dahab_current_user'); setCurrentUser(null); }}
-            className="px-2.5 py-0.5 rounded-lg bg-white/20 hover:bg-white/30 transition text-[10px] font-black shrink-0"
-          >
-            دخول فني ⚡
-          </button>
+        <div className={`text-white text-center py-2 px-3 text-xs font-bold flex items-center justify-between gap-2 z-[60] relative transition-colors ${
+          guestTrialsRemaining > 0
+            ? 'bg-gradient-to-r from-dahab-500 to-amber-600'
+            : 'bg-gradient-to-r from-rose-600 to-red-700'
+        }`}>
+          <span className="truncate">
+            {guestTrialsRemaining > 0 ? (
+              <>متبقي لك <strong>{guestTrialsRemaining}</strong> تجارب اليوم</>
+            ) : (
+              <>انتهت تجاربك المجانية لليوم. سجّل كفني للاستخدام غير المحدود</>
+            )}
+          </span>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {guestTrialsRemaining === 0 && (
+              <a
+                href="https://wa.me/201064147224"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-2.5 py-0.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white transition text-[11px] font-black shrink-0 flex items-center gap-1 shadow-sm"
+              >
+                <span>واتساب 💬</span>
+              </a>
+            )}
+            <button
+              onClick={() => { localStorage.removeItem('dahab_current_user'); setCurrentUser(null); }}
+              className="px-2.5 py-0.5 rounded-lg bg-white/20 hover:bg-white/30 transition text-[10px] font-black shrink-0"
+            >
+              دخول فني ⚡
+            </button>
+          </div>
         </div>
       )}
       {/* Header علوي نحيف ومضغوط بدون أي تداخل */}
@@ -760,6 +777,7 @@ export default function DahabFixAiConsole() {
                     onDiagnose={handleDiagnose}
                     loadingMessage={loadingMessage}
                     validationError={validationError}
+                    guestUsageRemaining={currentUser?.isGuest ? guestTrialsRemaining : undefined}
                   />
 
                   {metrics && (
@@ -986,7 +1004,11 @@ export default function DahabFixAiConsole() {
 
               {/* تبويب المساعد الذكي - يأخذ كامل ارتفاع الشاشة في وضع الديسكتوب بدون فراغ سفلي */}
               <div className={`h-[calc(100dvh-150px)] md:h-[calc(100dvh-115px)] lg:h-[calc(100dvh-105px)] ${activeTab === 'ai-chat' ? 'block' : 'hidden'}`}>
-                <AIChat currentUser={currentUser} />
+                <AIChat
+                  currentUser={currentUser}
+                  guestRemaining={currentUser?.isGuest ? guestTrialsRemaining : undefined}
+                  onRemainingChange={(r) => setGuestTrialsRemaining(r)}
+                />
               </div>
             </div>
           </div>

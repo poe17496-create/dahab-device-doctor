@@ -29,26 +29,19 @@ export default function AuthGate({ onAuthenticated, onGuestAccess }: AuthGatePro
   const [error, setError] = useState('');
   const [guestTrialsRemaining, setGuestTrialsRemaining] = useState(5);
 
-  // حساب محاولات الزائر المتبقية اليومياً من Supabase
+  // جلب رصيد الزائر المتبقي من السيرفر مباشرة
   useEffect(() => {
     const fetchGuestRemaining = async () => {
       try {
-        const response = await fetch('/api/guest-remaining');
-        const data = await response.json();
-        if (data.success) {
-          setGuestTrialsRemaining(data.remaining);
-        } else {
-          // Fallback to localStorage if API fails
-          const today = new Date().toISOString().split('T')[0];
-          const used = parseInt(localStorage.getItem(`dahab_guest_usage_${today}`) || '0', 10);
-          setGuestTrialsRemaining(Math.max(0, 5 - used));
+        const response = await fetch('/api/guest/remaining', { cache: 'no-store' });
+        if (response.ok) {
+          const data = await response.json();
+          if (typeof data.remaining === 'number') {
+            setGuestTrialsRemaining(data.remaining);
+          }
         }
       } catch (error) {
-        console.error('[AuthGate] Error fetching guest remaining:', error);
-        // Fallback to localStorage if API fails
-        const today = new Date().toISOString().split('T')[0];
-        const used = parseInt(localStorage.getItem(`dahab_guest_usage_${today}`) || '0', 10);
-        setGuestTrialsRemaining(Math.max(0, 5 - used));
+        console.error('[AuthGate] Error fetching guest remaining from server:', error);
       }
     };
 
@@ -157,22 +150,20 @@ export default function AuthGate({ onAuthenticated, onGuestAccess }: AuthGatePro
   };
 
   const handleGuestAccess = async () => {
-    // تحقق من المحاولات المتبقية من Supabase
     try {
-      const response = await fetch('/api/guest-remaining');
+      const response = await fetch('/api/guest/remaining', { cache: 'no-store' });
       const data = await response.json();
-      const remaining = data.success ? data.remaining : 5;
+      const remaining = typeof data.remaining === 'number' ? data.remaining : 0;
 
       if (remaining <= 0) {
-        setError('⚠️ انتهت تجاربك المجانية اليوم (5 تجارب). سجّل الدخول بحساب فني أو تواصل مع المطور للحصول على حساب دائم.');
+        setGuestTrialsRemaining(0);
+        setError('⚠️ انتهت تجاربك المجانية لليوم. سجّل كفني للاستخدام غير المحدود.');
         return;
       }
 
-      // تسجيل زائر مؤقت في localStorage
       const guestUser: any = {
-        id: `guest_${Date.now()}`,
-        username: `guest`,
-        name: `زائر (${remaining} تجربة متبقية اليوم)`,
+        username: 'guest',
+        name: `زائر (${remaining} تجربة متبقية)`,
         role: 'guest',
         active: true,
         isGuest: true,
@@ -180,28 +171,8 @@ export default function AuthGate({ onAuthenticated, onGuestAccess }: AuthGatePro
       localStorage.setItem('dahab_current_user', JSON.stringify(guestUser));
       onGuestAccess(remaining);
     } catch (error) {
-      console.error('[AuthGate] Error fetching guest remaining:', error);
-      // Fallback to localStorage if API fails
-      const today = new Date().toISOString().split('T')[0];
-      const key = `dahab_guest_usage_${today}`;
-      const used = parseInt(localStorage.getItem(key) || '0', 10);
-      const remaining = Math.max(0, 5 - used);
-
-      if (remaining <= 0) {
-        setError('⚠️ انتهت تجاربك المجانية اليوم (5 تجارب). سجّل الدخول بحساب فني أو تواصل مع المطور للحصول على حساب دائم.');
-        return;
-      }
-
-      const guestUser: any = {
-        id: `guest_${Date.now()}`,
-        username: `guest`,
-        name: `زائر (${remaining} تجربة متبقية اليوم)`,
-        role: 'guest',
-        active: true,
-        isGuest: true,
-      };
-      localStorage.setItem('dahab_current_user', JSON.stringify(guestUser));
-      onGuestAccess(remaining);
+      console.error('[AuthGate] Error during guest access:', error);
+      setError('تعذر التحقق من رصيد الزائر، يرجى المحاولة مرة أخرى.');
     }
   };
 
@@ -332,7 +303,7 @@ export default function AuthGate({ onAuthenticated, onGuestAccess }: AuthGatePro
               <span>
                 {guestTrialsRemaining > 0
                   ? `دخول كزائر (${guestTrialsRemaining} تجربة متبقية اليوم)`
-                  : 'انتهت تجاربك اليومية - سجّل الدخول'}
+                  : 'انتهت تجاربك المجانية لليوم. سجّل كفني للاستخدام غير المحدود'}
               </span>
             </button>
           </div>

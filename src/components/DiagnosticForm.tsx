@@ -805,15 +805,33 @@ export default function DiagnosticForm({
         {/* مؤشر محاولات الزائر إن وجد وزر التشخيص */}
         <div className="flex-1 flex flex-col justify-end gap-3">
           {guestUsageRemaining !== undefined && (
-            <div className="text-[11px] font-bold px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-dahab-400 text-center">
-              🎁 تجربة زائر: متبقي لك <strong>{guestUsageRemaining}</strong> من 5 محاولات اليوم
+            <div className={`text-xs font-bold px-4 py-2.5 rounded-xl border text-center transition-all ${
+              guestUsageRemaining > 0
+                ? 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-dahab-400'
+                : 'bg-rose-500/15 border-rose-500/40 text-rose-700 dark:text-rose-300'
+            }`}>
+              {guestUsageRemaining > 0 ? (
+                <>🎁 متبقي لك <strong>{guestUsageRemaining}</strong> تجارب اليوم</>
+              ) : (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-start">
+                  <span>انتهت تجاربك المجانية لليوم. سجّل كفني للاستخدام غير المحدود</span>
+                  <a
+                    href="https://wa.me/201064147224"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-black shadow transition shrink-0"
+                  >
+                    <span>واتساب 💬</span>
+                  </a>
+                </div>
+              )}
             </div>
           )}
 
           {/* زر بدء الفحص الهندسي الكبير */}
           <button
             onClick={handleDiagnoseClick}
-            disabled={loading || (!prompt.trim() && !imageBase64)}
+            disabled={loading || (!prompt.trim() && !imageBase64) || guestUsageRemaining === 0}
             className="flex items-center justify-center gap-2 bg-gradient-to-r from-dahab-500 to-amber-600 hover:from-dahab-600 hover:to-amber-700 text-slate-950 px-8 py-4 rounded-2xl font-black text-sm transition-all shadow-lg shadow-dahab-500/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer w-full"
           >
             {loading ? (
@@ -821,6 +839,8 @@ export default function DiagnosticForm({
                 <div className="w-5 h-5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
                 <span>{loadingMessages[loadingStep] || 'جاري التشخيص...'}</span>
               </>
+            ) : guestUsageRemaining === 0 ? (
+              <span>انتهت التجارب اليومية - تواصل لتفعيل حساب فني 🔒</span>
             ) : (
               <>
                 <Send className="w-5 h-5" />

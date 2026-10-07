@@ -6,13 +6,17 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
   try {
     const { remaining, guestId, isNewCookie } = await getGuestRemaining(req);
-    const response = NextResponse.json({ success: true, remaining });
+    
+    const response = NextResponse.json({ remaining, success: true });
+    
+    // حفظ كوكي guestId إذا كان زائراً جديداً
     if (isNewCookie) {
       setGuestCookie(response.headers, guestId);
     }
+
     return response;
   } catch (error) {
-    console.error('[GuestRemaining Legacy Route] Error:', error);
-    return NextResponse.json({ success: false, remaining: 0 }, { status: 500 });
+    console.error('[API /api/guest/remaining] Error:', error);
+    return NextResponse.json({ remaining: 0, success: false }, { status: 500 });
   }
 }
