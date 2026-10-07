@@ -8,7 +8,19 @@ export async function POST(req: NextRequest) {
     console.log('[GuestConsume API] Request received');
     const result = await checkAndIncrementGuestTrials(req);
     console.log('[GuestConsume API] Result:', result);
-    return NextResponse.json(result);
+
+    const response = NextResponse.json({
+      success: result.success,
+      remaining: result.remaining,
+      error: result.error
+    });
+
+    // إرسال Cookie إذا تم إنشاء جلسة جديدة
+    if (result.setCookie) {
+      response.headers.set('Set-Cookie', result.setCookie);
+    }
+
+    return response;
   } catch (error) {
     console.error('[GuestConsume] Error:', error);
     return NextResponse.json({ success: true, remaining: 5 });

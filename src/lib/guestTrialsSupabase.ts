@@ -1,4 +1,5 @@
 import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
+import crypto from 'crypto';
 
 const MAX_GUEST_DAILY_TRIALS = 5;
 
@@ -30,13 +31,57 @@ export function getClientIP(request: Request): string {
 }
 
 /**
+ * استخراج أو إنشاء Session ID من Cookie
+ */
+export function getOrCreateSessionId(request: Request): string {
+  const cookieHeader = request.headers.get('cookie') || '';
+
+  // محاولة استخراج الـ session cookie الموجود
+  const sessionMatch = cookieHeader.match(/dahab_guest_session=([^;]+)/);
+  if (sessionMatch && sessionMatch[1]) {
+    return sessionMatch[1];
+  }
+
+  // إذا لم يوجد، سيتم إنشاء واحد جديد (يتم إرساله في الاستجابة)
+  return null;
+}
+
+/**
+ * إنشاء Session ID جديد فريد
+ */
+export function generateSessionId(): string {
+  return crypto.randomBytes(16).toString('hex');
+}
+
+/**
+ * إنشاء معرف فريد للزائر يجمع بين IP و Session ID
+ */
+export function generateGuestIdentifier(request: Request): {
+  ip: string;
+  sessionId: string;
+  combinedId: string;
+} {
+  const ip = getClientIP(request);
+  const sessionId = getOrCreateSessionId(request) || generateSessionId();
+
+  // دمج IP و Session ID لإنشاء معرف فريد
+  const combinedId = crypto
+    .createHash('sha256')
+    .update(`${ip}:${sessionId}`)
+    .digest('hex');
+
+  return { ip, sessionId, combinedId };
+}
+
+/**
  * التحقق من تجارب الزائر وزيادة العداد
- * @returns { success: boolean, remaining: number, error?: string }
+ * @returns { success: boolean, remaining: number, error?: string, setCookie?: string }
  */
 export async function checkAndIncrementGuestTrials(request: Request): Promise<{
   success: boolean;
   remaining: number;
   error?: string;
+  setCookie?: string;
 }> {
   // إذا لم يكن Supabase مهيأً، نسمح بالاستخدام (fallback)
   if (!isSupabaseConfigured || !supabaseAdmin) {
@@ -44,32 +89,36 @@ export async function checkAndIncrementGuestTrials(request: Request): Promise<{
     return { success: true, remaining: MAX_GUEST_DAILY_TRIALS };
   }
 
-  const ip = getClientIP(request);
+  const { ip, sessionId, combinedId } = generateGuestIdentifier(request);
   const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
-  console.log(`[GuestTrials] Checking IP: ${ip}, Today: ${today}`);
+  console.log(`[GuestTrials] Checking - IP: ${ip}, Session: ${sessionId}, Combined: ${combinedId}, Today: ${today}`);
+
+  let setCookieHeader: string | undefined;
 
   try {
-    // 1. محاولة الحصول على السجل الحالي
+    // 1. محاولة الحصول على السجل الحالي باستخدام المعرف المدمج
     const { data: existingRecord, error: fetchError } = await supabaseAdmin
       .from('guest_trials')
       .select('*')
-      .eq('ip', ip)
+      .eq('identifier', combinedId)
       .single();
 
     if (fetchError && fetchError.code !== 'PGRST116') {
-      // PGRST116 يعني "not found" وهو متوقع إذا لم يكن IP موجوداً
+      // PGRST116 يعني "not found" وهو متوقع إذا لم يكن المعرف موجوداً
       console.error('[GuestTrials] Error fetching record:', fetchError);
       // في حالة الخطأ، نسمح بالاستخدام كـ fallback
       return { success: true, remaining: MAX_GUEST_DAILY_TRIALS };
     }
 
     if (!existingRecord) {
-      // 2. IP غير موجود - إنشاء سجل جديد
+      // 2. معرف غير موجود - إنشاء سجل جديد
       const { error: insertError } = await supabaseAdmin
         .from('guest_trials')
         .insert({
+          identifier: combinedId,
           ip,
+          session_id: sessionId,
           count: 1,
           last_date: today,
         } as any);
@@ -79,11 +128,18 @@ export async function checkAndIncrementGuestTrials(request: Request): Promise<{
         return { success: true, remaining: MAX_GUEST_DAILY_TRIALS };
       }
 
-      console.log(`[GuestTrials] New IP ${ip} - Count: 1/5`);
-      return { success: true, remaining: MAX_GUEST_DAILY_TRIALS - 1 };
+      // تعيين Cookie للجلسة الجديدة
+      setCookieHeader = `dahab_guest_session=${sessionId}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=86400`;
+
+      console.log(`[GuestTrials] New guest - IP: ${ip}, Session: ${sessionId}, Count: 1/5`);
+      return {
+        success: true,
+        remaining: MAX_GUEST_DAILY_TRIALS - 1,
+        setCookie: setCookieHeader
+      };
     }
 
-    // 3. IP موجود - التحقق من التاريخ
+    // 3. معرف موجود - التحقق من التاريخ
     if (existingRecord.last_date !== today) {
       // التاريخ من يوم سابق - إعادة تعيين العداد
       const { error: updateError } = await supabaseAdmin
@@ -92,21 +148,21 @@ export async function checkAndIncrementGuestTrials(request: Request): Promise<{
           count: 1,
           last_date: today,
         } as any)
-        .eq('ip', ip);
+        .eq('identifier', combinedId);
 
       if (updateError) {
         console.error('[GuestTrials] Error resetting count:', updateError);
         return { success: true, remaining: MAX_GUEST_DAILY_TRIALS };
       }
 
-      console.log(`[GuestTrials] Reset for IP ${ip} - Count: 1/5`);
+      console.log(`[GuestTrials] Reset for guest - Session: ${sessionId}, Count: 1/5`);
       return { success: true, remaining: MAX_GUEST_DAILY_TRIALS - 1 };
     }
 
     // 4. نفس اليوم - التحقق من العداد
     if (existingRecord.count >= MAX_GUEST_DAILY_TRIALS) {
       // تجاوز الحد المسموح
-      console.log(`[GuestTrials] IP ${ip} exceeded limit: ${existingRecord.count}/5`);
+      console.log(`[GuestTrials] Guest exceeded limit - Session: ${sessionId}, Count: ${existingRecord.count}/5`);
       return {
         success: false,
         remaining: 0,
@@ -119,14 +175,14 @@ export async function checkAndIncrementGuestTrials(request: Request): Promise<{
     const { error: incrementError } = await supabaseAdmin
       .from('guest_trials')
       .update({ count: newCount } as any)
-      .eq('ip', ip);
+      .eq('identifier', combinedId);
 
     if (incrementError) {
       console.error('[GuestTrials] Error incrementing count:', incrementError);
       return { success: true, remaining: MAX_GUEST_DAILY_TRIALS - existingRecord.count };
     }
 
-    console.log(`[GuestTrials] IP ${ip} - Count: ${newCount}/5`);
+    console.log(`[GuestTrials] Guest - Session: ${sessionId}, Count: ${newCount}/5`);
     return { success: true, remaining: MAX_GUEST_DAILY_TRIALS - newCount };
 
   } catch (error) {
@@ -145,16 +201,16 @@ export async function getGuestRemainingTrialsFromSupabase(request: Request): Pro
     return MAX_GUEST_DAILY_TRIALS;
   }
 
-  const ip = getClientIP(request);
+  const { ip, sessionId, combinedId } = generateGuestIdentifier(request);
   const today = new Date().toISOString().split('T')[0];
 
-  console.log(`[GuestTrials] Getting remaining for IP: ${ip}, Today: ${today}`);
+  console.log(`[GuestTrials] Getting remaining - IP: ${ip}, Session: ${sessionId}, Combined: ${combinedId}, Today: ${today}`);
 
   try {
     const { data: record } = await supabaseAdmin
       .from('guest_trials')
       .select('count, last_date')
-      .eq('ip', ip)
+      .eq('identifier', combinedId)
       .single();
 
     console.log(`[GuestTrials] Record found:`, record);
