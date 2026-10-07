@@ -91,6 +91,7 @@ export async function GET(
       );
     }
 
+    // @ts-ignore - backup_data property exists in database
     const backupData = backupRecord.backup_data;
     const jsonStr = JSON.stringify(backupData, null, 2);
 
