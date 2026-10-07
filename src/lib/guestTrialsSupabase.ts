@@ -72,7 +72,7 @@ export async function checkAndIncrementGuestTrials(request: Request): Promise<{
           ip,
           count: 1,
           last_date: today,
-        });
+        } as any);
 
       if (insertError) {
         console.error('[GuestTrials] Error inserting record:', insertError);
@@ -91,7 +91,7 @@ export async function checkAndIncrementGuestTrials(request: Request): Promise<{
         .update({
           count: 1,
           last_date: today,
-        })
+        } as any)
         .eq('ip', ip);
 
       if (updateError) {
@@ -118,7 +118,7 @@ export async function checkAndIncrementGuestTrials(request: Request): Promise<{
     const newCount = existingRecord.count + 1;
     const { error: incrementError } = await supabaseAdmin
       .from('guest_trials')
-      .update({ count: newCount })
+      .update({ count: newCount } as any)
       .eq('ip', ip);
 
     if (incrementError) {

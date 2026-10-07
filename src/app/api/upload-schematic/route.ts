@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
         description: description || null,
         components: components || [],
         nets: nets || [],
-      })
+      } as any)
       .select()
       .single();
 

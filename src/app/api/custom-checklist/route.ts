@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
         category,
         priority,
         checked: checked || false,
-      })
+      } as any)
       .select()
       .single();
 
@@ -101,7 +101,7 @@ export async function PUT(request: NextRequest) {
         category,
         priority,
         checked,
-      })
+      } as any)
       .eq('id', id)
       .eq('user_id', user.id)
       .select()

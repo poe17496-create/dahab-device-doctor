@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const backupData = backupRecord.backup_data;
+    const backupData = (backupRecord as any).backup_data;
     const tablesToRestore = tables && tables.length > 0 ? tables : Object.keys(backupData.tables);
 
     const restoreResults: Record<string, { success: boolean; records: number; error?: string }> = {};
@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
         tables_restored: tablesToRestore,
         results: restoreResults,
         success: Object.values(restoreResults).every(r => r.success),
-      });
+      } as any);
 
     if (logError) {
       console.error('Error logging restore operation:', logError);

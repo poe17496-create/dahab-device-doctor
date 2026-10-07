@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
         .update({
           device_info: session,
           updated_at: new Date().toISOString(),
-        })
+        } as any)
         .eq('id', sessionId);
 
       if (error) {

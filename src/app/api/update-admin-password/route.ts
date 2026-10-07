@@ -17,7 +17,7 @@ export async function POST() {
     // تحديث كلمة مرور المستخدم dahab
     const { error } = await supabaseAdmin
       .from('users')
-      .update({ password: newPassword })
+      .update({ password: newPassword } as any)
       .eq('username', 'dahab');
 
     if (error) {

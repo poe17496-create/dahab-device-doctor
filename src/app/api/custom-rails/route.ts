@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
         danger_zone: dangerZone,
         first_suspects: firstSuspects,
         notes,
-      })
+      } as any)
       .select()
       .single();
 
@@ -107,7 +107,7 @@ export async function PUT(request: NextRequest) {
         danger_zone: dangerZone,
         first_suspects: firstSuspects,
         notes,
-      })
+      } as any)
       .eq('id', id)
       .eq('user_id', user.id)
       .select()

@@ -28,7 +28,7 @@ export async function POST() {
         role: 'admin',
         specialty: 'كبير مهندسي الإلكترونيات والميكروسولديرنج ومطور أنظمة دهب',
         is_active: true,
-      })
+      } as any)
       .select();
 
     if (error) {

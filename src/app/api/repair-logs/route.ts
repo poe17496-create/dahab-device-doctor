@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
         lessons_learned: lessonsLearned,
         images,
         notes
-      })
+      } as any)
       .select()
       .single();
 

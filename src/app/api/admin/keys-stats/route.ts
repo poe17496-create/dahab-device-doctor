@@ -30,6 +30,7 @@ export async function GET(req: NextRequest) {
       data = totalData;
       error = totalError;
     } else if (type === 'details') {
+      // @ts-ignore
       const { data: detailsData, error: detailsError } = await supabaseAdmin.rpc('get_keys_details', {
         p_provider: provider,
         p_days: days

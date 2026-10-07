@@ -89,7 +89,7 @@ async function chatHandler(req: NextRequest) {
       // التحقق من الاستخدام وزيادة العداد مع timeout
       const usageCheckPromise = supabaseAdmin.rpc('check_and_increment_usage', {
         p_ip_address: combinedId // Use combined ID instead of just IP
-      });
+      } as any);
 
       const { data: usageResult, error: usageError } = await Promise.race([usageCheckPromise, timeoutPromise]);
 

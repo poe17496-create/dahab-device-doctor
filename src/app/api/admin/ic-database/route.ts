@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
       pinout: pinout || {},
       specifications: specifications || {},
       alternates: alternates || [],
-    });
+    } as any);
 
     if (error) {
       console.error('Error adding IC:', error);

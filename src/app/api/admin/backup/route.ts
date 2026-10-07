@@ -88,14 +88,13 @@ export async function POST(req: NextRequest) {
     const { error: insertError } = await supabaseAdmin
       .from('database_backups')
       .insert({
-        id: backupId,
         backup_data: backupData,
         description: description || 'نسخة احتياطية يدوية',
         tables_count: backupData.metadata.tablesCount,
         total_records: backupData.metadata.totalRecords,
         size_estimate: backupData.metadata.sizeEstimate,
         created_by: 'admin',
-      });
+      } as any);
 
     if (insertError) {
       // إذا لم يكن الجدول موجوداً، نقوم بإنشائه

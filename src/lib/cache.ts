@@ -47,7 +47,7 @@ export async function getCachedResponse(cacheKey: string): Promise<any | null> {
     // Increment hit count
     await supabaseAdmin
       .from('cache_entries')
-      .update({ hit_count: (data.hit_count || 0) + 1 })
+      .update({ hit_count: (data.hit_count || 0) + 1 } as any)
       .eq('id', data.id);
 
     return data.cache_value;
@@ -79,7 +79,7 @@ export async function setCachedResponse(
         cache_value: cacheValue,
         expires_at: expiresAt.toISOString(),
         hit_count: 0,
-      }, {
+      } as any, {
         onConflict: 'cache_key'
       });
 

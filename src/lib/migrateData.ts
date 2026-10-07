@@ -23,7 +23,7 @@ export async function migrateICDatabase() {
         compatibles: ic.compatibles,
         common_symptoms: ic.commonSymptoms,
         diode_readings: ic.diodeReadings,
-      });
+      } as any);
 
       if (error) {
         failed++;

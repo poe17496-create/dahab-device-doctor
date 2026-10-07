@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
     if (isPrimary) {
       await supabase
         .from('board_schematic_mappings')
-        .update({ is_primary: false })
+        .update({ is_primary: false } as any)
         .eq('board_id', boardData.id);
     }
 
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
         alignment_data: alignmentData || {},
         confidence_score: confidenceScore || 0.0,
         is_primary: isPrimary || false,
-      })
+      } as any)
       .select()
       .single();
 

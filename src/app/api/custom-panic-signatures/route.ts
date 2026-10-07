@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
         symptom,
         fix_solution: fixSolution,
         danger_level: dangerLevel,
-      })
+      } as any)
       .select()
       .single();
 
@@ -103,7 +103,7 @@ export async function PUT(request: NextRequest) {
         symptom,
         fix_solution: fixSolution,
         danger_level: dangerLevel,
-      })
+      } as any)
       .eq('id', id)
       .eq('user_id', user.id)
       .select()

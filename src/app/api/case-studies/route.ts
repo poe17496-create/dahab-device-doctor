@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
         video_url: videoUrl,
         created_by: userId,
         status: 'pending'
-      })
+      } as any)
       .select()
       .single();
 

@@ -90,18 +90,16 @@ export async function POST(req: NextRequest) {
     backupData.metadata.sizeEstimate = `${sizeInKB} KB`;
 
     // حفظ النسخة الاحتياطية
-    const backupId = `auto_backup_${Date.now()}`;
     const { error: insertError } = await supabaseAdmin
       .from('database_backups')
       .insert({
-        id: backupId,
         backup_data: backupData,
         description: 'نسخة احتياطية تلقائية (Cron Job)',
         tables_count: backupData.metadata.tablesCount,
         total_records: backupData.metadata.totalRecords,
         size_estimate: backupData.metadata.sizeEstimate,
         created_by: 'cron',
-      });
+      } as any);
 
     if (insertError) {
       console.error('Error saving auto backup:', insertError);
@@ -134,7 +132,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      backupId,
       message: 'تم إنشاء النسخة الاحتياطية التلقائية بنجاح',
       metadata: backupData.metadata,
     });

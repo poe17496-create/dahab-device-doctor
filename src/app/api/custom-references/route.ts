@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
         url,
         category,
         description,
-      })
+      } as any)
       .select()
       .single();
 
@@ -99,7 +99,7 @@ export async function PUT(request: NextRequest) {
         url,
         category,
         description,
-      })
+      } as any)
       .eq('id', id)
       .eq('user_id', user.id)
       .select()

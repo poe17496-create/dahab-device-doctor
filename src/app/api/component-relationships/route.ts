@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
         confidence_score: confidenceScore || 50,
         source_reference: sourceReference,
         created_by: userId
-      })
+      } as any)
       .select()
       .single();
 

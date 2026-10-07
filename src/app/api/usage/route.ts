@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
     // الحصول على عدد الطلبات المتبقية
     const { data: remaining, error } = await supabaseAdmin.rpc('get_remaining_requests', {
       p_ip_address: ip
-    });
+    } as any);
 
     if (error) {
       console.error('Error getting remaining requests:', error);

@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
         is_official: isOfficial,
         created_by: userId,
         reliability_score: isOfficial ? 100 : 50
-      })
+      } as any)
       .select()
       .single();
 
