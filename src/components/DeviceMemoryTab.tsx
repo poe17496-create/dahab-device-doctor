@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { RepairSession } from '@/lib/types';
 import { generateProfessionalDiagnosticPDF } from '@/lib/pdfReportGenerator';
+import DiagnosticReportModal from '@/components/DiagnosticReportModal';
 
 // حالات وأجهزة فحص نموذجية استرشادية جاهزة حتى لا يكون التبويب فارغاً أبداً
 const BENCHMARK_REFERENCE_SESSIONS: RepairSession[] = [
@@ -180,6 +181,7 @@ export default function DeviceMemoryTab({
   const [sortBy, setSortBy] = useState<'date' | 'urgency' | 'name'>('date');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [savedChats, setSavedChats] = useState<any[]>([]);
+  const [reportModalSession, setReportModalSession] = useState<RepairSession | null>(null);
 
   // جلسات الشات المؤرشفة - لا تستخدم localStorage الآن
   // البيانات ستأتي من الـ props أو سيتم حفظها في Supabase لاحقاً
@@ -615,9 +617,9 @@ export default function DeviceMemoryTab({
                       <Download className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => generateProfessionalDiagnosticPDF(session)}
-                      className="p-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-dahab-700 dark:text-dahab-400 border border-amber-500/30 transition flex items-center gap-1 text-[11px] font-bold"
-                      title="تصدير وطباعة تقرير فحص رسمي PDF"
+                      onClick={() => setReportModalSession(session)}
+                      className="p-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-dahab-700 dark:text-dahab-400 border border-amber-500/30 transition flex items-center gap-1 text-[11px] font-bold cursor-pointer"
+                      title="تصدير وتخصيص تقرير فحص رسمي معتمد PDF"
                     >
                       <Printer className="w-4 h-4 text-dahab-500" />
                       <span className="hidden sm:inline">تقرير PDF</span>
@@ -710,6 +712,13 @@ export default function DeviceMemoryTab({
           )}
         </div>
       )}
+
+      {/* نافذة تخصيص وطباعة تقرير الفحص المعتمد A4 PDF + QR */}
+      <DiagnosticReportModal
+        isOpen={!!reportModalSession}
+        onClose={() => setReportModalSession(null)}
+        session={reportModalSession || undefined}
+      />
     </div>
   );
 }

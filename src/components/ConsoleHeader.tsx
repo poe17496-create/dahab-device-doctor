@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Cpu, PlusCircle, LogOut, Crown, Monitor, Smartphone } from 'lucide-react';
+import { Cpu, PlusCircle, LogOut, Crown, Monitor, Smartphone, Camera } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import LoginModal from '@/components/LoginModal';
 import { UserAccount } from '@/lib/auth';
@@ -16,6 +16,7 @@ interface ConsoleHeaderProps {
   onLogout?: () => void;
   isDesktopMode?: boolean;
   onToggleDesktopMode?: () => void;
+  onOpenMicroscope?: () => void;
 }
 
 export default function ConsoleHeader({
@@ -27,6 +28,7 @@ export default function ConsoleHeader({
   onLogout,
   isDesktopMode = false,
   onToggleDesktopMode,
+  onOpenMicroscope,
 }: ConsoleHeaderProps) {
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(propUser || null);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
@@ -157,6 +159,18 @@ export default function ConsoleHeader({
             <Crown className="w-3.5 h-3.5 text-dahab-500" />
             <span className="hidden md:inline">برمجيات دهب</span>
           </Link>
+
+          {/* زر كاميرا الميكروسكوب المباشرة */}
+          {onOpenMicroscope && (
+            <button
+              onClick={onOpenMicroscope}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-dahab-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-dahab-700 dark:text-dahab-400 text-xs font-bold transition shadow-sm"
+              title="فتح كاميرا الميكروسكوب الإلكتروني USB مع نيشان التصويب"
+            >
+              <Camera className="w-3.5 h-3.5 text-dahab-500" />
+              <span className="hidden sm:inline">ميكروسكوب</span>
+            </button>
+          )}
 
           {/* زر الوضع النهاري والليلي */}
           <ThemeToggle />

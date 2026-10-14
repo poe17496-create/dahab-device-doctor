@@ -40,56 +40,75 @@ function loadMatrix(): any[] {
 }
 
 /**
- * Search IC database using Supabase (preferred) or fallback to local JSON
+ * 🔍 محرك البحث في بدائل الآيسيهات وبوردات التشليح (IC & Scrap Board Donor Finder)
+ * يبحث برقم الآيسي، أو باسم البوردة/الموديل، أو يُرجع أشهر الآيسيات عند ترك البحث فارغاً
  */
-export async function searchICDatabase(query: string): Promise<ICRecord[]> {
-  if (!query || query.trim().length === 0) return [];
-  const q = query.toLowerCase().trim();
+export async function searchICDatabase(query?: string): Promise<ICRecord[]> {
+  const q = (query || '').toLowerCase().trim();
 
-  // Try Supabase first if configured
+  // محاولة الاستعلام من Supabase أولاً إن كان مهيئاً
   if (supabaseAdmin) {
     try {
       return await searchICDatabaseSupabase(q);
     } catch (error) {
-      console.error('Error searching IC database in Supabase, falling back to local:', error);
+      console.warn('Supabase IC search fallback to local matrix:', error);
     }
   }
 
-  // Fallback to local JSON
+  // البحث المحلي في قاعدة الآيسيات ومصفوفة المخططات (859 بوردة)
   return searchICDatabaseLocal(q);
 }
 
 /**
- * Search IC database using Supabase
+ * استخراج بوردات التشليح المتطابقة مع آيسي معين من مصفوفة الـ 859 بوردة
+ */
+export function findDonorBoardsForIC(partNumber: string): DonorBoardMatch[] {
+  if (!partNumber) return [];
+  const matrix = loadMatrix();
+  const key = partNumber.toLowerCase().trim();
+  const matchedDonors: DonorBoardMatch[] = [];
+
+  matrix.forEach((board) => {
+    if (!board.mainChips) return;
+    Object.entries(board.mainChips).forEach(([role, chipVal]) => {
+      const chipStr = String(chipVal).toLowerCase();
+      if (chipStr.includes(key) || key.includes(chipStr.split(' ')[0])) {
+        if (matchedDonors.length < 20) {
+          matchedDonors.push({
+            brand: board.brand || 'معتمد',
+            model: board.model,
+            boardCode: board.boardCode || 'PCB-REF',
+            category: board.category || 'electronics',
+            roleOnBoard: `${role}: ${chipVal}`,
+          });
+        }
+      }
+    });
+  });
+
+  return matchedDonors;
+}
+
+/**
+ * البحث في قاعدة الآيسيات عبر Supabase
  */
 async function searchICDatabaseSupabase(query: string): Promise<ICRecord[]> {
   const q = query.toLowerCase().trim();
 
-  // 1. Search in ic_database table
-  const { data: icData, error: icError } = await supabaseAdmin
-    .from('ic_database')
-    .select('*')
-    .or(`part_number.ilike.%${q}%,category.ilike.%${q}%,device_family.ilike.%${q}%,function.ilike.%${q}%`)
-    .limit(20);
+  let queryBuilder = supabaseAdmin.from('ic_database').select('*');
+
+  if (q.length > 0) {
+    queryBuilder = queryBuilder.or(`part_number.ilike.%${q}%,category.ilike.%${q}%,device_family.ilike.%${q}%,function.ilike.%${q}%`);
+  }
+
+  const { data: icDataRows, error: icError } = await queryBuilder.limit(25);
 
   if (icError) {
-    console.error('Error fetching IC data from Supabase:', icError);
     throw icError;
   }
 
-  // 2. Search in donor_boards table
-  const { data: donorData, error: donorError } = await supabaseAdmin
-    .from('donor_boards')
-    .select('*')
-    .ilike('chip_name', `%${q}%`)
-    .limit(15);
-
-  if (donorError) {
-    console.error('Error fetching donor boards from Supabase:', donorError);
-  }
-
-  // Map Supabase data to ICRecord format
-  const baseResults: ICRecord[] = (icData || []).map((item: any) => ({
+  // البحث عن بوردات التشليح في Supabase أو الماتريكس
+  const baseResults: ICRecord[] = (icDataRows || []).map((item: any) => ({
     partNumber: item.part_number,
     category: item.category,
     deviceFamily: item.device_family,
@@ -97,75 +116,35 @@ async function searchICDatabaseSupabase(query: string): Promise<ICRecord[]> {
     compatibles: item.compatibles || [],
     commonSymptoms: item.common_symptoms || '',
     diodeReadings: item.diode_readings || '',
+    donorBoards: findDonorBoardsForIC(item.part_number),
   }));
 
-  // Create donor map from donor_boards
-  const donorMap: Record<string, DonorBoardMatch[]> = {};
-  (donorData || []).forEach((donor: any) => {
-    if (!donorMap[q]) donorMap[q] = [];
-    if (donorMap[q].length < 15) {
-      donorMap[q].push({
-        brand: donor.brand,
-        model: donor.model,
-        boardCode: donor.board_code,
-        category: donor.category,
-        roleOnBoard: donor.role_on_board,
-      });
-    }
-  });
-
-  // Enrich results with donor boards
-  const enrichedResults = baseResults.map((rec) => {
-    const partKey = rec.partNumber.toLowerCase();
-    const matchedDonors: DonorBoardMatch[] = [];
-
-    (donorData || []).forEach((donor: any) => {
-      const chipStr = donor.chip_name.toLowerCase();
-      if (chipStr.includes(partKey) || partKey.includes(chipStr.split(' ')[0])) {
-        if (matchedDonors.length < 15) {
-          matchedDonors.push({
-            brand: donor.brand,
-            model: donor.model,
-            boardCode: donor.board_code,
-            category: donor.category,
-            roleOnBoard: donor.role_on_board,
-          });
-        }
-      }
-    });
-
-    return {
-      ...rec,
-      donorBoards: matchedDonors.length > 0 ? matchedDonors : donorMap[q],
-    };
-  });
-
-  // If IC not in database but found in donor boards
-  if (enrichedResults.length === 0 && donorMap[q] && donorMap[q].length > 0) {
-    const firstDonor = donorMap[q][0];
-    enrichedResults.push({
-      partNumber: query.toUpperCase(),
-      category: firstDonor.category === 'mobile' ? 'Mobile IC' : firstDonor.category === 'laptop' ? 'Laptop IC' : 'Desktop/GPU IC',
-      deviceFamily: `${firstDonor.brand} & Multi-vendor`,
-      function: `شريحة إلكترونية مستخدمة كـ (${firstDonor.roleOnBoard})`,
-      compatibles: donorMap[q].map(d => `${d.model} [${d.boardCode}]`),
-      commonSymptoms: 'فصل باور، تذبذب سحب الأمبير، أو فقدان الجهد المنظم الخاص بالدائرة',
-      diodeReadings: 'قس الممانعة على أطراف الملفات والمكثفات المحيطة لتحديد الشورت (0.350V - 0.500V متوقع)',
-      donorBoards: donorMap[q],
-    });
+  // إذا لم نجد نتائج وبحث المستخدم عن اسم بوردة أو آيسي غير مسجل، نبحث في الماتريكس المحلي
+  if (baseResults.length === 0 && q.length > 0) {
+    return searchICDatabaseLocal(q);
   }
 
-  return enrichedResults;
+  return baseResults;
 }
 
 /**
- * Search IC database using local JSON (fallback)
+ * البحث المحلي الكامل (يدعم رقم الآيسي أو كود بوردة التشليح وموديل الجهاز)
  */
 function searchICDatabaseLocal(query: string): ICRecord[] {
   const q = query.toLowerCase().trim();
+  const allIcs = icData as ICRecord[];
+  const matrix = loadMatrix();
 
-  // 1. البحث في قاعدة الآيسيات الأساسية
-  const baseResults: ICRecord[] = (icData as ICRecord[]).filter((item) => {
+  // 1. إذا كان البحث فارغاً: اعرض أشهر 25 آيسي شائعة في صيانة الموبايل واللابتوب مع بوردات التشليح
+  if (!q) {
+    return allIcs.slice(0, 25).map((rec) => ({
+      ...rec,
+      donorBoards: findDonorBoardsForIC(rec.partNumber),
+    }));
+  }
+
+  // 2. البحث برقم الآيسي أو الفئة أو الوظيفة في قاعدة الآيسيات المباشرة
+  const matchedIcs = allIcs.filter((item) => {
     return (
       item.partNumber.toLowerCase().includes(q) ||
       item.category.toLowerCase().includes(q) ||
@@ -175,72 +154,70 @@ function searchICDatabaseLocal(query: string): ICRecord[] {
     );
   });
 
-  // 2. البحث في مصفوفة الـ 859 بوردة ومخطط عن بوردات التشليح (Donor Boards)
-  const matrix = loadMatrix();
-  const donorMap: Record<string, DonorBoardMatch[]> = {};
+  const enrichedResults: ICRecord[] = matchedIcs.map((rec) => ({
+    ...rec,
+    donorBoards: findDonorBoardsForIC(rec.partNumber),
+  }));
 
-  // البحث في المخططات لكل نتيجة وربطها ببوردات التشليح
-  matrix.forEach((board) => {
-    if (!board.mainChips) return;
-    Object.entries(board.mainChips).forEach(([role, chipName]) => {
-      const chipStr = String(chipName).toLowerCase();
-      if (chipStr.includes(q)) {
-        if (!donorMap[q]) donorMap[q] = [];
-        if (donorMap[q].length < 15) {
-          donorMap[q].push({
-            brand: board.brand,
-            model: board.model,
-            boardCode: board.boardCode,
-            category: board.category,
-            roleOnBoard: `${role}: ${chipName}`,
-          });
-        }
-      }
-    });
+  // 3. البحث العكسي: هل بحث الفني عن "كود بوردة" أو "موديل جهاز تشليح" في ورشته؟ (مثل: LA-9104P أو iPhone 6 أو NM-A311)
+  const matchedBoards = matrix.filter((b) => {
+    const model = (b.model || '').toLowerCase();
+    const code = (b.boardCode || '').toLowerCase();
+    const brand = (b.brand || '').toLowerCase();
+    return model.includes(q) || code.includes(q) || `${brand} ${model}`.includes(q);
   });
 
-  // إرفاق بوردات التشليح بالنتائج الأساسية
-  const enrichedResults = baseResults.map((rec) => {
-    const partKey = rec.partNumber.toLowerCase();
-    const matchedDonors: DonorBoardMatch[] = [];
-
-    matrix.forEach((board) => {
+  if (matchedBoards.length > 0) {
+    // استخراج جميع الآيسيات الموجودة على بوردة التشليح التي بحث عنها الفني
+    matchedBoards.slice(0, 3).forEach((board) => {
       if (!board.mainChips) return;
-      Object.entries(board.mainChips).forEach(([role, chipName]) => {
-        const chipStr = String(chipName).toLowerCase();
-        if (chipStr.includes(partKey) || partKey.includes(chipStr.split(' ')[0])) {
-          if (matchedDonors.length < 15) {
-            matchedDonors.push({
-              brand: board.brand,
-              model: board.model,
-              boardCode: board.boardCode,
-              category: board.category,
-              roleOnBoard: `${role}: ${chipName}`,
-            });
-          }
+      Object.entries(board.mainChips).forEach(([role, chipVal]) => {
+        const chipName = String(chipVal).trim();
+        // تجنب التكرار
+        if (!enrichedResults.some((r) => r.partNumber.toLowerCase() === chipName.toLowerCase())) {
+          // البحث عن بوردات أخرى تحمل نفس هذا الآيسي (بدائل التشليح)
+          const otherDonors = findDonorBoardsForIC(chipName).filter((d) => d.boardCode !== board.boardCode);
+          
+          enrichedResults.push({
+            partNumber: chipName,
+            category: board.category === 'mobile' ? 'Mobile IC' : board.category === 'laptop' ? 'Laptop IC' : 'Motherboard IC',
+            deviceFamily: `${board.brand} ${board.model} (${board.boardCode})`,
+            function: `شريحة (${role}) على بوردة ${board.model}`,
+            compatibles: otherDonors.map((d) => `${d.model} [${d.boardCode}]`),
+            commonSymptoms: `فصل دائرة ${role}، شورت أو غياب جهد التشغيل على ملفات الدائرة.`,
+            diodeReadings: 'قس الممانعة على ملف التغذية المحيط والمكثفات (المتوقع 0.350V - 0.480V بالدايود مود).',
+            donorBoards: [
+              {
+                brand: board.brand,
+                model: `${board.model} (البوردة الأصلية)`,
+                boardCode: board.boardCode,
+                category: board.category,
+                roleOnBoard: role,
+              },
+              ...otherDonors,
+            ],
+          });
         }
       });
     });
+  }
 
-    return {
-      ...rec,
-      donorBoards: matchedDonors.length > 0 ? matchedDonors : donorMap[q],
-    };
-  });
-
-  // إذا لم يكن الآيسي مسجلاً في ic_database لكنه موجود في بوردات المخططات الـ 859:
-  if (enrichedResults.length === 0 && donorMap[q] && donorMap[q].length > 0) {
-    const firstDonor = donorMap[q][0];
-    enrichedResults.push({
-      partNumber: query.toUpperCase(),
-      category: firstDonor.category === 'mobile' ? 'Mobile IC' : firstDonor.category === 'laptop' ? 'Laptop IC' : 'Desktop/GPU IC',
-      deviceFamily: `${firstDonor.brand} & Multi-vendor`,
-      function: `شريحة إلكترونية مستخدمة كـ (${firstDonor.roleOnBoard})`,
-      compatibles: donorMap[q].map(d => `${d.model} [${d.boardCode}]`),
-      commonSymptoms: 'فصل باور، تذبذب سحب الأمبير، أو فقدان الجهد المنظم الخاص بالدائرة',
-      diodeReadings: 'قس الممانعة على أطراف الملفات والمكثفات المحيطة لتحديد الشورت (0.350V - 0.500V متوقع)',
-      donorBoards: donorMap[q],
-    });
+  // 4. إذا لم يطابق اسم آيسي ولا بوردة مباشرة، لكنه طابق شريحة في الماتريكس
+  if (enrichedResults.length === 0) {
+    const donors = findDonorBoardsForIC(q);
+    if (donors.length > 0) {
+      const first = donors[0];
+      enrichedResults.push({
+        partNumber: q.toUpperCase(),
+        category: first.category === 'mobile' ? 'Mobile IC' : first.category === 'laptop' ? 'Laptop IC' : 'Electronics IC',
+        deviceFamily: `${first.brand} & Multi-vendor`,
+        function: `شريحة إلكترونية مستخدمة كـ (${first.roleOnBoard})`,
+        compatibles: donors.map((d) => `${d.model} [${d.boardCode}]`),
+        commonSymptoms: 'سخونة، سحب أمبير غير طبيعي على الباور سبلاي، أو فقدان الإشارة/الفولت الخاص بالدائرة.',
+        diodeReadings: 'افحص خطوط الدخل والخرج بالدايود، وتأكد من عدم وجود قصر (Short to GND).',
+        donorBoards: donors,
+      });
+    }
   }
 
   return enrichedResults;

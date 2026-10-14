@@ -18,7 +18,9 @@ import {
   Mic,
   MicOff,
   HardDrive,
+  Camera,
 } from 'lucide-react';
+import MicroscopeCameraModal from '@/components/MicroscopeCameraModal';
 
 interface DiagnosticFormProps {
   specialty: DeviceSpecialty;
@@ -244,6 +246,7 @@ export default function DiagnosticForm({
   const [showAdvancedReadings, setShowAdvancedReadings] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<CategoryId>('mobile');
+  const [showMicroscopeModal, setShowMicroscopeModal] = useState(false);
   const [localValidationError, setLocalValidationError] = useState<string | null>(null);
   const [loadingStep, setLoadingStep] = useState(0);
 
@@ -774,27 +777,47 @@ export default function DiagnosticForm({
 
       {/* 4. رفع الصور وزر التشخيص الأساسي */}
       <div className="flex flex-col lg:flex-row gap-4 pt-4 border-t border-gray-100 dark:border-workshop-border">
-        {/* رفع صورة الجهاز */}
-        <div className="flex-1 bg-gray-50 dark:bg-[#111827] border border-gray-200 dark:border-[#1F2937] rounded-2xl p-4 transition">
-          <label className="block text-xs font-bold text-gray-800 dark:text-gray-100 mb-2">
-            📷 صورة للبوردة أو قياس الحرارة (اختياري)
-          </label>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleImageUpload}
-            className="w-full text-xs text-gray-600 dark:text-gray-400 file:mr-4 file:rounded-xl file:border-0 file:bg-gray-200 dark:file:bg-[#1F2937] file:text-gray-900 dark:file:text-gray-100 cursor-pointer file:px-4 file:py-2 hover:file:bg-gray-300 dark:hover:file:bg-gray-700 transition"
-          />
+        {/* رفع صورة الجهاز أو فتح الميكروسكوب */}
+        <div className="flex-1 bg-gray-50 dark:bg-[#111827] border border-gray-200 dark:border-[#1F2937] rounded-2xl p-4 transition space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="block text-xs font-bold text-gray-800 dark:text-gray-100">
+              📷 فحص البوردة بالكاميرا أو الميكروسكوب (اختياري)
+            </label>
+            <button
+              type="button"
+              onClick={() => setShowMicroscopeModal(true)}
+              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-dahab-500 to-amber-600 hover:from-dahab-600 hover:to-amber-700 text-slate-950 font-black text-xs transition flex items-center gap-1.5 shadow-sm active:scale-95"
+              title="فتح كاميرا الميكروسكوب الإلكتروني USB مع نيشان التصويب"
+            >
+              <Camera className="w-3.5 h-3.5" />
+              <span>🔬 كاميرا الميكروسكوب المباشرة</span>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="w-full text-xs text-gray-600 dark:text-gray-400 file:mr-4 file:rounded-xl file:border-0 file:bg-gray-200 dark:file:bg-[#1F2937] file:text-gray-900 dark:file:text-gray-100 cursor-pointer file:px-4 file:py-2 hover:file:bg-gray-300 dark:hover:file:bg-gray-700 transition"
+            />
+          </div>
+
           {imageBase64 && (
-            <div className="mt-3 relative inline-block">
+            <div className="mt-2 relative inline-block animate-fadeIn">
               <img
                 src={imageBase64}
                 alt="Device"
-                className="w-32 h-32 object-cover rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm"
+                className="w-36 h-36 object-cover rounded-xl border-2 border-dahab-500 shadow-md"
               />
+              <span className="absolute bottom-1 right-1 bg-black/80 text-dahab-400 text-[9px] font-black px-1.5 py-0.5 rounded-md">
+                تم الالتقاط بنجاح
+              </span>
               <button
+                type="button"
                 onClick={() => setImageBase64(null)}
                 className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 shadow-md transition"
+                title="إزالة الصورة"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -850,6 +873,13 @@ export default function DiagnosticForm({
           </button>
         </div>
       </div>
+
+      {/* نافذة كاميرا الميكروسكوب الإلكتروني USB مع نيشان التصويب وشبكة الميكرومتر */}
+      <MicroscopeCameraModal
+        isOpen={showMicroscopeModal}
+        onClose={() => setShowMicroscopeModal(false)}
+        onCapture={(img) => setImageBase64(img)}
+      />
     </div>
   );
 }

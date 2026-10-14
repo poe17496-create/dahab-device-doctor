@@ -40,6 +40,7 @@ import {
   DatabaseBackup,
   UploadCloud,
   Trash2 as TrashIcon,
+  Award,
 } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import { UserAccount } from '@/lib/auth';
@@ -52,7 +53,9 @@ export default function AdminDashboardPage() {
   const [authError, setAuthError] = useState('');
   const [checkingAuth, setCheckingAuth] = useState(true);
 
-  const [activeTab, setActiveTab] = useState<'technicians' | 'guests' | 'keys' | 'schematics' | 'backup'>('technicians');
+  const [activeTab, setActiveTab] = useState<'technicians' | 'guests' | 'keys' | 'schematics' | 'backup' | 'community-repairs'>('technicians');
+  const [pendingCases, setPendingCases] = useState<any[]>([]);
+  const [loadingCases, setLoadingCases] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [sessionsCount, setSessionsCount] = useState(0);
   const [hwCount, setHwCount] = useState(0);
@@ -191,7 +194,51 @@ export default function AdminDashboardPage() {
     if (isAdminAuthenticated && activeTab === 'backup') {
       fetchBackups();
     }
+    if (isAdminAuthenticated && activeTab === 'community-repairs') {
+      fetchCommunityCases();
+    }
   }, [isAdminAuthenticated, activeTab]);
+
+  const fetchCommunityCases = async () => {
+    setLoadingCases(true);
+    try {
+      const res = await fetch('/api/case-studies?status=pending');
+      const data = await res.json();
+      setPendingCases(data.caseStudies || []);
+    } catch (err) {
+      console.error('Error fetching pending cases:', err);
+    } finally {
+      setLoadingCases(false);
+    }
+  };
+
+  const handleApproveCase = async (id: string) => {
+    try {
+      const res = await fetch('/api/case-studies', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status: 'verified' }),
+      });
+      if (res.ok) {
+        setSuccessMsg('✅ تم اعتماد ونشر تجربة الصيانة في المنظومة بنجاح!');
+        setPendingCases((prev) => prev.filter((c) => c.id !== id));
+      }
+    } catch (err) {
+      console.error('Error approving case:', err);
+    }
+  };
+
+  const handleRejectCase = async (id: string) => {
+    try {
+      const res = await fetch(`/api/case-studies?id=${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setSuccessMsg('تم استبعاد التجربة بنجاح.');
+        setPendingCases((prev) => prev.filter((c) => c.id !== id));
+      }
+    } catch (err) {
+      console.error('Error rejecting case:', err);
+    }
+  };
 
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -831,6 +878,26 @@ export default function AdminDashboardPage() {
           >
             <DatabaseBackup className="w-4 h-4 text-rose-500" />
             <span>النسخ الاحتياطي 💾</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab('community-repairs');
+              fetchCommunityCases();
+            }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition ${
+              activeTab === 'community-repairs'
+                ? 'bg-white dark:bg-workshop-card text-dahab-600 dark:text-dahab-400 shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+            }`}
+          >
+            <Award className="w-4 h-4 text-dahab-500" />
+            <span>اعتماد تجارب الصيانة ({pendingCases.length})</span>
+            {pendingCases.length > 0 && (
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500 text-slate-950 font-black animate-pulse">
+                {pendingCases.length} جديد
+              </span>
+            )}
           </button>
         </div>
 
@@ -2015,6 +2082,116 @@ export default function AdminDashboardPage() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* تبويب اعتماد تجارب الصيانة التشاركية */}
+        {activeTab === 'community-repairs' && (
+          <div className="space-y-5 animate-fadeIn">
+            <div className="p-5 rounded-3xl bg-white dark:bg-workshop-card border border-gray-200 dark:border-workshop-border shadow-xl space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 dark:border-gray-800 pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+                    <Award className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-black text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                      <span>اعتماد تجارب الصيانة التشاركية (Community Repairs)</span>
+                      <span className="text-[10px] bg-amber-500/20 text-amber-600 dark:text-dahab-400 px-2 py-0.5 rounded-full font-bold">
+                        {pendingCases.length} قيد المراجعة
+                      </span>
+                    </h2>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                      تجارب إصلاح يرسلها الفنيون من الميدان، يمكنك مراجعتها واعتمادها لتظهر لجميع مستخدمي المنظومة
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={fetchCommunityCases}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-xs font-bold transition"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>تحديث</span>
+                </button>
+              </div>
+
+              {loadingCases ? (
+                <div className="text-center py-12 text-gray-400 text-xs">جاري تحميل التجارب...</div>
+              ) : pendingCases.length === 0 ? (
+                <div className="text-center py-12 text-gray-400 space-y-2">
+                  <Award className="w-12 h-12 mx-auto opacity-30 text-dahab-500" />
+                  <p className="text-sm font-bold text-gray-700 dark:text-gray-300">لا توجد تجارب صيانة معلقة حالياً</p>
+                  <p className="text-xs text-gray-500">كل التجارب المرسلة من الفنيين تم اعتمادها أو مراجعتها</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {pendingCases.map((cs) => (
+                    <div
+                      key={cs.id}
+                      className="p-5 rounded-2xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/60 space-y-3 shadow-sm hover:border-dahab-500/40 transition"
+                    >
+                      <div className="flex items-start justify-between gap-2 border-b border-gray-200 dark:border-gray-800 pb-2.5">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-sm text-gray-900 dark:text-gray-100">{cs.device_model}</span>
+                            <span className="text-[10px] px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold border border-amber-500/30">
+                              {cs.device_brand}
+                            </span>
+                          </div>
+                          <span className="text-[11px] text-gray-500 dark:text-gray-400 block mt-0.5 font-bold">
+                            المرسل: {cs.created_by || 'فني صيانة'}
+                          </span>
+                        </div>
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
+                          {cs.difficulty_level || 'متوسط'}
+                        </span>
+                      </div>
+
+                      <div className="space-y-1.5 text-xs">
+                        <div>
+                          <strong className="text-amber-700 dark:text-amber-400">عنوان العطل:</strong>{' '}
+                          <span className="text-gray-800 dark:text-gray-200 font-bold">{cs.title}</span>
+                        </div>
+
+                        {cs.symptoms && (
+                          <div className="bg-white dark:bg-gray-950 p-2.5 rounded-xl border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400">
+                            <strong>الأعراض:</strong> {cs.symptoms}
+                          </div>
+                        )}
+
+                        <div className="bg-emerald-50/60 dark:bg-emerald-950/20 p-2.5 rounded-xl border border-emerald-200 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-300">
+                          <strong className="text-emerald-700 dark:text-emerald-400">الحل والقطع المستبدلة:</strong>{' '}
+                          {cs.solution}
+                        </div>
+
+                        {cs.related_ics && cs.related_ics.length > 0 && (
+                          <div className="text-[11px] text-gray-500 dark:text-gray-400">
+                            <strong>الآيسيات المشتبه بها:</strong> {cs.related_ics.join(', ')}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="pt-2 border-t border-gray-200 dark:border-gray-800 flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => handleRejectCase(cs.id)}
+                          className="px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 text-xs font-bold transition"
+                        >
+                          استبعاد ✕
+                        </button>
+                        <button
+                          onClick={() => handleApproveCase(cs.id)}
+                          className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 text-slate-950 text-xs font-black transition flex items-center gap-1.5 shadow-sm active:scale-95"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>اعتماد ونشر في المنظومة ✅</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

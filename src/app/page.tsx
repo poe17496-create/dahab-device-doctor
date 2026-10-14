@@ -28,6 +28,8 @@ import SchematicBoard from '@/components/SchematicBoard';
 import RepairStatusTracker from '@/components/RepairStatusTracker';
 import CommonFaultsLibrary from '@/components/CommonFaultsLibrary';
 import GuestLockModal from '@/components/GuestLockModal';
+import DiagnosticReportModal from '@/components/DiagnosticReportModal';
+import MicroscopeCameraModal from '@/components/MicroscopeCameraModal';
 import {
   DeviceSpecialty,
   PowerSupplyReadings,
@@ -106,6 +108,8 @@ export default function DahabFixAiConsole() {
   const [highlightedComponent, setHighlightedComponent] = useState<string | null>(null);
   const [diagnosisStartTime, setDiagnosisStartTime] = useState<number | null>(null);
   const [showGuestLockModal, setShowGuestLockModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [showGlobalMicroscope, setShowGlobalMicroscope] = useState(false);
   const [boardviewFullscreen, setBoardviewFullscreen] = useState(false);
   const [isDarkTheme, setIsDarkTheme] = useState(true);
   const boardviewRef = useRef<HTMLIFrameElement>(null);
@@ -686,6 +690,7 @@ export default function DahabFixAiConsole() {
             onLogout={() => setCurrentUser(null)}
             isDesktopMode={isDesktopMode}
             onToggleDesktopMode={toggleDesktopMode}
+            onOpenMicroscope={() => setShowGlobalMicroscope(true)}
           />
           <div className="flex items-center gap-1 shrink-0">
             <Notifications />
@@ -796,6 +801,7 @@ export default function DahabFixAiConsole() {
                           <ResultStreamViewer
                             rawOutput={output}
                             loading={loading}
+                            onPrint={() => setShowReportModal(true)}
                             onComponentHover={setHighlightedComponent}
                             onComponentLeave={() => setHighlightedComponent(null)}
                           />
@@ -1041,6 +1047,30 @@ export default function DahabFixAiConsole() {
           localStorage.removeItem('dahab_current_user');
           setCurrentUser(null);
           setShowGuestLockModal(false);
+        }}
+      />
+
+      {/* نافذة تخصيص وطباعة تقرير الفحص المعتمد A4 PDF + QR */}
+      <DiagnosticReportModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        directData={{
+          deviceModel,
+          specialty,
+          readings,
+          metrics,
+          userPrompt: prompt,
+          diagnosticOutput: output,
+        }}
+      />
+
+      {/* نافذة كاميرا الميكروسكوب الإلكتروني الشاملة */}
+      <MicroscopeCameraModal
+        isOpen={showGlobalMicroscope}
+        onClose={() => setShowGlobalMicroscope(false)}
+        onCapture={(img) => {
+          setImageBase64(img);
+          setActiveTab('diagnosis');
         }}
       />
 
