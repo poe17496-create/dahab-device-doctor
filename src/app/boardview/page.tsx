@@ -2,9 +2,10 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { HardwareBoardViewer, NetTrace, Component, SuspiciousMarker } from '@/components/HardwareBoardViewer';
+import VectorBoardViewCAD from '@/components/VectorBoardViewCAD';
 import { SchematicChat } from '@/components/SchematicChat';
 import { useDiagnosticContext } from '@/contexts/DiagnosticContext';
-import { Search, Upload, Sparkles, ChevronLeft, ChevronRight, X, Loader2, Plus, CircuitBoard, BarChart3, Layers, Zap, Cpu, AlertTriangle, CheckCircle, Database } from 'lucide-react';
+import { Search, Upload, Sparkles, ChevronLeft, ChevronRight, X, Loader2, Plus, CircuitBoard, BarChart3, Layers, Zap, Cpu, AlertTriangle, CheckCircle, Database, Eye } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 /**
@@ -79,6 +80,7 @@ export default function BoardViewPage() {
     }
   }, []);
 
+  const [viewMode, setViewMode] = useState<'vector' | 'photo'>('vector');
   const [searchInput, setSearchInput] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [customImage, setCustomImage] = useState<string | null>(null);
@@ -747,6 +749,36 @@ export default function BoardViewPage() {
             <span className="text-white font-bold text-sm md:text-lg hidden sm:block">Dahab Board AI</span>
           </div>
 
+          {/* Mode Switcher: Dual-System Toggle (Vector CAD vs Photo-Realistic) */}
+          <div className="flex items-center gap-1 bg-gray-200/90 dark:bg-gray-900/90 p-1 rounded-xl border border-gray-300 dark:border-gray-700 shrink-0 shadow-inner">
+            <button
+              type="button"
+              onClick={() => setViewMode('vector')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                viewMode === 'vector'
+                  ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-md font-black'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              }`}
+              title="محرك الفيكتور الهندسي المتجه (شبيه بورنيو / OpenBoardView)"
+            >
+              <CircuitBoard className="w-3.5 h-3.5" />
+              <span>📐 فيكتور CAD</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('photo')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                viewMode === 'photo'
+                  ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-md font-black'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              }`}
+              title="وضع صورة البوردة الحقيقية والتفاعلية"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span>📷 صورة البوردة</span>
+            </button>
+          </div>
+
           {/* Search Input */}
           <div className="relative flex-1 w-full order-3 md:order-2">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-gray-400 dark:text-gray-500" />
@@ -849,10 +881,10 @@ export default function BoardViewPage() {
 
       {/* Main Content Area */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Side Panel - Net Navigator */}
+        {/* Side Panel - Net Navigator (Photo Mode) */}
         <div
           className={`bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border-l border-gray-200/50 dark:border-gray-700/50 transition-all duration-300 fixed md:relative z-40 h-full ${
-            sidePanelOpen ? 'w-72 md:w-80' : 'w-0'
+            viewMode === 'photo' && sidePanelOpen ? 'w-72 md:w-80' : 'w-0 hidden'
           } overflow-hidden shadow-2xl`}
         >
           <div className="p-3 md:p-4 h-full flex flex-col">
@@ -1013,7 +1045,7 @@ export default function BoardViewPage() {
         {/* Main Canvas Area */}
         <div className="flex-1 relative">
           {/* Toggle Side Panel Button */}
-          {!sidePanelOpen && (
+          {viewMode === 'photo' && !sidePanelOpen && (
             <button
               onClick={() => setSidePanelOpen(true)}
               className="absolute top-4 right-4 z-20 p-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors shadow-lg"
@@ -1022,8 +1054,8 @@ export default function BoardViewPage() {
             </button>
           )}
 
-          {/* Empty State */}
-          {!boardName && !customImage && (
+          {/* Empty State (Photo Mode) */}
+          {viewMode === 'photo' && !boardName && !customImage && (
             <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-100 via-gray-50 to-gray-100 dark:from-gray-900 dark:via-slate-900 dark:to-gray-900 px-4">
               <div className="text-center max-w-2xl px-4 md:px-8">
                 <div className="relative mb-6 md:mb-8">
@@ -1175,8 +1207,19 @@ export default function BoardViewPage() {
             }}
           />
 
-          {/* Hardware Board Viewer */}
-          {(boardName || customImage) && (
+          {/* محرك الفيكتور الهندسي المتجه (Vector CAD Mode - شبيه Borneo/OpenBoardView) */}
+          {viewMode === 'vector' && (
+            <div className="absolute inset-0 z-10 w-full h-full">
+              <VectorBoardViewCAD
+                boardName={boardName || undefined}
+                selectedNet={selectedNet}
+                onNetSelect={(net) => setSelectedNet(net)}
+              />
+            </div>
+          )}
+
+          {/* Hardware Board Viewer (Photo-Realistic Mode) */}
+          {viewMode === 'photo' && (boardName || customImage) && (
             <HardwareBoardViewer
               boardName={boardName || 'Custom Board'}
               customImageUrl={customImage}
