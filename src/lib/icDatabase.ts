@@ -1,7 +1,6 @@
 import { supabaseAdmin } from './supabase';
 import icData from '@/data/ic_database.json';
-import fs from 'fs';
-import path from 'path';
+import matrixData from '@/lib/hardwareSchematicsMatrix.json';
 
 export interface DonorBoardMatch {
   brand: string;
@@ -27,10 +26,9 @@ let matrixCache: any[] | null = null;
 function loadMatrix(): any[] {
   if (matrixCache) return matrixCache;
   try {
-    const filePath = path.join(process.cwd(), 'src', 'lib', 'hardwareSchematicsMatrix.json');
-    if (fs.existsSync(filePath)) {
-      matrixCache = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-      return matrixCache || [];
+    if (matrixData && Array.isArray(matrixData)) {
+      matrixCache = matrixData;
+      return matrixCache;
     }
   } catch (err) {
     console.error('Error loading hardwareSchematicsMatrix in icDatabase:', err);
@@ -222,3 +220,8 @@ function searchICDatabaseLocal(query: string): ICRecord[] {
 
   return enrichedResults;
 }
+
+export { universalBoardSearch } from './universalBoardSearch';
+export type { UniversalBoardSearchResult, BoardMatch, PartNumberMatch, SimilarBoardMatch } from './universalBoardSearch';
+
+

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callAIEngine } from '@/lib/aiEngines';
 import { buildExpertPromptContext } from '@/lib/expertKnowledge';
+import { universalBoardSearch } from '@/lib/universalBoardSearch';
 import { buildExpertSystemPrompt, getRelevantCaseStudies, getEngineeringReferences, extractComponentsFromText } from '@/lib/expertSystemService';
 import { buildEnhancedPrompt, buildSchematicContext } from '@/lib/smartAnalysisSystem';
 import { checkRateLimit, sanitizeAndCheckTokenDrain } from '@/lib/securityRateLimiter';
@@ -140,6 +141,37 @@ async function chatHandler(req: NextRequest) {
   // استخراج بيانات المخططات والبوردات وقاعدة الخبرات المضغوطة للمساعد
   const expertContext = buildExpertPromptContext(message || '');
 
+  // البحث الذكي بالبارت نمبر في رسالة المستخدم
+  let boardSearchContext = '';
+  try {
+    const boardResults = universalBoardSearch(message || '');
+    if (boardResults.partNumberMatches.length > 0) {
+      boardSearchContext = '\n\n### بوردات تحمل نفس القطعة (Part Number Match):\n';
+      boardResults.partNumberMatches.slice(0, 8).forEach((m, i) => {
+        boardSearchContext += `${i + 1}. ${m.brand} ${m.model} (${m.boardCode}) - الدور: ${m.chipRole} - البارت: ${m.partNumber}\n`;
+      });
+      if (boardResults.similarBoards.length > 0) {
+        boardSearchContext += '\n### بوردات متشابهة (تتشارك في آيسيهات مشتركة):\n';
+        boardResults.similarBoards.slice(0, 5).forEach((s, i) => {
+          boardSearchContext += `${i + 1}. ${s.brand} ${s.model} (${s.boardCode}) - آيسيهات مشتركة: ${s.sharedChips.join(', ')} (تشابه: ${s.similarityScore})\n`;
+        });
+      }
+    } else if (boardResults.exactMatches.length > 0) {
+      boardSearchContext = '\n\n### بوردات مطابقة للبحث:\n';
+      boardResults.exactMatches.slice(0, 5).forEach((m, i) => {
+        boardSearchContext += `${i + 1}. ${m.brand} ${m.model} (${m.boardCode})\n`;
+      });
+      if (boardResults.similarBoards.length > 0) {
+        boardSearchContext += '\n### بوردات متشابهة:\n';
+        boardResults.similarBoards.slice(0, 5).forEach((s, i) => {
+          boardSearchContext += `${i + 1}. ${s.brand} ${s.model} (${s.boardCode}) - مشتركة في: ${s.sharedChips.join(', ')}\n`;
+        });
+      }
+    }
+  } catch (e) {
+    // تجاهل أخطاء البحث - لا تؤثر على عمل الشات
+  }
+
   // إضافة سياق التشخيص والبوردفيو للنظام
   let contextInfo = '';
   let expertSystemContext = '';
@@ -223,6 +255,7 @@ async function chatHandler(req: NextRequest) {
 6. تذكر سياق الحوار السابق وأجب بذكاء وترابط، وإذا كان استفساراً عاماً أو تحية، رحب بالفني بحرارة وسله عن الجهاز أو البوردة التي يعمل عليه.
 7. لديك وصول لقاعدة بيانات خبراء الصيانة المتخصصين. عند وجود بيانات مرجعية من قاعدة الخبرات في الرسالة، استخدمها كمرجع أول وادمج أكواد المكونات (مثل PQ301, PU201) في إجابتك.
 8. استخدم سياق الجهاز الحالي (الموديل، القراءات، نتائج التشخيص) لتقديم إجابات أكثر دقة وملاءمة للحالة المحددة.
+8. عند وجود بيانات عن بوردات مطابقة أو متشابهة في الرسالة، اذكرها واشرح العلاقة بينها للفني. إذا بحث عن بارت نمبر معين، اذكر كل البوردات التي تحمله وما هي بوردات التشليح المناسبة.
 
 قواعد استخدام المراجع الهندسية الخارجية (200+ مصدر):
 9. لديك وصول لقاعدة بيانات ضخمة من المراجع الهندسية تشمل:
@@ -252,7 +285,7 @@ async function chatHandler(req: NextRequest) {
 
   // إنشاء مفتاح Cache للطلب
   const cacheKey = generateCacheKey(
-    message + expertContext + contextInfo + expertSystemContext,
+    message + expertContext + boardSearchContext + contextInfo + expertSystemContext,
     {
       specialty: diagnosticContext?.specialty,
       deviceModel: diagnosticContext?.deviceModel,
@@ -284,7 +317,7 @@ async function chatHandler(req: NextRequest) {
   try {
     aiResponse = await withTimeout(
       callAIEngine({
-        prompt: contextPrompt + contextInfo + expertSystemContext + message + expertContext,
+        prompt: contextPrompt + contextInfo + expertSystemContext + message + expertContext + boardSearchContext,
         specialty: (diagnosticContext?.specialty as any) || 'mobile-repair',
         deviceModel: diagnosticContext?.deviceModel || 'General',
         readings: diagnosticContext?.readings || {},

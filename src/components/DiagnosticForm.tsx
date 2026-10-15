@@ -21,6 +21,7 @@ import {
   Camera,
 } from 'lucide-react';
 import MicroscopeCameraModal from '@/components/MicroscopeCameraModal';
+import { universalBoardSearch } from '@/lib/universalBoardSearch';
 
 interface DiagnosticFormProps {
   specialty: DeviceSpecialty;
@@ -249,6 +250,28 @@ export default function DiagnosticForm({
   const [showMicroscopeModal, setShowMicroscopeModal] = useState(false);
   const [localValidationError, setLocalValidationError] = useState<string | null>(null);
   const [loadingStep, setLoadingStep] = useState(0);
+  const [boardSuggestions, setBoardSuggestions] = useState<any>(null);
+  const [showBoardSuggestions, setShowBoardSuggestions] = useState(false);
+
+  useEffect(() => {
+    if (!deviceModel || deviceModel.length < 3) {
+      setBoardSuggestions(null);
+      setShowBoardSuggestions(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      try {
+        const results = universalBoardSearch(deviceModel);
+        const hasResults = results.exactMatches.length > 0 || results.partNumberMatches.length > 0;
+        setBoardSuggestions(hasResults ? results : null);
+        setShowBoardSuggestions(hasResults);
+      } catch (e) {
+        setBoardSuggestions(null);
+        setShowBoardSuggestions(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [deviceModel]);
 
   // رسائل التحميل الخطوة بخطوة
   const loadingMessages = [
@@ -577,6 +600,63 @@ export default function DiagnosticForm({
             placeholder={`مثلاً: ${activeCategoryData.chips[0]}...`}
             className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:border-dahab-500 focus:ring-1 focus:ring-dahab-500 outline-none transition shadow-inner"
           />
+
+          {/* اقتراحات البحث بالبارت نمبر */}
+          {showBoardSuggestions && boardSuggestions && (
+            <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-800/80 rounded-xl border border-amber-200 dark:border-amber-800/50 space-y-2 max-h-48 overflow-y-auto">
+              <p className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                <span>🔍</span> بوردات مطابقة للبحث:
+              </p>
+              {boardSuggestions.partNumberMatches?.length > 0 && (
+                <div className="space-y-1">
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">📦 بوردات تحمل نفس القطعة ({boardSuggestions.matchedPartNumber}):</p>
+                  {boardSuggestions.partNumberMatches.slice(0, 6).map((m: any, i: number) => (
+                    <button
+                      key={`pn-${i}`}
+                      type="button"
+                      onClick={() => { setDeviceModel(`${m.brand} ${m.model}`); setShowBoardSuggestions(false); }}
+                      className="w-full text-right px-2.5 py-1.5 rounded-lg bg-white dark:bg-gray-700 hover:bg-amber-50 dark:hover:bg-amber-900/30 border border-gray-200 dark:border-gray-600 text-xs transition-all flex items-center justify-between gap-2"
+                    >
+                      <span className="text-gray-900 dark:text-gray-100 font-medium">{m.brand} {m.model}</span>
+                      <span className="text-gray-500 dark:text-gray-400 text-[10px]">{m.boardCode} • {m.chipRole}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {boardSuggestions.exactMatches?.length > 0 && boardSuggestions.partNumberMatches?.length === 0 && (
+                <div className="space-y-1">
+                  {boardSuggestions.exactMatches.slice(0, 6).map((m: any, i: number) => (
+                    <button
+                      key={`em-${i}`}
+                      type="button"
+                      onClick={() => { setDeviceModel(`${m.brand} ${m.model}`); setShowBoardSuggestions(false); }}
+                      className="w-full text-right px-2.5 py-1.5 rounded-lg bg-white dark:bg-gray-700 hover:bg-amber-50 dark:hover:bg-amber-900/30 border border-gray-200 dark:border-gray-600 text-xs transition-all flex items-center justify-between gap-2"
+                    >
+                      <span className="text-gray-900 dark:text-gray-100 font-medium">{m.brand} {m.model}</span>
+                      <span className="text-gray-500 dark:text-gray-400 text-[10px]">{m.boardCode}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {boardSuggestions.similarBoards?.length > 0 && (
+                <div className="space-y-1 pt-1 border-t border-gray-200 dark:border-gray-700">
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">🔗 بوردات متشابهة:</p>
+                  {boardSuggestions.similarBoards.slice(0, 3).map((s: any, i: number) => (
+                    <button
+                      key={`sim-${i}`}
+                      type="button"
+                      onClick={() => { setDeviceModel(`${s.brand} ${s.model}`); setShowBoardSuggestions(false); }}
+                      className="w-full text-right px-2.5 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 border border-blue-200 dark:border-blue-800 text-xs transition-all flex items-center justify-between gap-2"
+                    >
+                      <span className="text-gray-900 dark:text-gray-100 font-medium">{s.brand} {s.model}</span>
+                      <span className="text-blue-500 dark:text-blue-400 text-[10px]">تشابه: {s.similarityScore} آيسي</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* شرائح الاختيار السريع للموديل */}
           <div className="flex flex-wrap gap-2">
             {activeCategoryData.chips.map((chip, idx) => (

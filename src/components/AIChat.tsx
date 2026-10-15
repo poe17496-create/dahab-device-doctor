@@ -7,6 +7,7 @@ import {
   MicOff,
   Volume2,
   Image as ImageIcon,
+  Camera,
   X,
   Cpu,
   Trash2,
@@ -26,6 +27,7 @@ import {
   ZoomIn,
 } from 'lucide-react';
 import { useDiagnosticContext } from '@/contexts/DiagnosticContext';
+import MicroscopeCameraModal from '@/components/MicroscopeCameraModal';
 
 interface ChatMessage {
   id: string;
@@ -96,6 +98,7 @@ export default function AIChat({ currentUser, guestRemaining, onRemainingChange 
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [showMicroscopeInChat, setShowMicroscopeInChat] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [savedSessions, setSavedSessions] = useState<SavedChatSession[]>([]);
@@ -1108,6 +1111,16 @@ export default function AIChat({ currentUser, guestRemaining, onRemainingChange 
             )}
           </div>
 
+          {/* زر كاميرا الميكروسكوب المباشرة */}
+          <button
+            type="button"
+            onClick={() => setShowMicroscopeInChat(true)}
+            className="p-2.5 rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40 border border-emerald-200 dark:border-emerald-800 hover:from-emerald-100 hover:to-teal-100 dark:hover:from-emerald-900/60 dark:hover:to-teal-900/60 text-emerald-600 dark:text-emerald-400 transition-all flex items-center justify-center"
+            title="كاميرا الميكروسكوب المباشرة 🔬"
+          >
+            <Camera className="w-4 h-4" />
+          </button>
+
           {/* زر المايكروفون الذكي (يدعم الـ PWA والتطبيق المثبت) */}
           <button
             onClick={handleVoiceInput}
@@ -1341,6 +1354,15 @@ export default function AIChat({ currentUser, guestRemaining, onRemainingChange 
           </div>
         </div>
       )}
+
+      {/* نافذة كاميرا الميكروسكوب في الشات */}
+      <MicroscopeCameraModal
+        isOpen={showMicroscopeInChat}
+        onClose={() => setShowMicroscopeInChat(false)}
+        onCapture={(img) => {
+          setImageBase64(img);
+        }}
+      />
     </div>
   );
 }

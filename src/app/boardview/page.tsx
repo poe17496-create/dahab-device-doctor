@@ -6,7 +6,9 @@ import VectorBoardViewCAD from '@/components/VectorBoardViewCAD';
 import { SchematicChat } from '@/components/SchematicChat';
 import { useDiagnosticContext } from '@/contexts/DiagnosticContext';
 import { Search, Upload, Sparkles, ChevronLeft, ChevronRight, X, Loader2, Plus, CircuitBoard, BarChart3, Layers, Zap, Cpu, AlertTriangle, CheckCircle, Database, Eye } from 'lucide-react';
+import MicroscopeCameraModal from '@/components/MicroscopeCameraModal';
 import { useRouter } from 'next/navigation';
+import { universalBoardSearch } from '@/lib/universalBoardSearch';
 
 /**
  * Board View Page - معمل البوردفيو والمسارات
@@ -81,7 +83,10 @@ export default function BoardViewPage() {
   }, []);
 
   const [viewMode, setViewMode] = useState<'vector' | 'photo'>('vector');
+  const [showBoardViewMicroscope, setShowBoardViewMicroscope] = useState(false);
   const [searchInput, setSearchInput] = useState('');
+  const [boardSearchResults, setBoardSearchResults] = useState<any>(null);
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [customImage, setCustomImage] = useState<string | null>(null);
   const [sidePanelOpen, setSidePanelOpen] = useState(true);
@@ -274,6 +279,27 @@ export default function BoardViewPage() {
       description: 'Camera module power supply',
     },
   });
+
+  // البحث الذكي بالبارت نمبر في شريط البحث
+  useEffect(() => {
+    if (!searchInput || searchInput.length < 3) {
+      setBoardSearchResults(null);
+      setShowSearchDropdown(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      try {
+        const results = universalBoardSearch(searchInput);
+        const hasResults = results.exactMatches.length > 0 || results.partNumberMatches.length > 0;
+        setBoardSearchResults(hasResults ? results : null);
+        setShowSearchDropdown(hasResults);
+      } catch (e) {
+        setBoardSearchResults(null);
+        setShowSearchDropdown(false);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   const handleSearch = async () => {
     if (!searchInput.trim()) return;
@@ -790,6 +816,96 @@ export default function BoardViewPage() {
               onKeyPress={handleKeyPress}
               className="w-full pl-10 md:pl-12 pr-3 md:pr-4 py-2 md:py-3 bg-gray-100/50 dark:bg-gray-700/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
             />
+
+            {/* نتائج البحث الذكي بالبارت نمبر */}
+            {showSearchDropdown && boardSearchResults && (
+              <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-white dark:bg-gray-800 rounded-xl border border-amber-300 dark:border-amber-700 shadow-2xl max-h-72 overflow-y-auto p-2 space-y-1.5">
+                <p className="text-xs font-bold text-amber-600 dark:text-amber-400 px-2 py-1 flex items-center gap-1.5">
+                  <span>🔍</span>
+                  نتائج البحث الذكي
+                  {boardSearchResults.matchedPartNumber && (
+                    <span className="ml-1 px-2 py-0.5 bg-amber-100 dark:bg-amber-900/40 rounded-full text-[10px]">
+                      Part: {boardSearchResults.matchedPartNumber}
+                    </span>
+                  )}
+                </p>
+                {boardSearchResults.partNumberMatches?.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium px-2">📦 بوردات تحمل نفس القطعة:</p>
+                    {boardSearchResults.partNumberMatches.slice(0, 8).map((m: any, i: number) => (
+                      <button
+                        key={`bv-pn-${i}`}
+                        type="button"
+                        onClick={() => {
+                          setSearchInput(`${m.brand} ${m.model}`);
+                          setBoardSearchResults(null);
+                          setShowSearchDropdown(false);
+                          // Trigger search with this board
+                          setBoardName(`${m.brand} ${m.model}`);
+                        }}
+                        className="w-full text-right px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-700/50 hover:bg-amber-50 dark:hover:bg-amber-900/30 border border-gray-200 dark:border-gray-600 text-xs transition-all flex items-center justify-between gap-2"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">{m.category === 'mobile' ? '📱' : m.category === 'laptop' ? '💻' : '🖥️'}</span>
+                          <span className="text-gray-900 dark:text-gray-100 font-semibold">{m.brand} {m.model}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-400 dark:text-gray-500 text-[10px]">{m.boardCode}</span>
+                          <span className="px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 rounded text-[10px] font-medium">{m.chipRole}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {boardSearchResults.exactMatches?.length > 0 && boardSearchResults.partNumberMatches?.length === 0 && (
+                  <div className="space-y-1">
+                    {boardSearchResults.exactMatches.slice(0, 6).map((m: any, i: number) => (
+                      <button
+                        key={`bv-em-${i}`}
+                        type="button"
+                        onClick={() => {
+                          setSearchInput(`${m.brand} ${m.model}`);
+                          setBoardSearchResults(null);
+                          setShowSearchDropdown(false);
+                          setBoardName(`${m.brand} ${m.model}`);
+                        }}
+                        className="w-full text-right px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-700/50 hover:bg-amber-50 dark:hover:bg-amber-900/30 border border-gray-200 dark:border-gray-600 text-xs transition-all flex items-center justify-between gap-2"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">{m.category === 'mobile' ? '📱' : m.category === 'laptop' ? '💻' : '🖥️'}</span>
+                          <span className="text-gray-900 dark:text-gray-100 font-semibold">{m.brand} {m.model}</span>
+                        </div>
+                        <span className="text-gray-400 dark:text-gray-500 text-[10px]">{m.boardCode}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {boardSearchResults.similarBoards?.length > 0 && (
+                  <div className="space-y-1 pt-1.5 border-t border-gray-200 dark:border-gray-700">
+                    <p className="text-[10px] text-blue-500 dark:text-blue-400 font-medium px-2">🔗 بوردات متشابهة (آيسيهات مشتركة):</p>
+                    {boardSearchResults.similarBoards.slice(0, 4).map((s: any, i: number) => (
+                      <button
+                        key={`bv-sim-${i}`}
+                        type="button"
+                        onClick={() => {
+                          setSearchInput(`${s.brand} ${s.model}`);
+                          setBoardSearchResults(null);
+                          setShowSearchDropdown(false);
+                          setBoardName(`${s.brand} ${s.model}`);
+                        }}
+                        className="w-full text-right px-3 py-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 border border-blue-200 dark:border-blue-800 text-xs transition-all flex items-center justify-between gap-2"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">{s.category === 'mobile' ? '📱' : s.category === 'laptop' ? '💻' : '🖥️'}</span>
+                          <span className="text-gray-900 dark:text-gray-100 font-medium">{s.brand} {s.model}</span>
+                        </div>
+                        <span className="text-blue-500 dark:text-blue-400 text-[10px]">تشابه: {s.similarityScore} آيسي مشترك</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Action Buttons */}
@@ -801,6 +917,16 @@ export default function BoardViewPage() {
             >
               <Upload className="w-4 h-4 md:w-5 md:h-5" />
               <span className="hidden sm:inline">Upload</span>
+            </button>
+
+            {/* زر كاميرا الميكروسكوب */}
+            <button
+              onClick={() => setShowBoardViewMicroscope(true)}
+              className="px-3 py-2 md:px-4 md:py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg md:rounded-xl hover:from-emerald-600 hover:to-teal-700 transition-all flex items-center gap-1 md:gap-2 shadow-lg hover:shadow-emerald-500/25 text-xs md:text-sm"
+              title="التقاط من الميكروسكوب"
+            >
+              <span className="text-base">🔬</span>
+              <span className="hidden sm:inline">ميكروسكوب</span>
             </button>
 
             {/* Search Button */}
@@ -1562,6 +1688,17 @@ export default function BoardViewPage() {
               </div>
             </div>
           )}
+
+          {/* نافذة كاميرا الميكروسكوب في البورد فيو */}
+          <MicroscopeCameraModal
+            isOpen={showBoardViewMicroscope}
+            onClose={() => setShowBoardViewMicroscope(false)}
+            onCapture={(img) => {
+              setCustomImage(img);
+              setBoardName('Microscope Capture');
+              setViewMode('photo');
+            }}
+          />
         </div>
       </div>
     </div>
