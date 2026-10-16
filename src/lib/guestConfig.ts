@@ -9,6 +9,7 @@ export const GUEST_ALLOWED_TABS: MasterTab[] = [
   'diagnosis',    // التشخيص الذكي
   'ai-chat',      // مساعد الذكاء الاصطناعي (الشات)
   'boardview',    // معمل البوردفيو والمسارات
+  'tools',        // الأدوات الهندسية (موبايل ولابتوب)
 ];
 
 /**
@@ -25,6 +26,7 @@ export function getGuestLockMessage(tab: MasterTab): string {
   const tabNames: Record<MasterTab, string> = {
     diagnosis: 'التشخيص الذكي',
     memory: 'ذاكرة الأجهزة والمحادثات',
+    tools: 'الأدوات الهندسية (موبايل ولابتوب)',
     'panic-log': 'محلل ملفات البانيك',
     'safe-injection': 'حاسبة الفولت الآمن للحقن',
     'ic-encyclopedia': 'موسوعة الآيسيهات والبدائل',

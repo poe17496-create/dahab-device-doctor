@@ -30,6 +30,7 @@ import CommonFaultsLibrary from '@/components/CommonFaultsLibrary';
 import GuestLockModal from '@/components/GuestLockModal';
 import DiagnosticReportModal from '@/components/DiagnosticReportModal';
 import MicroscopeCameraModal from '@/components/MicroscopeCameraModal';
+import EngineeringToolsTab from '@/components/EngineeringToolsTab';
 import { cleanAIResponseText } from '@/lib/cleanResponse';
 import {
   DeviceSpecialty,
@@ -46,6 +47,7 @@ import { useDiagnosticContext } from '@/contexts/DiagnosticContext';
 
 export type MasterTab =
   | 'diagnosis'
+  | 'tools'
   | 'memory'
   | 'panic-log'
   | 'safe-injection'
@@ -895,6 +897,7 @@ export default function DahabFixAiConsole() {
               )}
 
               {/* التبويبات الأخرى (تظهر نظيفة بالكامل بدون أي ازدحام بالأسفل) */}
+              {activeTab === 'tools' && <EngineeringToolsTab />}
               {activeTab === 'panic-log' && <PanicLogAnalyzer />}
               {activeTab === 'safe-injection' && <SafeInjectionCalculator />}
               {activeTab === 'ic-encyclopedia' && <ICEncyclopediaTab />}
@@ -1081,6 +1084,7 @@ export default function DahabFixAiConsole() {
         <div className="flex items-center justify-around px-2 py-1">
           {[
             { id: 'diagnosis' as MasterTab, label: 'تشخيص', icon: '🔬' },
+            { id: 'tools' as MasterTab, label: 'الأدوات', icon: '🛠️' },
             { id: 'ai-chat' as MasterTab, label: 'مساعد AI', icon: '🤖' },
             { id: 'memory' as MasterTab, label: 'ذاكرة', icon: '🧠' },
             { id: 'checklist' as MasterTab, label: 'فحص', icon: '✅' },
