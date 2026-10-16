@@ -1,14 +1,48 @@
 /**
  * 🎙️ خدمة النطق الصوتي العربي الموحد (Unified Arabic TTS Service)
- * تعمل بكفاءة على كافة الأجهزة (موبايل، آيفون، أندرويد، كمبيوتر)
- * تستخدم خادم الصوت السحابي /api/tts عبر Blob محلي لتجاوز قيود التشغيل في المتصفحات
+ * مصممة للعمل بكفاءة فائقة على كافة الأجهزة (موبايل، PWA مثبت، أندرويد كروم، آيفون سفاري، كمبيوتر)
+ * 
+ * المزايا:
+ * 1. فك حظر السياسة الصوتية الصارمة للموبايل (Mobile Autoplay Unlock) لحظياً أثناء الضغط
+ * 2. استخدام Web Audio API (AudioContext) للنطق الصافي بدون أي خطأ في فك التشفير
+ * 3. دعم التراجع التلقائي لـ HTML5 Audio مع كائن Blob محلي
+ * 4. دعم التراجع الأخير لـ SpeechSynthesis
  */
 
 import { cleanAIResponseText } from './cleanResponse';
 
 let activeAudio: HTMLAudioElement | null = null;
 let currentBlobUrl: string | null = null;
+let activeSourceNode: AudioBufferSourceNode | null = null;
+let sharedAudioCtx: AudioContext | null = null;
 let currentUtterance: any = null;
+
+// عينة صوتية صامتة لفك حظر الموبايل (48-byte Silent WAV)
+const SILENT_WAV = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+
+/**
+ * الحصول على AudioContext موحد مع استئنافه أثناء إيماءة المستخدم
+ */
+function getOrCreateAudioContext(): AudioContext | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return null;
+
+    if (!sharedAudioCtx || sharedAudioCtx.state === 'closed') {
+      sharedAudioCtx = new AudioContextClass();
+    }
+
+    if (sharedAudioCtx.state === 'suspended') {
+      sharedAudioCtx.resume().catch(() => {});
+    }
+
+    return sharedAudioCtx;
+  } catch (e) {
+    console.warn('[TTS] AudioContext initialization failed:', e);
+    return null;
+  }
+}
 
 /**
  * تنظيف النص الموجه للنطق الصوتي من أي رموز هندسية أو علامات ماركداون
@@ -26,13 +60,13 @@ function prepareTextForSpeech(text: string): string {
   // إزالة المسافات الزائدة
   cleaned = cleaned.replace(/\s+/g, ' ').trim();
 
-  // تقليم النص لأول 400 حرف لتفادي طول الانتظار وضمان استجابة صوتية سريعة وموجزة
-  if (cleaned.length > 400) {
-    const periodIdx = cleaned.indexOf('.', 250);
-    if (periodIdx !== -1 && periodIdx < 450) {
+  // تقليم النص لأول 350 حرف لتفادي طول الانتظار وضمان استجابة صوتية سريعة وموجزة
+  if (cleaned.length > 350) {
+    const periodIdx = cleaned.indexOf('.', 200);
+    if (periodIdx !== -1 && periodIdx < 380) {
       cleaned = cleaned.slice(0, periodIdx + 1);
     } else {
-      cleaned = cleaned.slice(0, 380) + '...';
+      cleaned = cleaned.slice(0, 330) + '...';
     }
   }
 
@@ -60,11 +94,14 @@ export function playArabicSpeech(
     return () => {};
   }
 
-  callbacks?.onStart?.();
+  // 1. 🚀 فك حظر الصوت في الموبايل والـ PWA بشكل تزامني فوري داخل إيماءة اللمس الحالية
+  const audioCtx = getOrCreateAudioContext();
 
-  // تجهيز عنصر الصوت مسبقاً داخل إيماءة الضغط المباشرة لفك حظر الصوت على الموبايل (iOS/Android)
-  const audio = new Audio();
-  activeAudio = audio;
+  const primeAudio = new Audio(SILENT_WAV);
+  activeAudio = primeAudio;
+  primeAudio.play().catch(() => {}); // استهلاك إذن اللمس فورياً
+
+  callbacks?.onStart?.();
 
   let isCancelled = false;
 
@@ -73,21 +110,14 @@ export function playArabicSpeech(
       URL.revokeObjectURL(currentBlobUrl);
       currentBlobUrl = null;
     }
+    if (activeSourceNode) {
+      try { activeSourceNode.stop(); } catch {}
+      activeSourceNode = null;
+    }
     activeAudio = null;
   };
 
-  audio.onended = () => {
-    cleanup();
-    callbacks?.onEnd?.();
-  };
-
-  audio.onerror = (e) => {
-    console.warn('Audio element error:', e);
-    cleanup();
-    fallbackToBrowserSpeech(text, callbacks);
-  };
-
-  // جلب الملف الصوتي عبر POST لتفادي قيود طول الرابط على الموبايل
+  // 2. جلب الملف الصوتي من السيرفر وتشغيله
   (async () => {
     try {
       let res: Response | null = null;
@@ -106,12 +136,43 @@ export function playArabicSpeech(
       if (isCancelled) return;
 
       if (!res || !res.ok) {
-        throw new Error(`TTS server returned status ${res?.status || 'unknown'}`);
+        throw new Error(`TTS server status ${res?.status || 'network_error'}`);
       }
 
-      const blob = await res.blob();
+      const arrayBuffer = await res.arrayBuffer();
       if (isCancelled) return;
 
+      // 3. المسار الأول المفضل للموبايل: التشغيل عبر Web Audio API (مستقل تماماً عن مشاكل كودك الـ Media Element)
+      if (audioCtx && audioCtx.state !== 'closed') {
+        try {
+          if (audioCtx.state === 'suspended') {
+            await audioCtx.resume();
+          }
+
+          // فك تشفير الـ ArrayBuffer مباشرة في كارت الصوت
+          const decodedBuffer = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
+          if (isCancelled) return;
+
+          const sourceNode = audioCtx.createBufferSource();
+          sourceNode.buffer = decodedBuffer;
+          sourceNode.connect(audioCtx.destination);
+          activeSourceNode = sourceNode;
+
+          sourceNode.onended = () => {
+            cleanup();
+            callbacks?.onEnd?.();
+          };
+
+          sourceNode.start(0);
+          console.log('[TTS] Successfully playing via Web Audio API');
+          return;
+        } catch (webAudioErr) {
+          console.warn('[TTS] Web Audio decode failed, falling back to Blob Audio Element:', webAudioErr);
+        }
+      }
+
+      // 4. المسار الثاني: التشغيل عبر عنصر Audio مع Blob محلي
+      const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
       if (currentBlobUrl) {
         URL.revokeObjectURL(currentBlobUrl);
       }
@@ -119,11 +180,22 @@ export function playArabicSpeech(
       const blobUrl = URL.createObjectURL(blob);
       currentBlobUrl = blobUrl;
 
-      audio.src = blobUrl;
-      await audio.play();
+      primeAudio.src = blobUrl;
+      primeAudio.onended = () => {
+        cleanup();
+        callbacks?.onEnd?.();
+      };
+      primeAudio.onerror = (e) => {
+        console.warn('[TTS] Blob Audio error:', e);
+        cleanup();
+        fallbackToBrowserSpeech(text, callbacks);
+      };
+
+      await primeAudio.play();
+      console.log('[TTS] Successfully playing via Blob Audio Element');
     } catch (err: any) {
       if (isCancelled) return;
-      console.warn('Network TTS failed, falling back to browser SpeechSynthesis:', err);
+      console.warn('[TTS] Network TTS failed, falling back to browser SpeechSynthesis:', err);
       cleanup();
       fallbackToBrowserSpeech(text, callbacks);
     }
@@ -192,6 +264,13 @@ function fallbackToBrowserSpeech(
  * إيقاف الصوت الحالي تماماً
  */
 export function stopSpeech() {
+  if (activeSourceNode) {
+    try {
+      activeSourceNode.stop();
+    } catch {}
+    activeSourceNode = null;
+  }
+
   if (activeAudio) {
     try {
       activeAudio.pause();
