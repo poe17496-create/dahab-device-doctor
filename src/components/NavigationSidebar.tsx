@@ -38,8 +38,6 @@ const navItems = [
   { id: 'ai-chat' as MasterTab, label: 'مساعد الذكاء الاصطناعي', icon: MessageSquare, color: 'from-violet-600 to-purple-600' },
   { id: 'boardview' as MasterTab, label: 'معمل البوردفيو والمسارات', icon: Cpu, color: 'from-emerald-600 to-teal-600' },
   { id: 'ic-encyclopedia' as MasterTab, label: 'موسوعة الآيسيهات والبدائل', icon: BookOpen, color: 'from-sky-600 to-blue-600' },
-  { id: 'safe-injection' as MasterTab, label: 'حاسبة الفولت الآمن للحقن', icon: Flame, color: 'from-amber-600 to-rose-600' },
-  { id: 'panic-log' as MasterTab, label: 'محلل ملفات البانيك (Panic)', icon: AlertOctagon, color: 'from-purple-600 to-indigo-600' },
   { id: 'checklist' as MasterTab, label: 'قائمة الفحص الهندسي', icon: CheckSquare, color: 'from-indigo-600 to-violet-600' },
   { id: 'references' as MasterTab, label: 'المراجع الهندسية', icon: FileText, color: 'from-rose-600 to-pink-600' },
   { id: 'ecosystem' as MasterTab, label: 'برمجيات دهب سوفت وير 👑', icon: Crown, color: 'from-amber-500 to-yellow-600' },
