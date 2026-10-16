@@ -3,12 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { CheckSquare, Square, ShieldCheck, HelpCircle, Plus, Trash2, Edit, RotateCcw, TrendingUp, AlertTriangle, X } from 'lucide-react';
 import { useDiagnosticContext } from '@/contexts/DiagnosticContext';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { supabase } from '@/lib/supabaseBrowser';
 
 interface ChecklistItem {
   id: string;

@@ -3,7 +3,7 @@
  * مصممة للعمل بكفاءة فائقة على كافة الأجهزة (موبايل، PWA مثبت، أندرويد كروم، آيفون سفاري، كمبيوتر)
  * 
  * المزايا:
- * 1. فك حظر السياسة الصوتية الصارمة للموبايل (Mobile Autoplay Unlock) لحظياً أثناء الضغط
+ * 1. فك حظر السياسة الصوتية للموبايل عبر Web Audio API بدون أي ملفات خارجية
  * 2. استخدام Web Audio API (AudioContext) للنطق الصافي بدون أي خطأ في فك التشفير
  * 3. دعم التراجع التلقائي لـ HTML5 Audio مع كائن Blob محلي
  * 4. دعم التراجع الأخير لـ SpeechSynthesis
@@ -16,9 +16,6 @@ let currentBlobUrl: string | null = null;
 let activeSourceNode: AudioBufferSourceNode | null = null;
 let sharedAudioCtx: AudioContext | null = null;
 let currentUtterance: any = null;
-
-// عينة صوتية صامتة لفك حظر الموبايل (48-byte Silent WAV)
-const SILENT_WAV = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
 
 /**
  * الحصول على AudioContext موحد مع استئنافه أثناء إيماءة المستخدم
@@ -94,12 +91,20 @@ export function playArabicSpeech(
     return () => {};
   }
 
-  // 1. 🚀 فك حظر الصوت في الموبايل والـ PWA بشكل تزامني فوري داخل إيماءة اللمس الحالية
+  // 1. 🚀 فك حظر الصوت في الموبايل والـ PWA عبر Web Audio Context الأصلي بدون ملفات وهمية
   const audioCtx = getOrCreateAudioContext();
-
-  const primeAudio = new Audio(SILENT_WAV);
-  activeAudio = primeAudio;
-  primeAudio.play().catch(() => {}); // استهلاك إذن اللمس فورياً
+  if (audioCtx) {
+    try {
+      const silentBuf = audioCtx.createBuffer(1, 1, 22050);
+      const silentSrc = audioCtx.createBufferSource();
+      silentSrc.buffer = silentBuf;
+      silentSrc.connect(audioCtx.destination);
+      silentSrc.start(0);
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+      }
+    } catch {}
+  }
 
   callbacks?.onStart?.();
 
@@ -142,14 +147,13 @@ export function playArabicSpeech(
       const arrayBuffer = await res.arrayBuffer();
       if (isCancelled) return;
 
-      // 3. المسار الأول المفضل للموبايل: التشغيل عبر Web Audio API (مستقل تماماً عن مشاكل كودك الـ Media Element)
+      // 3. المسار الأول المفضل: فك التشفير والتشغيل عبر Web Audio API
       if (audioCtx && audioCtx.state !== 'closed') {
         try {
           if (audioCtx.state === 'suspended') {
             await audioCtx.resume();
           }
 
-          // فك تشفير الـ ArrayBuffer مباشرة في كارت الصوت
           const decodedBuffer = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
           if (isCancelled) return;
 
@@ -167,7 +171,7 @@ export function playArabicSpeech(
           console.log('[TTS] Successfully playing via Web Audio API');
           return;
         } catch (webAudioErr) {
-          console.warn('[TTS] Web Audio decode failed, falling back to Blob Audio Element:', webAudioErr);
+          console.warn('[TTS] Web Audio decode failed, trying HTML5 Audio Blob:', webAudioErr);
         }
       }
 
@@ -180,18 +184,20 @@ export function playArabicSpeech(
       const blobUrl = URL.createObjectURL(blob);
       currentBlobUrl = blobUrl;
 
-      primeAudio.src = blobUrl;
-      primeAudio.onended = () => {
+      const audio = new Audio(blobUrl);
+      activeAudio = audio;
+
+      audio.onended = () => {
         cleanup();
         callbacks?.onEnd?.();
       };
-      primeAudio.onerror = (e) => {
+      audio.onerror = (e) => {
         console.warn('[TTS] Blob Audio error:', e);
         cleanup();
         fallbackToBrowserSpeech(text, callbacks);
       };
 
-      await primeAudio.play();
+      await audio.play();
       console.log('[TTS] Successfully playing via Blob Audio Element');
     } catch (err: any) {
       if (isCancelled) return;

@@ -3,12 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Zap, AlertTriangle, ShieldCheck, Flame, Info, CheckCircle2, Plus, Trash2, Edit, X, Settings, Save, History } from 'lucide-react';
 import { useDiagnosticContext } from '@/contexts/DiagnosticContext';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { supabase } from '@/lib/supabaseBrowser';
 
 interface RailInfo {
   id: string;

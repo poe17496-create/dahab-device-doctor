@@ -3,12 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ReferenceSource } from '@/lib/types';
 import { ExternalLink, BookOpen, Youtube, Cpu, MessageSquare, Wrench, Search, Scale, Shield, Filter, Plus, X, Tag, Globe, FileText, Video } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { supabase } from '@/lib/supabaseBrowser';
 
 interface SourcesReferencesProps {
   sources: ReferenceSource[];

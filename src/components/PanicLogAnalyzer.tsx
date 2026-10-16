@@ -2,12 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { AlertOctagon, CheckCircle2, FileText, Cpu, Search, Sparkles, Copy, Check, Download, Plus, Trash2, X, History, Save } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { supabase } from '@/lib/supabaseBrowser';
 
 interface PanicSignature {
   id: string;
