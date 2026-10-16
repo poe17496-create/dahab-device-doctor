@@ -1,6 +1,6 @@
-// Dahab Device Doctor - Service Worker v5 (Chunk-Safe)
-// تاريخ التحديث: 2026-09-29 - حل مشكلة ChunkLoadError بعد كل نشر
-const CACHE_VERSION = 'dahab-v5';
+// Dahab Device Doctor - Service Worker v6 (Auto-Update & Audio Support)
+// تاريخ التحديث: 2026-10-16 - تحديث محرك الصوت وتفريغ الكاش القديم
+const CACHE_VERSION = 'dahab-v6';
 const CACHE_NAME = CACHE_VERSION + '-' + self.location.hostname;
 
 // الأصول الثابتة التي يمكن تخزينها بأمان (لا تتغير بتغيير الكود)
