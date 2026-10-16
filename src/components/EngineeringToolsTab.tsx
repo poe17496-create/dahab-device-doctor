@@ -30,6 +30,10 @@ import {
   Printer,
   Sparkles,
   ShieldAlert,
+  UploadCloud,
+  FileUp,
+  FileCheck,
+  Trash2,
 } from 'lucide-react';
 
 /* =========================================================================
@@ -977,43 +981,113 @@ function MobileSafeVoltageCalculator() {
 }
 
 /* =========================================================================
-   2. محلل البانيك السريع (Quick Panic Analyzer)
+   2. محلل البانيك السريع والمطور لرفع الملفات (Advanced Panic Log Analyzer)
    ========================================================================= */
 
 function QuickPanicAnalyzer() {
   const [logText, setLogText] = useState('');
   const [detectedIssue, setDetectedIssue] = useState<any>(null);
+  const [extractedMeta, setExtractedMeta] = useState<any>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  const analyzeLog = () => {
-    if (!logText.trim()) return;
+  // تحليل المحتوى الفوري
+  const processAndAnalyze = (content: string, name?: string) => {
+    if (!content.trim()) return;
 
-    const lower = logText.toLowerCase();
+    if (name) setFileName(name);
+    setLogText(content);
+
+    // 1. استخراج الميتاداتا الهندسية من ملف البانيك
+    const meta: any = {};
+
+    // bug_type
+    const bugTypeMatch = content.match(/"bug_type"\s*:\s*"(\d+)"/i) || content.match(/bug_type\s*[:=]\s*(\d+)/i);
+    if (bugTypeMatch) meta.bugType = bugTypeMatch[1];
+
+    // Hardware Model
+    const modelMatch = content.match(/"product"\s*:\s*"([^"]+)"/i) || content.match(/Hardware Model\s*[:=]\s*([^\r\n]+)/i);
+    if (modelMatch) meta.model = modelMatch[1].trim();
+
+    // Incident ID
+    const incidentMatch = content.match(/"incident_id"\s*:\s*"([^"]+)"/i) || content.match(/Incident Identifier\s*[:=]\s*([^\r\n]+)/i);
+    if (incidentMatch) meta.incidentId = incidentMatch[1].trim();
+
+    // Timestamp
+    const timeMatch = content.match(/"timestamp"\s*:\s*"([^"]+)"/i) || content.match(/Date\/Time\s*[:=]\s*([^\r\n]+)/i);
+    if (timeMatch) meta.timestamp = timeMatch[1].trim();
+
+    // panicString extract
+    let panicString = '';
+    const panicStrMatch = content.match(/"panicString"\s*:\s*"([^"]+)"/i) || content.match(/panic\(cpu[^\)]+\):\s*([^\r\n]+)/i);
+    if (panicStrMatch) panicString = panicStrMatch[1];
+
+    setExtractedMeta(Object.keys(meta).length > 0 ? meta : null);
+
+    // 2. محرك الكشف عن الأعطال الدقيق
+    const lower = content.toLowerCase();
     const results: any[] = [];
+
+    // حساسات الحرارة وفلاتة الشحن / البطارية (90% من أعطال الريستارت كل 3 دقائق)
+    if (
+      lower.includes('mic1') ||
+      lower.includes('mic2') ||
+      lower.includes('prc0') ||
+      lower.includes('prc1') ||
+      lower.includes('thermal') ||
+      lower.includes('gasgauge') ||
+      lower.includes('smc_thermal') ||
+      lower.includes('wdt') ||
+      lower.includes('watchdog') ||
+      meta.bugType === '210'
+    ) {
+      results.push({
+        title: 'ريستارت متكرر كل 3 دقائق بسبب حساس الحرارة (Thermal Sensor / NTC)',
+        component: 'فلاتة مدخل الشحن السفلية (Mic1)، أو حساس فلاتة السماعة العلوية (Sensor Flex)',
+        severity: 'عالي (90% احتمال عطل فلاتة)',
+        diagnosisReason: 'النظام يفقد إشارة حساس الحرارة فيقوم معالج الـ Watchdog بعمل إعادة تشغيل إجبارية كل 180 ثانية.',
+        action: '1. استبدل فلاتة الشحن السفلية بقطعة أصلية موثوقة للتجربة.\n2. افصل فلاتة الحساسات العلوية وجرب الإقلاع بدونها.\n3. تأكد من سلامة ريش البطارية وخط BSI.',
+      });
+    }
 
     if (lower.includes('sep') || lower.includes('secureenclave')) {
       results.push({
         title: 'عطل في معالج الحماية الموثوق (SEP / Secure Enclave)',
-        component: 'مستشعر البصمة Touch ID، أو بصمة الوجه Face ID، أو لحام المعالج',
+        component: 'مستشعر البصمة Touch ID، أو بصمة الوجه Face ID، أو شريحة المعالج',
         severity: 'حرج (Critical)',
-        action: 'افصل فلاتة الحساسات العلوية أولاً وجرب الإقلاع بدونها للتأكد من عدم وجود شورت بخط I2C.',
+        diagnosisReason: 'فشل في تهيئة معالج الأمان المشفر عند الإقلاع.',
+        action: 'افصل فلاتة الحساسات العلوية والكاميرا الأمامية أولاً للتأكد من عدم وجود شورت بخط I2C.',
       });
     }
 
-    if (lower.includes('pmu') || lower.includes('pmic') || lower.includes('smc')) {
+    if (lower.includes('pmu') || lower.includes('pmic') || lower.includes('pmic_reset')) {
       results.push({
-        title: 'فشل في دائرة إدارة الطاقة (PMIC / Power Management)',
-        component: 'آيسي الباور الرئيسي (Dialog / Qualcomm PMIC)، مسارات I2C_PWR',
+        title: 'فشل في دائرة تنظيم الطاقة والباور (PMIC Failure)',
+        component: 'آيسي الباور الرئيسي (Dialog / Qualcomm PMIC)، أو مكثفات ملفات البك المحيطة',
         severity: 'حرج (Critical)',
-        action: 'افحص خرج المنظمات LDO وخطوط البك حول آيسي الباور، وتأكد من عدم سخونته.',
+        diagnosisReason: 'انهيار أحد خطوط التغذية الرئيسية أو سخونة مفرطة بآيسي الباور.',
+        action: 'افحص جهود الخرج LDO وملفات البك حول آيسي الباور، وتأكد من عدم وجود شورت صريح.',
       });
     }
 
-    if (lower.includes('nand') || lower.includes('ans2') || lower.includes('nvme')) {
+    if (lower.includes('nand') || lower.includes('ans2') || lower.includes('nvme') || lower.includes('sdev')) {
       results.push({
-        title: 'خلل في ذاكرة التخزين الداخلية (NAND Flash Memory)',
-        component: 'شريحة الذاكرة NAND / UFS أو تغذية 2.8V / 1.8V',
+        title: 'خلل في ذاكرة التخزين الداخلية (NAND / NVMe Storage)',
+        component: 'شريحة الذاكرة NAND / UFS أو خطوط التغذية 2.8V / 1.8V أو مسارات PCIe',
         severity: 'عالي (High)',
+        diagnosisReason: 'فشل الاتصال بذاكرة النظام مما يسبب تعليق على التفاحة أو انهيار فوري.',
         action: 'قس ممانعات خطوط الـ PCIe للذاكرة، وتأكد من سلامة جهود التغذية قبل إعادة الشبلنة.',
+      });
+    }
+
+    if (lower.includes('baseband') || lower.includes('modem') || lower.includes('bb_') || lower.includes('rffe')) {
+      results.push({
+        title: 'فشل في دائرة الشبكة والمودم (Baseband System)',
+        component: 'معالج الإشارة Baseband أو آيسي باور الشبكة BB-PMU أو دوائر التردد RF',
+        severity: 'حرج (Critical)',
+        diagnosisReason: 'فشل استجابة مودم الاتصال مع معالج التطبيقات.',
+        action: 'تأكد من عدم ظهور مثلث أصفر أو فقدان IMEI، وافحص خطوط VDD_RFFE ومكثفات تغذية البيسباند.',
       });
     }
 
@@ -1022,100 +1096,243 @@ function QuickPanicAnalyzer() {
         title: 'عطل في شريحة الواي فاي والبلوتوث (Wi-Fi Module)',
         component: 'آيسي الواي فاي (Murata / Broadcom / WCN)',
         severity: 'متوسط (Medium)',
-        action: 'تأكد من وصول جهد 3.3V و 1.8V للواي فاي، وقم بإعادة التسخين أو شبلنة الشريحة.',
+        diagnosisReason: 'انهيار ناقل الاتصال بين المعالج وموديول الاتصال اللاسلكي.',
+        action: 'تأكد من وصول جهد 3.3V و 1.8V للواي فاي، وقم بإعادة التسخين أو فك الارتباط واستبدال الشريحة.',
       });
     }
 
-    if (lower.includes('baseband') || lower.includes('modem') || lower.includes('bb_')) {
+    if (lower.includes('audio') || lower.includes('codec') || lower.includes('i2s')) {
       results.push({
-        title: 'فشل في دائرة الشبكة والمودم (Baseband System)',
-        component: 'معالج الإشارة Baseband أو آيسي باور الشبكة BB-PMU',
-        severity: 'حرج (Critical)',
-        action: 'تأكد من عدم ظهور مثلث أصفر أو فقدان IMEI في شاشة الطوارئ، وافحص خطوط VDD_RFFE.',
-      });
-    }
-
-    if (lower.includes('thermal') || lower.includes('sensor') || lower.includes('temperature') || lower.includes('ntc')) {
-      results.push({
-        title: 'إيقاف تشغيل طارئ بسبب حساس الحرارة (Thermal Sensor / NTC)',
-        component: 'مقاومة NTC الحرارية في فلاتة الشحن أو البطارية أو بجوار المعالج',
-        severity: 'عالي (High)',
-        action: 'غيّر فلاتة الشحن للتجربة فوراً؛ 90% من ريستارت الأجهزة كل 3 دقائق بسبب حساس الشحن.',
+        title: 'عطل في دائرة معالجة الصوت (Audio Codec)',
+        component: 'آيسي الصوت الكبير (Audio Codec IC)، أو مكبرات الصوت (Speaker Amp)',
+        severity: 'متوسط (Medium)',
+        diagnosisReason: 'توقف مسار الساعة الصوتي I2S_CLK أو قطع في خط تغذية آيسي الصوت.',
+        action: 'أعد لحام أو استبدال آيسي الصوت مع سحب أسلاك التعويض في الموديلات المعرضة لانفصال المسارات.',
       });
     }
 
     if (lower.includes('i2c') || lower.includes('spi')) {
       results.push({
         title: 'انقطاع ناقل البيانات التواصلي (I2C / SPI Bus Failure)',
-        component: 'مقاومات رفع الناقل (Pull-up Resistors 2.2k)، أو أحد الآيسيهات المرتبطة بالناقل',
+        component: 'مقاومات رفع الناقل (Pull-up Resistors 2.2k)، أو أحد الآيسيهات المتصلة بالناقل',
         severity: 'عالي (High)',
-        action: 'افحص خطوط SDA و SCL؛ أي سحب أرضي على خط البيانات يوقف الجهاز عن الإقلاع.',
+        diagnosisReason: 'سحب أرضي على أحد خطوط SDA / SCL يمنع المعالج من التواصل مع ملحقات البوردة.',
+        action: 'قس ممانعات خطوط SDA و SCL على كونكتورات الفلاتات لتحديد أي فلاتة بها الشورت.',
       });
     }
 
     if (results.length === 0) {
       setDetectedIssue({
-        title: 'لم يتم العثور على توقيع عطل نمطي محدد في هذا المقطع',
-        component: 'فحص يدوي مطلوب',
+        title: 'تم قراءة الملف - لم يتم رصد عطل نمطي معروف في هذا المقطع',
+        component: 'فحص يدوي للـ panicString مطلوب',
         severity: 'تنبيه',
-        action: 'تأكد من نسخ سطر panicString أو أول 10 أسطر من ملف البانيك لمعرفة المسار المنهار بدقة.',
+        diagnosisReason: panicString ? `سطر الانهيار: ${panicString.slice(0, 120)}...` : 'لم يتم العثور على سطر panicString صريح.',
+        action: 'تأكد من رفع ملف البانيك الكامل بصيغة .ips أو .panic لتحليل كافة استدعاءات الكيرنل بدقة.',
       });
     } else {
       setDetectedIssue(results[0]);
     }
   };
 
-  return (
-    <div className="space-y-3">
-      <p className="text-xs text-gray-600 dark:text-gray-400">
-        الصق أول أسطر ملف البانيك (Panic Log) أو نص سطر <code className="font-mono bg-gray-200 dark:bg-gray-800 px-1 rounded text-amber-500">panicString</code> لتحليله وتحديد العطل فورياً:
-      </p>
+  // معالجة اختيار ملف بالزر
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-      <textarea
-        rows={3}
-        value={logText}
-        onChange={(e) => setLogText(e.target.value)}
-        placeholder='مثال: {"bug_type":"210","timestamp":"...","panicString":"panic(cpu 0 caller...): SEP Panic: [0x12] assertion failed...'
-        className="w-full p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-mono text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-500"
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      processAndAnalyze(text, file.name);
+    };
+    reader.readAsText(file);
+  };
+
+  // معالجة السحب والإفلات (Drag & Drop)
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      processAndAnalyze(text, file.name);
+    };
+    reader.readAsText(file);
+  };
+
+  // عينة تجريبية حقيقية بنقرة واحدة
+  const handleLoadSample = () => {
+    const sample = `{"bug_type":"210","timestamp":"2023-10-14 18:22:45 +0300","os_version":"iPhone OS 16.6 (20G75)","incident_id":"A93BC712-45E1","product":"iPhone12,1","panicString":"panic(cpu 1 caller 0xfffffff01bf89abc): [thermal monitor] Missing sensor: 'mic1' on I2C3 bus failed to report temperature within 180 seconds. Thermal Watchdog Timeout expired! Rebooting device."}`;
+    processAndAnalyze(sample, 'panic-full-sample-iPhone11.ips');
+  };
+
+  const handleReset = () => {
+    setLogText('');
+    setDetectedIssue(null);
+    setExtractedMeta(null);
+    setFileName(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* إدخال الملف عبر السحب والإفلات أو الزر */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept=".ips,.panic,.log,.txt,.json"
+        className="hidden"
       />
 
-      <div className="flex gap-2">
-        <button
-          onClick={analyzeLog}
-          className="px-4 py-2 rounded-xl bg-gradient-to-r from-dahab-500 to-amber-600 text-slate-950 text-xs font-bold hover:shadow-md transition"
-        >
-          تحليل النص الهندسي 🔍
-        </button>
-        <button
-          onClick={() => {
-            setLogText('');
-            setDetectedIssue(null);
-          }}
-          className="px-3 py-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs font-semibold"
-        >
-          تفريغ
-        </button>
+      <div
+        onDragOver={(e) => {
+          e.preventDefault();
+          setIsDragging(true);
+        }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={handleDrop}
+        className={`border-2 border-dashed rounded-2xl p-5 md:p-6 text-center transition-all cursor-pointer ${
+          isDragging
+            ? 'border-amber-500 bg-amber-500/10 scale-[1.01]'
+            : 'border-gray-300 dark:border-gray-700 hover:border-amber-500/60 bg-white/50 dark:bg-gray-800/40'
+        }`}
+        onClick={() => fileInputRef.current?.click()}
+      >
+        <div className="flex flex-col items-center gap-2">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500/20 to-amber-500/20 border border-purple-500/30 flex items-center justify-center text-purple-600 dark:text-purple-400">
+            <UploadCloud className="w-6 h-6" />
+          </div>
+          <div>
+            <h4 className="text-xs md:text-sm font-bold text-gray-900 dark:text-gray-100">
+              {fileName ? (
+                <span className="text-emerald-500 flex items-center justify-center gap-1.5">
+                  <FileCheck className="w-4 h-4" /> تم رفع: {fileName}
+                </span>
+              ) : (
+                'اسحب وأفلت ملف البانيك (.ips / .panic) هنا أو اضغط للاختيار'
+              )}
+            </h4>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+              يدعم كافة امتدادات ملفات السجلات: .ips, .panic, .log, .txt, .json
+            </p>
+          </div>
+          <div className="mt-1 flex items-center gap-2">
+            <span className="px-3 py-1 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-300 font-bold text-xs border border-purple-500/20">
+              📂 تصفح الملفات من الهاتف أو الكمبيوتر
+            </span>
+          </div>
+        </div>
       </div>
 
+      {/* منطقة النص اليدوي وزر العينة */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-bold text-gray-700 dark:text-gray-300">
+            أو الصق نص البانيك يدوياً:
+          </label>
+          <button
+            onClick={handleLoadSample}
+            type="button"
+            className="text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1"
+          >
+            <span>🧪 تجربة عينة بانيك حقيقية</span>
+          </button>
+        </div>
+
+        <textarea
+          rows={3}
+          value={logText}
+          onChange={(e) => processAndAnalyze(e.target.value)}
+          placeholder='{"bug_type":"210","timestamp":"...","panicString":"panic(cpu 0 caller...): [thermal monitor]...'
+          className="w-full p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-mono text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-500 leading-relaxed"
+        />
+
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex gap-2">
+            <button
+              onClick={() => processAndAnalyze(logText)}
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-dahab-500 to-amber-600 text-slate-950 text-xs font-bold hover:shadow-md transition flex items-center gap-1.5"
+            >
+              <span>تحليل فوري ⚡</span>
+            </button>
+            <button
+              onClick={handleReset}
+              className="px-3 py-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+            >
+              مسح وإعادة تعيين
+            </button>
+          </div>
+
+          {logText && (
+            <span className="text-[10px] text-gray-400 font-mono">
+              طول النص: {logText.length.toLocaleString()} حرف
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* الميتاداتا المستخرجة من الملف إن وجدت */}
+      {extractedMeta && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 font-mono text-xs">
+          {extractedMeta.model && (
+            <div className="p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+              <span className="text-[10px] text-gray-400 block font-sans">الموديل المكتشف</span>
+              <span className="font-bold text-gray-900 dark:text-gray-100">{extractedMeta.model}</span>
+            </div>
+          )}
+          {extractedMeta.bugType && (
+            <div className="p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+              <span className="text-[10px] text-gray-400 block font-sans">نوع الانهيار (Bug Type)</span>
+              <span className="font-bold text-purple-600 dark:text-purple-400">{extractedMeta.bugType}</span>
+            </div>
+          )}
+          {extractedMeta.incidentId && (
+            <div className="p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+              <span className="text-[10px] text-gray-400 block font-sans">كود الحادثة</span>
+              <span className="font-bold text-gray-700 dark:text-gray-300 truncate block">{extractedMeta.incidentId}</span>
+            </div>
+          )}
+          {extractedMeta.timestamp && (
+            <div className="p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+              <span className="text-[10px] text-gray-400 block font-sans">توقيت الانهيار</span>
+              <span className="font-bold text-gray-700 dark:text-gray-300 text-[11px] truncate block">{extractedMeta.timestamp}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* كارت نتيجة التحخيص الفورية */}
       {detectedIssue && (
-        <div className="mt-3 p-4 rounded-xl bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-800 space-y-2 text-xs">
-          <div className="flex items-center justify-between">
-            <h4 className="font-bold text-sm text-purple-600 dark:text-purple-400 flex items-center gap-2">
-              <Sparkles className="w-4 h-4" />
-              {detectedIssue.title}
+        <div className="p-4 md:p-5 rounded-2xl bg-white dark:bg-gray-800 border-2 border-purple-300 dark:border-purple-800/80 shadow-lg shadow-purple-500/5 space-y-3 text-xs animate-fadeIn">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h4 className="font-bold text-sm md:text-base text-purple-700 dark:text-purple-400 flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-amber-500 shrink-0" />
+              <span>{detectedIssue.title}</span>
             </h4>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-500 border border-rose-500/20">
+            <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
               {detectedIssue.severity}
             </span>
           </div>
 
-          <p className="text-gray-700 dark:text-gray-300">
-            <span className="font-bold">المكون المتهم: </span>
-            {detectedIssue.component}
-          </p>
+          <div className="p-3 rounded-xl bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700 space-y-1.5">
+            <p className="text-gray-800 dark:text-gray-200">
+              <span className="font-bold text-gray-900 dark:text-white">المكون المتهم بالعطل: </span>
+              {detectedIssue.component}
+            </p>
+            {detectedIssue.diagnosisReason && (
+              <p className="text-gray-600 dark:text-gray-400 text-[11px]">
+                <span className="font-bold">التفسير الفني: </span>
+                {detectedIssue.diagnosisReason}
+              </p>
+            )}
+          </div>
 
-          <div className="p-2.5 rounded-lg bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-900 text-purple-700 dark:text-purple-300">
-            <span className="font-bold">الإجراء الهندسي الموصى به: </span>
+          <div className="p-3 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-900 text-purple-800 dark:text-purple-300 leading-relaxed whitespace-pre-line font-medium">
+            <span className="font-bold block mb-1">🛠️ خطوات الإصلاح الموصى بها على البوردة:</span>
             {detectedIssue.action}
           </div>
         </div>
