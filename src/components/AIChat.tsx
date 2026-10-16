@@ -25,11 +25,15 @@ import {
   FileJson,
   Maximize2,
   ZoomIn,
+  VolumeX,
+  FileText,
 } from 'lucide-react';
 import { useDiagnosticContext } from '@/contexts/DiagnosticContext';
 import MicroscopeCameraModal from '@/components/MicroscopeCameraModal';
 import FormattedChatMessage from '@/components/FormattedChatMessage';
 import { cleanAIResponseText } from '@/lib/cleanResponse';
+import { exportChatAsPDF } from '@/lib/chatPdfExport';
+import { playArabicSpeech, stopSpeech } from '@/lib/speechService';
 
 interface ChatMessage {
   id: string;
@@ -105,6 +109,7 @@ export default function AIChat({ currentUser, guestRemaining, onRemainingChange 
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [savedSessions, setSavedSessions] = useState<SavedChatSession[]>([]);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
+  const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
 
   // حالة التسجيل الصوتي البديل (MediaRecorder للـ PWA والمتصفحات التي لا تدعم Web Speech)
   const [isRecordingAudio, setIsRecordingAudio] = useState(false);
@@ -256,49 +261,46 @@ export default function AIChat({ currentUser, guestRemaining, onRemainingChange 
     } catch {}
   };
 
-  // تصدير المحادثة الحالية كملف JSON
+  // تصدير المحادثة الحالية كملف PDF معتمد وجاهز للطباعة
   const handleExportChat = () => {
-    const exportData = {
-      id: `chat_${Date.now()}`,
-      title: messages.find(m => m.role === 'user')?.content.slice(0, 50) || 'محادثة هندسية',
-      date: new Date().toISOString(),
-      messageCount: messages.length,
-      messages: messages.map(m => ({
-        role: m.role,
-        content: m.content,
-        timestamp: m.timestamp.toISOString(),
-        hasImage: !!m.image,
-      })),
-    };
-
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(exportData, null, 2));
-    const dl = document.createElement('a');
-    dl.setAttribute('href', dataStr);
-    dl.setAttribute('download', `dahab_chat_${Date.now()}.json`);
-    document.body.appendChild(dl);
-    dl.click();
-    dl.remove();
-    setToastMsg('تم تصدير المحادثة بنجاح ✅');
+    try {
+      exportChatAsPDF(messages, {
+        name: currentUser?.name || 'م. إسلام دهب',
+        username: currentUser?.username,
+        workshopName: localStorage.getItem('dahab_workshop_name') || 'مركز دهب للهندسة وصيانة الإلكترونيات الدقيقة',
+      });
+      setToastMsg('تم تجهيز وثيقة المحادثة للطباعة والحفظ كـ PDF 📄✅');
+    } catch (err) {
+      console.error('PDF export error:', err);
+      setToastMsg('حدث خطأ أثناء إعداد وثيقة PDF');
+    }
   };
 
-  // تهيئة أصوات النطق باللغة العربية عند فتح المكون
+  // إيقاف الصوت عند مغادرة الصفحة
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      // إجبار المتصفح على تحميل الأصوات مبكراً
-      window.speechSynthesis.getVoices();
-      if (window.speechSynthesis.onvoiceschanged !== undefined) {
-        window.speechSynthesis.onvoiceschanged = () => {
-          window.speechSynthesis.getVoices();
-        };
-      }
-    }
+    return () => {
+      stopSpeech();
+    };
   }, []);
 
-  // 🎙️ محرك النطق الصوتي الفوري المباشر (مؤقتاً معطل للصيانة)
+  // 🎙️ محرك النطق الصوتي الفوري المباشر (صوت عربي طبيعي عالي الجودة)
   const speakText = (text: string, msgId?: string) => {
-    // مؤقتاً: إظهار رسالة أن النطق الصوتي تحت الصيانة
-    setToastMsg('⚠️ النطق الصوتي تحت الصيانة - سنقوم بتفعيله قريباً');
-    return;
+    const targetId = msgId || 'current';
+    if (speakingMsgId === targetId) {
+      stopSpeech();
+      setSpeakingMsgId(null);
+      return;
+    }
+
+    setSpeakingMsgId(targetId);
+    playArabicSpeech(text, {
+      onStart: () => setSpeakingMsgId(targetId),
+      onEnd: () => setSpeakingMsgId(null),
+      onError: (err) => {
+        setSpeakingMsgId(null);
+        setToastMsg(err || 'تعذر تشغيل الصوت');
+      },
+    });
   };
 
   // إرسال الرسالة
@@ -388,16 +390,9 @@ export default function AIChat({ currentUser, guestRemaining, onRemainingChange 
         checklistProgress: checklistProgress || null,
       };
 
-      // كشف الموبايل - تعطيل streaming نهائياً للموبايل
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      // تعطيل streaming للموبايل - استخدام non-streaming فقط
-      const useStreaming = !isMobile;
+      // تفعيل البث المباشر (Streaming) لكافة الأجهزة مع دعم التدفق الحي
+      const useStreaming = true;
 
-      console.log('[Mobile Debug] Is mobile device:', isMobile);
-      console.log('[Mobile Debug] Using streaming:', useStreaming);
-      console.log('[Mobile Debug] Current user:', currentUser);
-
-      // استخدام streaming mode (ممكن للموبايل أيضاً)
       const requestBody: any = {
         chatHistory: historyPayload,
         customKeys,
@@ -492,29 +487,48 @@ export default function AIChat({ currentUser, guestRemaining, onRemainingChange 
 
       let fullText = '';
 
-      // استخدام streaming mode للكمبيوتر والموبايل على حد سواء
-      if (!useStreaming) {
-        console.log('[Mobile Debug] Using non-streaming mode (fallback)');
+      const contentType = res.headers.get('content-type') || '';
+      const isEventStream = contentType.includes('text/event-stream');
+
+      // معالجة الردود غير التدفّقية أو الكاش مع تأثير الكتابة التدريجي السلس (Typewriter)
+      if (!isEventStream || !res.body) {
+        console.log('[Chat] Received non-streaming response, applying smooth typewriter effect');
         try {
           const jsonData = await res.json();
           fullText = jsonData.message || jsonData.text || jsonData.response || '';
           if (jsonData.remaining !== undefined && onRemainingChange) {
             onRemainingChange(jsonData.remaining);
           }
-          console.log('[Mobile Debug] Non-streaming response length:', fullText.length);
-          console.log('[Mobile Debug] Response data:', jsonData);
 
-          // معالجة حالة عدم وجود رد في non-streaming mode
           if (!fullText) {
-            console.error('[Mobile Debug] Empty response in non-streaming mode!');
             if (jsonData.error) {
               fullText = `⚠️ خطأ من الخادم: ${jsonData.error}`;
             } else {
               fullText = '⚠️ خطأ: الخادم أرجع رد فارغ. يرجى المحاولة مرة أخرى.';
             }
           }
+
+          // محاكاة تأثير الكتابة التدريجية لظهور الرد بسلاسة تماماً كما في شاشة التشخيص
+          const targetClean = cleanAIResponseText(fullText) || fullText;
+          let currLen = 0;
+          const step = Math.max(2, Math.floor(targetClean.length / 70));
+          await new Promise<void>((resolve) => {
+            const timer = setInterval(() => {
+              currLen = Math.min(targetClean.length, currLen + step);
+              const chunkStr = targetClean.slice(0, currLen);
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantId ? { ...msg, content: chunkStr } : msg
+                )
+              );
+              if (currLen >= targetClean.length) {
+                clearInterval(timer);
+                resolve();
+              }
+            }, 15);
+          });
         } catch (jsonError) {
-          console.error('[Mobile Debug] Error parsing JSON response:', jsonError);
+          console.error('[Chat] Error parsing JSON response:', jsonError);
           fullText = '⚠️ خطأ في قراءة رد الخادم. يرجى المحاولة مرة أخرى.';
         }
       } else {
@@ -904,15 +918,15 @@ export default function AIChat({ currentUser, guestRemaining, onRemainingChange 
 
           {/* Action Buttons */}
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* زر تصدير المحادثة */}
+            {/* زر تصدير المحادثة كـ PDF معتمد */}
             <button
               type="button"
               onClick={handleExportChat}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs font-bold transition"
-              title="تصدير المحادثة كملف JSON"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-xs font-bold transition shadow-sm"
+              title="تصدير وطباعة المحادثة كوثيقة PDF رسمية معتمدة"
             >
-              <Download className="w-3.5 h-3.5 text-emerald-500" />
-              <span className="hidden sm:inline">تصدير</span>
+              <FileText className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span className="hidden sm:inline">تصدير PDF</span>
             </button>
 
             {/* زر محادثة جديدة */}
@@ -1003,11 +1017,15 @@ export default function AIChat({ currentUser, guestRemaining, onRemainingChange 
                   <button
                     type="button"
                     onClick={() => speakText(message.content, message.id)}
-                    className="flex items-center gap-1.5 transition px-2.5 py-1 rounded-xl text-[11px] font-bold text-dahab-600 hover:text-dahab-500 hover:bg-dahab-50 dark:hover:bg-dahab-900/20"
-                    title="استماع للرد صوتياً"
+                    className={`flex items-center gap-1.5 transition px-2.5 py-1 rounded-xl text-[11px] font-bold ${
+                      speakingMsgId === message.id
+                        ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/40 animate-pulse'
+                        : 'text-dahab-600 hover:text-dahab-500 hover:bg-dahab-50 dark:hover:bg-dahab-900/20'
+                    }`}
+                    title={speakingMsgId === message.id ? 'إيقاف الصوت' : 'استماع للرد صوتياً'}
                   >
-                    <Volume2 className="w-3.5 h-3.5" />
-                    <span>استماع</span>
+                    {speakingMsgId === message.id ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+                    <span>{speakingMsgId === message.id ? 'إيقاف' : 'استماع'}</span>
                   </button>
                 </div>
               </>

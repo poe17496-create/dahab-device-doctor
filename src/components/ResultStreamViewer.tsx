@@ -6,6 +6,7 @@ import {
   Check,
   Printer,
   Volume2,
+  VolumeX,
   Sparkles,
   Terminal,
   Cpu,
@@ -17,6 +18,7 @@ import {
 } from 'lucide-react';
 import ComponentBadge from '@/components/ComponentBadge';
 import { cleanAIResponseText } from '@/lib/cleanResponse';
+import { playArabicSpeech, stopSpeech } from '@/lib/speechService';
 
 interface ResultStreamViewerProps {
   rawOutput: string;
@@ -127,20 +129,21 @@ export default function ResultStreamViewer({ rawOutput, loading, onPrint, onComp
   };
 
   const handleSpeech = () => {
-    if (!window.speechSynthesis) return;
     if (speaking) {
-      window.speechSynthesis.cancel();
+      stopSpeech();
       setSpeaking(false);
       return;
     }
 
-    const utterance = new SpeechSynthesisUtterance(cleanContent.slice(0, 1000));
-    utterance.lang = 'ar-SA';
-    utterance.onend = () => setSpeaking(false);
-    utterance.onerror = () => setSpeaking(false);
-
     setSpeaking(true);
-    window.speechSynthesis.speak(utterance);
+    playArabicSpeech(cleanContent, {
+      onStart: () => setSpeaking(true),
+      onEnd: () => setSpeaking(false),
+      onError: (err) => {
+        setSpeaking(false);
+        console.warn('Speech error:', err);
+      },
+    });
   };
 
   const handlePrint = () => {
@@ -274,14 +277,14 @@ export default function ResultStreamViewer({ rawOutput, loading, onPrint, onComp
           <div className="flex items-center gap-1.5">
             <button
               onClick={handleSpeech}
-              className={`px-2.5 py-1.5 rounded-xl border text-xs transition flex items-center gap-1 ${
+              className={`px-2.5 py-1.5 rounded-xl border text-xs transition flex items-center gap-1.5 ${
                 speaking
-                  ? 'bg-amber-500/20 text-dahab-700 dark:text-dahab-300 border-dahab-500 font-bold'
+                  ? 'bg-amber-500/20 text-dahab-700 dark:text-dahab-300 border-dahab-500 font-bold animate-pulse'
                   : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:text-dahab-600'
               }`}
-              title="قراءة صوتية للتشخيص"
+              title={speaking ? 'إيقاف النطق الصوتي' : 'استماع للتقرير صوتياً'}
             >
-              <Volume2 className="w-3.5 h-3.5 text-dahab-500" />
+              {speaking ? <VolumeX className="w-3.5 h-3.5 text-amber-500" /> : <Volume2 className="w-3.5 h-3.5 text-dahab-500" />}
               <span className="hidden sm:inline">{speaking ? 'إيقاف الصوت' : 'استماع صوتي'}</span>
             </button>
 
