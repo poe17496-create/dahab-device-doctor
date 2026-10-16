@@ -1,12 +1,13 @@
 /**
  * 🎙️ خدمة النطق الصوتي العربي الموحد (Unified Arabic TTS Service)
- * تعمل بكفاءة على كافة الأجهزة (موبايل، كمبيوتر، أندرويد، آيفون)
- * تعتمد أولاً على البث الصوتي النقي MP3 من /api/tts ثم التراجع لـ SpeechSynthesis
+ * تعمل بكفاءة على كافة الأجهزة (موبايل، آيفون، أندرويد، كمبيوتر)
+ * تستخدم خادم الصوت السحابي /api/tts عبر Blob محلي لتجاوز قيود التشغيل في المتصفحات
  */
 
 import { cleanAIResponseText } from './cleanResponse';
 
 let activeAudio: HTMLAudioElement | null = null;
+let currentBlobUrl: string | null = null;
 let currentUtterance: any = null;
 
 /**
@@ -50,7 +51,7 @@ export function playArabicSpeech(
     onError?: (errorMsg: string) => void;
   }
 ): () => void {
-  // إيقاف أي صوت يعمل حالياً
+  // إيقاف أي صوت يعمل حالياً وتنظيف الذاكرة
   stopSpeech();
 
   const text = prepareTextForSpeech(rawText);
@@ -61,39 +62,77 @@ export function playArabicSpeech(
 
   callbacks?.onStart?.();
 
-  // 1. المحاولة الأولى: استخدام خادم الصوت السحابي /api/tts (صوت عربي طبيعي فائق الجودة MP3)
-  try {
-    const audioUrl = `/api/tts?text=${encodeURIComponent(text)}`;
-    const audio = new Audio(audioUrl);
-    activeAudio = audio;
+  // تجهيز عنصر الصوت مسبقاً داخل إيماءة الضغط المباشرة لفك حظر الصوت على الموبايل (iOS/Android)
+  const audio = new Audio();
+  activeAudio = audio;
 
-    let hasFallenBack = false;
-    const executeFallback = (reason?: any) => {
-      if (hasFallenBack) return;
-      hasFallenBack = true;
-      activeAudio = null;
-      console.warn('TTS playback issue, falling back to browser SpeechSynthesis:', reason);
-      fallbackToBrowserSpeech(text, callbacks);
-    };
+  let isCancelled = false;
 
-    audio.onended = () => {
-      activeAudio = null;
-      callbacks?.onEnd?.();
-    };
+  const cleanup = () => {
+    if (currentBlobUrl) {
+      URL.revokeObjectURL(currentBlobUrl);
+      currentBlobUrl = null;
+    }
+    activeAudio = null;
+  };
 
-    audio.onerror = (e) => {
-      executeFallback(e);
-    };
+  audio.onended = () => {
+    cleanup();
+    callbacks?.onEnd?.();
+  };
 
-    audio.play().catch((err) => {
-      executeFallback(err);
-    });
-
-    return () => stopSpeech();
-  } catch (e) {
+  audio.onerror = (e) => {
+    console.warn('Audio element error:', e);
+    cleanup();
     fallbackToBrowserSpeech(text, callbacks);
-    return () => stopSpeech();
-  }
+  };
+
+  // جلب الملف الصوتي عبر POST لتفادي قيود طول الرابط على الموبايل
+  (async () => {
+    try {
+      let res: Response | null = null;
+
+      try {
+        res = await fetch('/api/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+      } catch (postErr) {
+        // في حال فشل POST نتراجع لـ GET
+        res = await fetch(`/api/tts?text=${encodeURIComponent(text)}`);
+      }
+
+      if (isCancelled) return;
+
+      if (!res || !res.ok) {
+        throw new Error(`TTS server returned status ${res?.status || 'unknown'}`);
+      }
+
+      const blob = await res.blob();
+      if (isCancelled) return;
+
+      if (currentBlobUrl) {
+        URL.revokeObjectURL(currentBlobUrl);
+      }
+
+      const blobUrl = URL.createObjectURL(blob);
+      currentBlobUrl = blobUrl;
+
+      audio.src = blobUrl;
+      await audio.play();
+    } catch (err: any) {
+      if (isCancelled) return;
+      console.warn('Network TTS failed, falling back to browser SpeechSynthesis:', err);
+      cleanup();
+      fallbackToBrowserSpeech(text, callbacks);
+    }
+  })();
+
+  return () => {
+    isCancelled = true;
+    stopSpeech();
+  };
 }
 
 /**
@@ -108,7 +147,7 @@ function fallbackToBrowserSpeech(
   }
 ) {
   if (typeof window === 'undefined' || !window.speechSynthesis) {
-    callbacks?.onError?.('المتصفح لا يدعم النطق الصوتي');
+    callbacks?.onError?.('تأكد من تشغيل خدمة الصوت وتوصيل السماعات');
     callbacks?.onEnd?.();
     return;
   }
@@ -116,7 +155,7 @@ function fallbackToBrowserSpeech(
   try {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    currentUtterance = utterance; // لمنع Garbage Collection في كروم
+    currentUtterance = utterance;
 
     utterance.lang = 'ar-SA';
     utterance.rate = 0.95;
@@ -138,13 +177,13 @@ function fallbackToBrowserSpeech(
     utterance.onerror = (e) => {
       currentUtterance = null;
       console.warn('Browser SpeechSynthesis error:', e);
-      callbacks?.onError?.('تعذر تشغيل الصوت على هذا المتصفح');
+      callbacks?.onError?.('تأكد من تفعيل كارت الصوت والسماعات في جهازك');
       callbacks?.onEnd?.();
     };
 
     window.speechSynthesis.speak(utterance);
   } catch (err) {
-    callbacks?.onError?.('حدث خطأ أثناء تشغيل الصوت');
+    callbacks?.onError?.('تعذر إخراج الصوت - تأكد من السماعات');
     callbacks?.onEnd?.();
   }
 }
@@ -157,8 +196,16 @@ export function stopSpeech() {
     try {
       activeAudio.pause();
       activeAudio.currentTime = 0;
+      activeAudio.removeAttribute('src');
     } catch {}
     activeAudio = null;
+  }
+
+  if (currentBlobUrl) {
+    try {
+      URL.revokeObjectURL(currentBlobUrl);
+    } catch {}
+    currentBlobUrl = null;
   }
 
   if (typeof window !== 'undefined' && window.speechSynthesis) {
