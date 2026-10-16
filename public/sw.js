@@ -1,6 +1,6 @@
-// Dahab Device Doctor - Service Worker v6 (Auto-Update & Audio Support)
-// تاريخ التحديث: 2026-10-16 - تحديث محرك الصوت وتفريغ الكاش القديم
-const CACHE_VERSION = 'dahab-v6';
+// Dahab Device Doctor - Service Worker v7 (Auto-Update & Audio Native Stream)
+// تاريخ التحديث: 2026-10-16 - تفعيل البث الصوتي المباشر وحذف الكاش القديم
+const CACHE_VERSION = 'dahab-v7';
 const CACHE_NAME = CACHE_VERSION + '-' + self.location.hostname;
 
 // الأصول الثابتة التي يمكن تخزينها بأمان (لا تتغير بتغيير الكود)

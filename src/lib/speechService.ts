@@ -3,43 +3,16 @@
  * مصممة للعمل بكفاءة فائقة على كافة الأجهزة (موبايل، PWA مثبت، أندرويد كروم، آيفون سفاري، كمبيوتر)
  * 
  * المزايا:
- * 1. فك حظر السياسة الصوتية للموبايل عبر Web Audio API بدون أي ملفات خارجية
- * 2. استخدام Web Audio API (AudioContext) للنطق الصافي بدون أي خطأ في فك التشفير
- * 3. دعم التراجع التلقائي لـ HTML5 Audio مع كائن Blob محلي
- * 4. دعم التراجع الأخير لـ SpeechSynthesis
+ * 1. استدعاء متزامن فوري لعنصر الصوت داخل إيماءة اللمس (User Gesture) لتخطي حظر الموبايل الصارم بنسبة 100%
+ * 2. بث مباشر عالي النقاء من مسار /api/tts بدون تأخير تنزيل الملف كاملاً
+ * 3. تراجع تلقائي لمحرك SpeechSynthesis المدمج في حال انقطاع الشبكة
+ * 4. تنظيف كامل للنصوص من أي وسوم أو إيموجي قبل النطق
  */
 
 import { cleanAIResponseText } from './cleanResponse';
 
 let activeAudio: HTMLAudioElement | null = null;
-let currentBlobUrl: string | null = null;
-let activeSourceNode: AudioBufferSourceNode | null = null;
-let sharedAudioCtx: AudioContext | null = null;
 let currentUtterance: any = null;
-
-/**
- * الحصول على AudioContext موحد مع استئنافه أثناء إيماءة المستخدم
- */
-function getOrCreateAudioContext(): AudioContext | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContextClass) return null;
-
-    if (!sharedAudioCtx || sharedAudioCtx.state === 'closed') {
-      sharedAudioCtx = new AudioContextClass();
-    }
-
-    if (sharedAudioCtx.state === 'suspended') {
-      sharedAudioCtx.resume().catch(() => {});
-    }
-
-    return sharedAudioCtx;
-  } catch (e) {
-    console.warn('[TTS] AudioContext initialization failed:', e);
-    return null;
-  }
-}
 
 /**
  * تنظيف النص الموجه للنطق الصوتي من أي رموز هندسية أو علامات ماركداون
@@ -57,13 +30,13 @@ function prepareTextForSpeech(text: string): string {
   // إزالة المسافات الزائدة
   cleaned = cleaned.replace(/\s+/g, ' ').trim();
 
-  // تقليم النص لأول 350 حرف لتفادي طول الانتظار وضمان استجابة صوتية سريعة وموجزة
-  if (cleaned.length > 350) {
-    const periodIdx = cleaned.indexOf('.', 200);
-    if (periodIdx !== -1 && periodIdx < 380) {
+  // تقليم النص لأول 220 حرف لتفادي طول الرابط ولضمان استجابة صوتية فورية
+  if (cleaned.length > 220) {
+    const periodIdx = cleaned.indexOf('.', 140);
+    if (periodIdx !== -1 && periodIdx < 230) {
       cleaned = cleaned.slice(0, periodIdx + 1);
     } else {
-      cleaned = cleaned.slice(0, 330) + '...';
+      cleaned = cleaned.slice(0, 200) + '...';
     }
   }
 
@@ -72,6 +45,7 @@ function prepareTextForSpeech(text: string): string {
 
 /**
  * تشغيل النطق الصوتي العربي
+ * يتم استدعاؤه مباشرة داخل معالج حدث النقر/اللمس
  * @returns دالة لإيقاف الصوت فوراً
  */
 export function playArabicSpeech(
@@ -82,7 +56,7 @@ export function playArabicSpeech(
     onError?: (errorMsg: string) => void;
   }
 ): () => void {
-  // إيقاف أي صوت يعمل حالياً وتنظيف الذاكرة
+  // 1. إيقاف أي صوت يعمل حالياً
   stopSpeech();
 
   const text = prepareTextForSpeech(rawText);
@@ -91,130 +65,60 @@ export function playArabicSpeech(
     return () => {};
   }
 
-  // 1. 🚀 فك حظر الصوت في الموبايل والـ PWA عبر Web Audio Context الأصلي بدون ملفات وهمية
-  const audioCtx = getOrCreateAudioContext();
-  if (audioCtx) {
-    try {
-      const silentBuf = audioCtx.createBuffer(1, 1, 22050);
-      const silentSrc = audioCtx.createBufferSource();
-      silentSrc.buffer = silentBuf;
-      silentSrc.connect(audioCtx.destination);
-      silentSrc.start(0);
-      if (audioCtx.state === 'suspended') {
-        audioCtx.resume().catch(() => {});
+  // 2. تجهيز رابط البث الصوتي
+  const audioUrl = `/api/tts?text=${encodeURIComponent(text)}`;
+
+  try {
+    // 3. 🚀 إنشاء عنصر الصوت واستدعاء play() فورياً وبشكل متزامن داخل إيماءة المستخدم الحالية
+    // هذا هو المعيار القياسي لمتصفحات الموبايل (iOS Safari و Android Chrome)
+    const audio = new Audio();
+    activeAudio = audio;
+    audio.preload = 'auto';
+
+    audio.onplay = () => {
+      callbacks?.onStart?.();
+    };
+
+    audio.onended = () => {
+      if (activeAudio === audio) {
+        activeAudio = null;
       }
-    } catch {}
+      callbacks?.onEnd?.();
+    };
+
+    audio.onerror = (e) => {
+      console.warn('[TTS] Native Audio error, attempting browser speech synthesis fallback:', e);
+      if (activeAudio === audio) {
+        activeAudio = null;
+      }
+      fallbackToBrowserSpeech(text, callbacks);
+    };
+
+    // تعيين المصدر والبدء فورياً داخل الإيماءة
+    audio.src = audioUrl;
+
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch((err) => {
+        console.warn('[TTS] audio.play() rejected:', err);
+        if (activeAudio === audio) {
+          activeAudio = null;
+        }
+        fallbackToBrowserSpeech(text, callbacks);
+      });
+    }
+  } catch (err: any) {
+    console.warn('[TTS] Exception in audio setup, falling back to speech synthesis:', err);
+    fallbackToBrowserSpeech(text, callbacks);
   }
 
-  callbacks?.onStart?.();
-
-  let isCancelled = false;
-
-  const cleanup = () => {
-    if (currentBlobUrl) {
-      URL.revokeObjectURL(currentBlobUrl);
-      currentBlobUrl = null;
-    }
-    if (activeSourceNode) {
-      try { activeSourceNode.stop(); } catch {}
-      activeSourceNode = null;
-    }
-    activeAudio = null;
-  };
-
-  // 2. جلب الملف الصوتي من السيرفر وتشغيله
-  (async () => {
-    try {
-      let res: Response | null = null;
-
-      try {
-        res = await fetch('/api/tts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text }),
-        });
-      } catch (postErr) {
-        // في حال فشل POST نتراجع لـ GET
-        res = await fetch(`/api/tts?text=${encodeURIComponent(text)}`);
-      }
-
-      if (isCancelled) return;
-
-      if (!res || !res.ok) {
-        throw new Error(`TTS server status ${res?.status || 'network_error'}`);
-      }
-
-      const arrayBuffer = await res.arrayBuffer();
-      if (isCancelled) return;
-
-      // 3. المسار الأول المفضل: فك التشفير والتشغيل عبر Web Audio API
-      if (audioCtx && audioCtx.state !== 'closed') {
-        try {
-          if (audioCtx.state === 'suspended') {
-            await audioCtx.resume();
-          }
-
-          const decodedBuffer = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
-          if (isCancelled) return;
-
-          const sourceNode = audioCtx.createBufferSource();
-          sourceNode.buffer = decodedBuffer;
-          sourceNode.connect(audioCtx.destination);
-          activeSourceNode = sourceNode;
-
-          sourceNode.onended = () => {
-            cleanup();
-            callbacks?.onEnd?.();
-          };
-
-          sourceNode.start(0);
-          console.log('[TTS] Successfully playing via Web Audio API');
-          return;
-        } catch (webAudioErr) {
-          console.warn('[TTS] Web Audio decode failed, trying HTML5 Audio Blob:', webAudioErr);
-        }
-      }
-
-      // 4. المسار الثاني: التشغيل عبر عنصر Audio مع Blob محلي
-      const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
-      if (currentBlobUrl) {
-        URL.revokeObjectURL(currentBlobUrl);
-      }
-
-      const blobUrl = URL.createObjectURL(blob);
-      currentBlobUrl = blobUrl;
-
-      const audio = new Audio(blobUrl);
-      activeAudio = audio;
-
-      audio.onended = () => {
-        cleanup();
-        callbacks?.onEnd?.();
-      };
-      audio.onerror = (e) => {
-        console.warn('[TTS] Blob Audio error:', e);
-        cleanup();
-        fallbackToBrowserSpeech(text, callbacks);
-      };
-
-      await audio.play();
-      console.log('[TTS] Successfully playing via Blob Audio Element');
-    } catch (err: any) {
-      if (isCancelled) return;
-      console.warn('[TTS] Network TTS failed, falling back to browser SpeechSynthesis:', err);
-      cleanup();
-      fallbackToBrowserSpeech(text, callbacks);
-    }
-  })();
-
   return () => {
-    isCancelled = true;
     stopSpeech();
   };
 }
 
 /**
- * التراجع لمحرك المتصفح المحلي في حالة انقطاع الاتصال
+ * التراجع لمحرك المتصفح المحلي في حالة تعذر تشغيل الصوت الشبكي
  */
 function fallbackToBrowserSpeech(
   text: string,
@@ -225,7 +129,7 @@ function fallbackToBrowserSpeech(
   }
 ) {
   if (typeof window === 'undefined' || !window.speechSynthesis) {
-    callbacks?.onError?.('تأكد من تشغيل خدمة الصوت وتوصيل السماعات');
+    callbacks?.onError?.('تأكد من تشغيل الصوت في جهازك');
     callbacks?.onEnd?.();
     return;
   }
@@ -236,7 +140,7 @@ function fallbackToBrowserSpeech(
     currentUtterance = utterance;
 
     utterance.lang = 'ar-SA';
-    utterance.rate = 0.95;
+    utterance.rate = 1.0;
 
     // محاولة اختيار صوت عربي مسجل إن وجد
     const voices = window.speechSynthesis.getVoices();
@@ -246,6 +150,10 @@ function fallbackToBrowserSpeech(
     if (arabicVoice) {
       utterance.voice = arabicVoice;
     }
+
+    utterance.onstart = () => {
+      callbacks?.onStart?.();
+    };
 
     utterance.onend = () => {
       currentUtterance = null;
@@ -267,30 +175,17 @@ function fallbackToBrowserSpeech(
 }
 
 /**
- * إيقاف الصوت الحالي تماماً
+ * إيقاف الصوت الحالي تماماً وتحرير الموارد
  */
 export function stopSpeech() {
-  if (activeSourceNode) {
-    try {
-      activeSourceNode.stop();
-    } catch {}
-    activeSourceNode = null;
-  }
-
   if (activeAudio) {
     try {
       activeAudio.pause();
       activeAudio.currentTime = 0;
       activeAudio.removeAttribute('src');
+      activeAudio.load();
     } catch {}
     activeAudio = null;
-  }
-
-  if (currentBlobUrl) {
-    try {
-      URL.revokeObjectURL(currentBlobUrl);
-    } catch {}
-    currentBlobUrl = null;
   }
 
   if (typeof window !== 'undefined' && window.speechSynthesis) {
