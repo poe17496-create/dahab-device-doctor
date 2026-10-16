@@ -16,6 +16,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import ComponentBadge from '@/components/ComponentBadge';
+import { cleanAIResponseText } from '@/lib/cleanResponse';
 
 interface ResultStreamViewerProps {
   rawOutput: string;
@@ -40,10 +41,8 @@ export default function ResultStreamViewer({ rawOutput, loading, onPrint, onComp
       return;
     }
 
-    // إزالة بلوك الميتريكس من النص المعروض
-    const cleanText = rawOutput
-      .replace(/<<<DAHAB_DIAGNOSTIC_METRICS>>>[\s\S]*?<<<END_DAHAB_METRICS>>>/g, '')
-      .trim();
+    // إزالة بلوك الميتريكس وأي JSON من النص المعروض فورياً حتى أثناء الـ streaming
+    const cleanText = cleanAIResponseText(rawOutput);
 
     if (cleanText === displayedText) {
       setIsTyping(false);

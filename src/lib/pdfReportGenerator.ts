@@ -1,4 +1,5 @@
 import { RepairSession } from './types';
+import { formatReportMarkdownToHtml } from './cleanResponse';
 
 export interface DiagnosticReportOptions {
   workshopName?: string;
@@ -96,10 +97,7 @@ export function generateProfessionalDiagnosticPDF(
     userQueryText = userMsg?.text || '';
   }
 
-  const cleanAssistantText = (rawAssistantText || 'لا يوجد تقرير فحص تفصيلي متاح.')
-    .replace(/<<<DAHAB_DIAGNOSTIC_METRICS>>>[\s\S]*?<<<END_DAHAB_METRICS>>>/g, '')
-    .replace(/[*#_`]/g, '')
-    .trim();
+  const formattedReportHtml = formatReportMarkdownToHtml(rawAssistantText || 'لا يوجد تقرير فحص تفصيلي متاح.');
 
   const currentDate = new Date().toLocaleDateString('ar-EG', {
     year: 'numeric',
@@ -329,10 +327,9 @@ export function generateProfessionalDiagnosticPDF(
       border: 1px solid #e2e8f0;
       border-right: 3px solid #3b82f6;
       border-radius: 8px;
-      padding: 10px 12px;
-      font-size: 10.5px;
-      white-space: pre-wrap;
-      line-height: 1.65;
+      padding: 10px 14px;
+      font-size: 10px;
+      line-height: 1.6;
       color: #1e293b;
       margin-bottom: 8px;
     }
@@ -532,7 +529,7 @@ export function generateProfessionalDiagnosticPDF(
       <span>🛠️ تقرير الفحص الهندسي وتوجيه المخطط</span>
       <span style="font-size: 9.5px; color: #64748b; font-weight: normal;">AI Engineering Analysis</span>
     </div>
-    <div class="diagnostic-text">${cleanAssistantText}</div>
+    <div class="diagnostic-text">${formattedReportHtml}</div>
 
     <!-- التكلفة المالية والضمان المعتمد -->
     <div class="section-title">

@@ -15,17 +15,11 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 
-// دالة لتنظيف النص من كتل الميتريكس غير المرغوبة فقط مع الحفاظ الكامل على نص المحادثة والخطوات
+import { cleanAIResponseText } from '@/lib/cleanResponse';
+
+// دالة لتنظيف النص من كتل الميتريكس وأي JSON غير مرغوب فيه مع الحفاظ على نص المحادثة
 function cleanAIResponse(text: string): string {
-  let cleaned = text;
-
-  // إزالة كتل الميتريكس البرمجية فقط
-  cleaned = cleaned.replace(/<<<DAHAB_DIAGNOSTIC_METRICS>>>[\s\S]*?<<<END_DAHAB_METRICS>>>/g, '');
-
-  // إزالة المسافات والأسطر الفارغة المتعددة
-  cleaned = cleaned.replace(/\n{3,}/g, '\n\n').trim();
-
-  return cleaned;
+  return cleanAIResponseText(text);
 }
 
 async function chatHandler(req: NextRequest) {
@@ -243,10 +237,11 @@ async function chatHandler(req: NextRequest) {
 
   // System prompt للمساعد الذكي المحسن مع المراجع الخارجية
   // نفس الـ prompt للكمبيوتر والموبايل لضمان نفس الذكاء
-  const systemPrompt = `أنت مهندس إلكترونيات خبير في منظومة "دهب دكتور".
+  const systemPrompt = `أنت مهندس إلكترونيات خبير ومساعد محادثة فوري في منظومة "دهب دكتور".
 مهمتك مساعدة فنيي الصيانة في تشخيص أعطال الموبايل واللابتوب بدقة وسرعة.
 
-قواعدك:
+قواعدك الأساسية:
+0. ⚠️ قاعدة تنسيق الإجابة الإلزامية: يُحظر نهائياً إرجاع أي كتل كود JSON برمجية أو وسوم ميتريكس أو علامات برمجية داخل الرد. ردك يجب أن يكون نصاً عربياً محادثياً منسقاً بالعناوين والنقاط والخطوات العملية فقط ومباشراً للفني.
 1. تحدث باللغة العربية بأسلوب محادثة راقٍ ومباشر وسهل الفهم لمهندسي وفنيي الورش.
 2. استخدم المصطلحات الهندسية الدقيقة (مثل: Diode Mode, VDD_MAIN, VPH_PWR, BUCK Coils, Rosin Smoke, Short to GND, Bootloop, DFU, EDL 9008).
 3. عند السؤال عن عطل، قدم خطوات الفحص المنطقية بالترتيب (1، 2، 3) مع تحديد الفولتات والممانعات النموذجية.

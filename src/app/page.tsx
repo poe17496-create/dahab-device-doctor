@@ -30,6 +30,7 @@ import CommonFaultsLibrary from '@/components/CommonFaultsLibrary';
 import GuestLockModal from '@/components/GuestLockModal';
 import DiagnosticReportModal from '@/components/DiagnosticReportModal';
 import MicroscopeCameraModal from '@/components/MicroscopeCameraModal';
+import { cleanAIResponseText } from '@/lib/cleanResponse';
 import {
   DeviceSpecialty,
   PowerSupplyReadings,
@@ -597,7 +598,7 @@ export default function DahabFixAiConsole() {
             deviceType: specialty || 'mobile-repair',
             messages: [
               { id: `msg_u_${Date.now()}`, sender: 'user', text: prompt, timestamp: new Date().toLocaleTimeString('ar-EG') },
-              { id: `msg_a_${Date.now()}`, sender: 'assistant', text: accumulatedText.replace(/<<<DAHAB_DIAGNOSTIC_METRICS>>>[\s\S]*?<<<END_DAHAB_METRICS>>>/g, '').trim(), timestamp: new Date().toLocaleTimeString('ar-EG') },
+              { id: `msg_a_${Date.now()}`, sender: 'assistant', text: cleanAIResponseText(accumulatedText), timestamp: new Date().toLocaleTimeString('ar-EG') },
             ],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),

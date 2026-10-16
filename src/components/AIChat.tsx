@@ -28,6 +28,8 @@ import {
 } from 'lucide-react';
 import { useDiagnosticContext } from '@/contexts/DiagnosticContext';
 import MicroscopeCameraModal from '@/components/MicroscopeCameraModal';
+import FormattedChatMessage from '@/components/FormattedChatMessage';
+import { cleanAIResponseText } from '@/lib/cleanResponse';
 
 interface ChatMessage {
   id: string;
@@ -570,10 +572,11 @@ export default function AIChat({ currentUser, guestRemaining, onRemainingChange 
                   if (data.chunk) {
                     fullText += data.chunk;
                     console.log('[Mobile Debug] Parsed chunk, total length:', fullText.length);
-                    // تحديث الرسالة بشكل تدريجي
+                    // تحديث الرسالة بشكل تدريجي مع تنظيف فوري لأي وسوم JSON أو ميتريكس
+                    const displayChunk = cleanAIResponseText(fullText);
                     setMessages((prev) =>
                       prev.map((msg) =>
-                        msg.id === assistantId ? { ...msg, content: fullText } : msg
+                        msg.id === assistantId ? { ...msg, content: displayChunk || fullText } : msg
                       )
                     );
                   }
@@ -635,9 +638,10 @@ export default function AIChat({ currentUser, guestRemaining, onRemainingChange 
       console.log('[Mobile Debug] Final content length:', fullText.length);
       console.log('[Mobile Debug] Setting message with content:', fullText.substring(0, 50));
 
+      const cleanedFinal = cleanAIResponseText(fullText) || fullText;
       setMessages((prev) =>
         prev.map((msg) =>
-          msg.id === assistantId ? { ...msg, content: fullText } : msg
+          msg.id === assistantId ? { ...msg, content: cleanedFinal } : msg
         )
       );
     } catch (err: any) {
@@ -973,9 +977,12 @@ export default function AIChat({ currentUser, guestRemaining, onRemainingChange 
                 </div>
               )}
 
-              <p className="text-xs md:text-sm leading-relaxed whitespace-pre-wrap font-sans">
-                {message.content}
-              </p>
+              <div className="text-xs md:text-sm leading-relaxed">
+                <FormattedChatMessage
+                  content={message.content}
+                  isAssistant={message.role === 'assistant'}
+                />
+              </div>
 
               {message.role === 'assistant' && (
                 <>
