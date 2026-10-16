@@ -75,6 +75,7 @@ export async function GET(request: Request) {
       headers: {
         'Content-Type': 'audio/mpeg',
         'Content-Length': combinedBuffer.byteLength.toString(),
+        'Accept-Ranges': 'bytes',
         'Cache-Control': 'public, max-age=3600',
       },
     });

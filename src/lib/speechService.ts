@@ -19,8 +19,9 @@ function prepareTextForSpeech(text: string): string {
   cleaned = cleaned.replace(/[*#_`~>\[\]\(\)]/g, ' ');
   // إزالة الروابط
   cleaned = cleaned.replace(/https?:\/\/\S+/g, '');
-  // إزالة الإيموجي والرموز التعبيرية
+  // إزالة الإيموجي والرموز التعبيرية ومحددات الأشكال
   cleaned = cleaned.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, ' ');
+  cleaned = cleaned.replace(/[\uFE00-\uFE0F]/g, '');
   // إزالة المسافات الزائدة
   cleaned = cleaned.replace(/\s+/g, ' ').trim();
 
@@ -66,21 +67,26 @@ export function playArabicSpeech(
     const audio = new Audio(audioUrl);
     activeAudio = audio;
 
+    let hasFallenBack = false;
+    const executeFallback = (reason?: any) => {
+      if (hasFallenBack) return;
+      hasFallenBack = true;
+      activeAudio = null;
+      console.warn('TTS playback issue, falling back to browser SpeechSynthesis:', reason);
+      fallbackToBrowserSpeech(text, callbacks);
+    };
+
     audio.onended = () => {
       activeAudio = null;
       callbacks?.onEnd?.();
     };
 
-    audio.onerror = () => {
-      activeAudio = null;
-      console.warn('Network TTS failed, falling back to browser SpeechSynthesis...');
-      fallbackToBrowserSpeech(text, callbacks);
+    audio.onerror = (e) => {
+      executeFallback(e);
     };
 
     audio.play().catch((err) => {
-      console.warn('Audio play error, falling back to browser SpeechSynthesis:', err);
-      activeAudio = null;
-      fallbackToBrowserSpeech(text, callbacks);
+      executeFallback(err);
     });
 
     return () => stopSpeech();
