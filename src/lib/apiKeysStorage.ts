@@ -229,7 +229,7 @@ export function getAllActiveKeys(customKeys?: {
 }
 
 /**
- * Get next key using Round-Robin rotation with failure tracking
+ * Get next key using Round-Robin rotation with automatic progression on each request
  * 
  * @param provider - AI provider name
  * @param keys - Array of available keys
@@ -243,14 +243,53 @@ export function getNextKeyWithRotation(
     return null;
   }
 
-  const currentIndex = keyRotationIndices[provider] || 0;
+  const total = keys.length;
+  const currentIndex = (keyRotationIndices[provider] || 0) % total;
   const key = keys[currentIndex];
+
+  // Advance index for the next request (True Request-by-Request Load Balancing)
+  keyRotationIndices[provider] = (currentIndex + 1) % total;
   
   // Update stats
   keyPoolStats[provider].currentIndex = currentIndex;
   keyPoolStats[provider].lastUsed = new Date().toISOString();
   
   return key;
+}
+
+/**
+ * جلب مصفوفة مفاتيح مرتبة وموزعة بالتناوب (Round-Robin Load Balancing) لكل طلب جديد
+ * يضمن توزيع الطلبات بالتساوي التام على كل المفاتيح لمنع الوصول للحد الأقصى وحظر المفاتيح
+ * مع توفير باقي المفاتيح كبدائل احتياطية مرتبة في حال فشل أي مفتاح
+ * 
+ * @param provider - اسم المزود (gemini, openrouter, ...)
+ * @param keys - قائمة المفاتيح النشطة
+ * @returns مصفوفة مفاتيح تبدأ بالمفتاح المخصص لهذا الطلب، تليها باقي المفاتيح كاحتياطي بالترتيب
+ */
+export function getRotatedKeysForRequest(
+  provider: 'deepseek' | 'gemini' | 'openrouter' | 'openai' | 'groq',
+  keys: string[]
+): string[] {
+  if (!keys || keys.length === 0) {
+    return [];
+  }
+
+  const total = keys.length;
+  // تحديد المؤشر الحالي للطلب وتدويره للطلب القادم فوراً
+  const currentIndex = (keyRotationIndices[provider] || 0) % total;
+  keyRotationIndices[provider] = (currentIndex + 1) % total;
+
+  // تحديث إحصائيات لوحة التحكم
+  keyPoolStats[provider].currentIndex = currentIndex;
+  keyPoolStats[provider].lastUsed = new Date().toISOString();
+
+  // ترتيب المفاتيح بحيث يبدأ بالمفتاح المخصص لهذا الطلب، ويليه باقي المفاتيح كبدائل عند الخطأ
+  const rotated: string[] = [];
+  for (let i = 0; i < total; i++) {
+    rotated.push(keys[(currentIndex + i) % total]);
+  }
+
+  return rotated;
 }
 
 /**

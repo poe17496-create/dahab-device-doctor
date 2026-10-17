@@ -3,7 +3,7 @@ import OpenAI from 'openai';
 import { DAHAB_SYSTEM_PROMPT } from './promptTemplates';
 import { DiagnosticMetrics, DeviceSpecialty, PowerSupplyReadings } from './types';
 import { enhanceArabicPrompt } from './middleEastFeatures';
-import { getAllActiveKeys, getNextKeyWithRotation, recordKeyFailure, recordKeySuccess } from './apiKeysStorage';
+import { getAllActiveKeys, getNextKeyWithRotation, getRotatedKeysForRequest, recordKeyFailure, recordKeySuccess } from './apiKeysStorage';
 
 /**
  * @fileoverview AI Engines Integration
@@ -565,57 +565,45 @@ export async function callAIEngine(params: {
     }
   });
 
-  // تجربة المزودين حسب الترتيب (Google Gemini ثم OpenRouter) مع Round-Robin Rotation
+  // تجربة المزودين حسب الترتيب (Google Gemini ثم OpenRouter) مع تقليب وتوزيع متساوي لكل طلب (Request-by-Request Load Balancing)
   for (const provider of providerOrder) {
     if (provider === 'gemini' && geminiKeys.length > 0) {
-      // Use Round-Robin rotation
-      const maxAttempts = geminiKeys.length;
-      for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        const key = getNextKeyWithRotation('gemini', geminiKeys);
-        if (!key) break;
+      // مصفوفة المفاتيح مرتبة وموزعة بالتناوب لكل طلب (Load Balancing)
+      const orderedKeys = getRotatedKeysForRequest('gemini', geminiKeys);
+      
+      for (let attempt = 0; attempt < orderedKeys.length; attempt++) {
+        const key = orderedKeys[attempt];
+        const keyMask = key.length > 8 ? `...${key.slice(-4)}` : '***';
         
         try {
-          console.log(`Attempting Gemini (Round-Robin attempt ${attempt + 1}/${maxAttempts})...`);
+          console.log(`[Load Balancer] Gemini (Key #${attempt + 1}/${orderedKeys.length} [${keyMask}])...`);
           const res = await tryCallGemini(key, payload);
-          console.log(`✅ Gemini succeeded with model ${res.modelUsed}`);
+          console.log(`✅ [Load Balancer] Gemini succeeded with key [${keyMask}] on model ${res.modelUsed}`);
           return res;
         } catch (err: any) {
           const errMsg = `Gemini: ${err?.message || err}`;
-          
-          // If it's a rate limit error, try next key automatically
-          if (errMsg.includes('RATE_LIMIT')) {
-            console.warn(`Rate limit hit, rotating to next key...`);
-            continue;
-          }
-          
-          console.error(errMsg);
+          console.warn(`⚠️ [Load Balancer] Gemini key [${keyMask}] failed or rate limited, switching to next key... (${errMsg})`);
           errorsLog.push(errMsg);
         }
       }
     }
 
     if (provider === 'openrouter' && openrouterKeys.length > 0) {
-      // Use Round-Robin rotation
-      const maxAttempts = openrouterKeys.length;
-      for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        const key = getNextKeyWithRotation('openrouter', openrouterKeys);
-        if (!key) break;
+      // مصفوفة المفاتيح مرتبة وموزعة بالتناوب لكل طلب (Load Balancing)
+      const orderedKeys = getRotatedKeysForRequest('openrouter', openrouterKeys);
+      
+      for (let attempt = 0; attempt < orderedKeys.length; attempt++) {
+        const key = orderedKeys[attempt];
+        const keyMask = key.length > 8 ? `...${key.slice(-4)}` : '***';
         
         try {
-          console.log(`Attempting OpenRouter (Round-Robin attempt ${attempt + 1}/${maxAttempts})...`);
+          console.log(`[Load Balancer] OpenRouter (Key #${attempt + 1}/${orderedKeys.length} [${keyMask}])...`);
           const res = await tryCallOpenRouter(key, payload);
-          console.log(`✅ OpenRouter succeeded with model ${res.modelUsed}`);
+          console.log(`✅ [Load Balancer] OpenRouter succeeded with key [${keyMask}] on model ${res.modelUsed}`);
           return res;
         } catch (err: any) {
           const errMsg = `OpenRouter: ${err?.message || err}`;
-          
-          // If it's a rate limit error, try next key automatically
-          if (errMsg.includes('RATE_LIMIT')) {
-            console.warn(`Rate limit hit, rotating to next key...`);
-            continue;
-          }
-          
-          console.error(errMsg);
+          console.warn(`⚠️ [Load Balancer] OpenRouter key [${keyMask}] failed or rate limited, switching to next key... (${errMsg})`);
           errorsLog.push(errMsg);
         }
       }
