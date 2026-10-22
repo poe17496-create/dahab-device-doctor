@@ -31,20 +31,41 @@ export async function POST(req: NextRequest) {
     const sanitizedKeyword = keyword ? sanitizeString(keyword, 200) : '';
     const query = sanitizedKeyword.toLowerCase();
 
-    // قاعدة بيانات مراجع ومصادر هندسية ذكية
+    // قاعدة بيانات مراجع ومصادر هندسية ذكية مع ربط قنوات تليجرام ومواقع الـ BIN والمخططات
     const mockReferences: ReferenceSource[] = [
+      {
+        title: `ملفات BIOS BIN و Clear ME ومخططات لـ (${keyword || 'المازربورد'}) - Badcaps & Vinafix`,
+        source: 'مواقع BIN وبيوس',
+        link: `https://www.google.com/search?q=site:badcaps.net+OR+site:vinafix.com+bios+bin+dump+schematic+${encodeURIComponent(keyword || '')}`,
+        snippet: 'تحميل ملفات BIOS .BIN مسحوبة ومختبرة، ملفات Clear ME Region، ومخططات المازربورد واللابتوب بدقة.',
+        type: 'schematic',
+      },
+      {
+        title: `مكتبة تليجرام لمخططات ودامبات الـ BIN للابتوب والمازربورد (@laptop_schematics)`,
+        source: 'تليجرام Telegram',
+        link: `https://t.me/laptop_schematics`,
+        snippet: 'قناة تليجرام متخصصة في توفير ملفات البيوس BIN والمخططات الهندسية والبوردفيو مجاناً لجميع أجيال الأجهزة.',
+        type: 'custom',
+      },
       {
         title: `مخططات البوردفيو والمسارات لـ (${keyword || 'الأجهزة الشائعة'}) - ZXW & Borneo`,
         source: 'مخططات وزدكس دبليو ZXW',
         link: `https://www.google.com/search?q=schematics+boardview+${encodeURIComponent(keyword || '')}`,
-        snippet: 'تتبع خطوط التغذية الرئيسية VDD_MAIN و VPH_PWR ونقاط التيست بوينت لمسارات الـ I2C والباور سيكونس.',
+        snippet: 'تتبع خطوط التغذية الرئيسية VDD_MAIN و VPH_PWR و 19V DC-IN ونقاط التيست بوينت لمسارات الـ I2C والباور سيكونس.',
         type: 'schematic',
+      },
+      {
+        title: `قناة تليجرام لدامبات البيوس المسحوبة والمختبرة (@bios_dump)`,
+        source: 'تليجرام Telegram',
+        link: `https://t.me/bios_dump`,
+        snippet: 'أرشيف ملفات BIOS BIN dumps تم سحبها بأجهزة المبرمجة RT809H و CH341A مع شروحات دمج وتعديل البيوس.',
+        type: 'custom',
       },
       {
         title: `فيديو تطبيقي لإصلاح وتتبع عطل (${keyword || 'الدائرة'}) على يوتيوب`,
         source: 'يوتيوب YouTube',
         link: `https://www.youtube.com/results?search_query=repair+fix+${encodeURIComponent(keyword || '')}`,
-        snippet: 'شرح عملي للحقن الحراري واكتشاف المكثف المسبب للشورت أو خطوات التفليش وفتح البوت لودر.',
+        snippet: 'شرح عملي للحقن الحراري واكتشاف المكثف المسبب للشورت أو خطوات شحن البيوس وتبديل الآيسيهات.',
         type: 'video',
       },
       {
@@ -58,7 +79,7 @@ export async function POST(req: NextRequest) {
         title: `دليل دهب الهندسي لصيانة كروت الباور والدوائر الإلكترونية`,
         source: 'دليل صيانة دهب',
         link: `#`,
-        snippet: 'جدول قياس الممانعات المرجعية بالدايود مود وقيم المقاومات الفيوزية في دوائر الباور سبلاي.',
+        snippet: 'جدول قياس الممانعات المرجعية بالدايود مود وقيم المقاومات الفيوزية في دوائر الباور سبلاي واللابتوب.',
         type: 'solution',
       },
     ];

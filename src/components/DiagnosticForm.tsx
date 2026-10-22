@@ -133,29 +133,17 @@ const CATEGORIES = [
     icon: Laptop,
     specialties: ['laptop-motherboard'],
     chips: [
-      'MacBook Pro M3 Max',
-      'MacBook Pro M2',
-      'MacBook Air M2',
-      'MacBook Pro 16" M1',
-      'MacBook Air M1',
-      'Dell XPS 15',
-      'Dell XPS 13',
-      'Dell Latitude 7000',
-      'Dell Inspiron 16',
-      'ThinkPad X1 Carbon',
-      'ThinkPad T14',
-      'ThinkPad E16',
-      'Lenovo Legion 9i',
-      'HP EliteBook 860',
-      'HP Spectre x360',
-      'HP Pavilion Gaming',
-      'HP ZBook Studio',
-      'ASUS ROG Zephyrus',
-      'ASUS ZenBook Pro',
-      'Acer Swift 14',
-      'Acer Predator Helios',
-      'MSI Raider GE78',
-      'Microsoft Surface Laptop 5'
+      'LA-D801P (Dell Latitude 5580)',
+      'NM-A311 (Lenovo ThinkPad)',
+      'DA0X12MB6D0 (HP ProBook)',
+      '820-00165 (MacBook Air)',
+      '820-00840 (MacBook Pro)',
+      'LA-B162P (Dell Inspiron)',
+      'NM-B452 (Lenovo IdeaPad)',
+      'X550LD (ASUS Motherboard)',
+      'DA0ZAVMB8G0 (Acer Aspire)',
+      'MS-16R4 (MSI Gaming)',
+      'LA-C701P (HP Pavilion)'
     ],
     prompts: [
       'لابتوب قاطع باور تماماً، لا يوجد سحب للأمبير',
@@ -181,7 +169,15 @@ const CATEGORIES = [
     desc: 'Motherboards, GPUs, PSUs',
     icon: Monitor,
     specialties: ['general-electronics', 'tv-power-boards'],
-    chips: ['RTX 4090', 'Intel i9-14900K', 'ASUS ROG Z790', 'Corsair RM1000x'],
+    chips: [
+      'ASUS H81M-K (Rev 1.02)',
+      'Gigabyte GA-H110M-S2V',
+      'MSI B450 TOMAHAWK (MS-7C02)',
+      'ASUS ROG STRIX B550-F',
+      'Gigabyte B660M DS3H',
+      'ASRock H310M-HDV',
+      'MSI MAG Z690 TORPEDO'
+    ],
     prompts: [
       'اللوحة الأم قاطعة داتا ومروحة المعالج تعمل بأقصى سرعة',
       'كارت الشاشة لا يعطي صورة مع وجود شورت على خط الـ 12V',
@@ -589,17 +585,37 @@ export default function DiagnosticForm({
 
       {/* 2. طراز الجهاز وحقل القياسات المتقدم */}
       <div className="space-y-3">
-        <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block">
-          طراز الجهاز أو رقم البوردة (Model / Board ID):
-        </label>
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block">
+            {selectedCategory === 'laptop' || selectedCategory === 'desktop' || specialty === 'laptop-motherboard'
+              ? 'كود ورقم البوردة المطبوع على المازربورد (Board Part Number - إلزامي للكمبيوتر):'
+              : 'طراز الجهاز أو رقم البوردة (Model / Board ID):'}
+          </label>
+          {(selectedCategory === 'laptop' || selectedCategory === 'desktop' || specialty === 'laptop-motherboard') && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold border border-amber-500/20">
+              💻 كود البوردة فقط
+            </span>
+          )}
+        </div>
         <div className="flex flex-col gap-2">
           <input
             type="text"
             value={deviceModel}
             onChange={(e) => setDeviceModel(e.target.value)}
-            placeholder={`مثلاً: ${activeCategoryData.chips[0]}...`}
+            placeholder={
+              selectedCategory === 'laptop' || selectedCategory === 'desktop' || specialty === 'laptop-motherboard'
+                ? 'اكتب كود البوردة المطبوع، مثل: LA-D801P أو NM-A311 أو DA0X12MB6D0 أو 820-00165...'
+                : `مثلاً: ${activeCategoryData.chips[0]}...`
+            }
             className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:border-dahab-500 focus:ring-1 focus:ring-dahab-500 outline-none transition shadow-inner"
           />
+
+          {(selectedCategory === 'laptop' || selectedCategory === 'desktop' || specialty === 'laptop-motherboard') && (
+            <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/40 text-[11px] text-blue-800 dark:text-blue-300 flex items-start gap-2">
+              <span className="text-sm shrink-0">🔬</span>
+              <span><strong>تنبيه فني:</strong> تشخيص المازربورد واللابتوب يعتمد 100% على كود البوردة المطبوع (Silk Screen) وليس الموديل التجاري، لربط المخطط وتحديد مسارات الباور (PU, PL, PQ) بدقة تامة.</span>
+            </div>
+          )}
 
           {/* اقتراحات البحث بالبارت نمبر */}
           {showBoardSuggestions && boardSuggestions && (
@@ -769,24 +785,6 @@ export default function DiagnosticForm({
         </div>
       )}
 
-      {/* 3. أمثلة الاختبار السريع (Presets) */}
-      <div className="space-y-3 animate-fadeIn">
-        <label className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
-          <span>🧪 أمثلة اختبار سريع (اضغط للتجربة فوراً):</span>
-        </label>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          {presets.map((preset, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => applyPreset(preset)}
-              className="text-[11px] px-3 py-2 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 border border-blue-200 text-blue-700 dark:from-blue-900/30 dark:to-indigo-900/30 dark:border-blue-800 dark:text-blue-300 transition-all text-right font-medium"
-            >
-              {preset.name}
-            </button>
-          ))}
-        </div>
-      </div>
 
       {/* 4. صندوق وصف العطل والبرومبت السريع */}
       <div className="space-y-3">

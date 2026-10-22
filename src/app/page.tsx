@@ -628,6 +628,80 @@ export default function DahabFixAiConsole() {
     }
   };
 
+  // تنفيذ الفحص البديل لمسارات المستوى الثاني/الثالث عند عدم حل المشكلة
+  const handleAlternativeDiagnosis = async () => {
+    if (!deviceModel.trim()) return;
+
+    const followUpPrompt = `لم تُحل المشكلة بعد فحص الخطوات والمسارات السابقة وما زال العطل قائماً في (${deviceModel}).
+المطلوب خطة فحص بديلة متقدمة من المستوى الثاني/الثالث (Level 2/3 Deep Diagnostic):
+1. بعد فحص المسار السابق والتأكد من سلامته، ما هو رقم واسم الخط التالي الواجب قياسه وفحصه بالتحديد؟
+2. اذكر مسارات إشارات التمكين (Enable)، الباور جود (Power Good)، خطوط الريست (Reset)، أو الكريستالات ونواقل I2C/SPI مع أرقام وأسماء المسارات والمكونات البديلة (PU, PQ, PL, U, R, C).
+3. حدد قيم الفولت والممانعة بوضع الدايود Diode Mode المتوقعة لكل خط بديل.`;
+
+    setPrompt(followUpPrompt);
+    setLoading(true);
+    setLoadingMessage('جاري تحليل المسارات البديلة وإشارات المستوى الثاني/الثالث...');
+    setOutput('');
+    setMetrics(undefined);
+    setDiagnosisStartTime(Date.now());
+
+    try {
+      let customKeys: any = undefined;
+      try {
+        const stored = localStorage.getItem('dahab_system_api_keys');
+        if (stored) customKeys = JSON.parse(stored);
+      } catch (e) {}
+
+      const response = await fetch('/api/diagnose', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: followUpPrompt,
+          specialty,
+          deviceModel,
+          readings,
+          imageBase64,
+          sessionId: activeSessionId,
+          customKeys,
+          isGuest: currentUser?.isGuest === true,
+        }),
+      });
+
+      if (!response.body) {
+        setOutput('لم يتم استلام أي تدفق بيانات من محرك الفحص.');
+        setLoading(false);
+        return;
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulatedText = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunkText = decoder.decode(value, { stream: true });
+        accumulatedText += chunkText;
+        setOutput(accumulatedText);
+
+        const match = accumulatedText.match(/<<<DAHAB_DIAGNOSTIC_METRICS>>>([\s\S]*?)<<<END_DAHAB_METRICS>>>/);
+        if (match && match[1]) {
+          try {
+            const parsed = JSON.parse(match[1].trim());
+            setMetrics(parsed);
+          } catch (e) {}
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      setOutput('حدث خطأ أثناء طلب الخطة البديلة.');
+    } finally {
+      setLoading(false);
+      setLoadingMessage(null);
+    }
+  };
+
   // شاشة فحص حالة تسجيل الدخول الأولية
   if (isCheckingAuth) {
     return (
@@ -808,6 +882,27 @@ export default function DahabFixAiConsole() {
                             onComponentHover={setHighlightedComponent}
                             onComponentLeave={() => setHighlightedComponent(null)}
                           />
+
+                          {/* زر لم تُحل المشكلة؟ طلب خطة فحص ومسارات بديلة */}
+                          {output && !loading && (
+                            <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-50 via-amber-50 to-orange-50 dark:from-rose-950/30 dark:via-amber-950/20 dark:to-orange-950/30 border border-rose-200 dark:border-rose-800/50 shadow-md flex flex-col sm:flex-row items-center justify-between gap-3 animate-fadeIn">
+                              <div className="space-y-0.5 text-right w-full sm:w-auto">
+                                <h4 className="text-xs md:text-sm font-black text-rose-700 dark:text-rose-300 flex items-center gap-1.5">
+                                  <span>❌</span> لم تُحل المشكلة بعد بالمسارات والخطوات المذكورة؟
+                                </h4>
+                                <p className="text-[11px] text-gray-600 dark:text-gray-400">
+                                  اضغط للحصول فوراً على خطة فحص بديلة ومسارات المستوى الثاني/الثالث والمسار التالي بالتسلسل مع أرقام وأسماء المسارات والقطع البديلة.
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={handleAlternativeDiagnosis}
+                                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-700 hover:to-amber-700 text-white font-bold text-xs shadow-lg shadow-rose-500/25 transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+                              >
+                                <span>🔄 لم تحل المشكلة؟ اعطني حلاً بديلاً والمسار التالي</span>
+                              </button>
+                            </div>
+                          )}
                           {/* Repair Status Tracker */}
                           {currentTicketId && (
                             <RepairStatusTracker

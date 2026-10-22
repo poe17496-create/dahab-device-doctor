@@ -1005,6 +1005,24 @@ export default function AIChat({ currentUser, guestRemaining, onRemainingChange 
                     <span><strong>تنبيه هندسي:</strong> هذه الاقتراحات معتمدة على تحليل المخططات بالذكاء الاصطناعي. يُرجى مراجعة قياسات الممانعة بنفسك على المازربورد قبل حقن الفولت لتفادي تلف المعالج.</span>
                   </div>
 
+                  {/* زر لم تحل المشكلة في الشات */}
+                  {message.id !== '1' && (
+                    <div className="mt-2 pt-2 border-t border-gray-200/40 dark:border-gray-700/40 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleSend(
+                            'لم تُحل المشكلة بعد بالخطوات والمسارات المقترحة أعلاه وما زال العطل قائماً. قدم لي الآن فوراً خطة فحص بديلة ومسارات المستوى الثاني/الثالث، واذكر لي بعد فحص هذا الخط ما هو اسم ورقم الخط التالي ومكوناته البديلة بدقة؟'
+                          )
+                        }
+                        disabled={isLoading}
+                        className="px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900/40 border border-rose-200 dark:border-rose-800/60 text-rose-700 dark:text-rose-300 text-[11px] font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        <span>🔄 لم تُحل المشكلة؟ اعطني حلاً بديلاً والمسار التالي</span>
+                      </button>
+                    </div>
+                  )}
+
                   <div className="mt-2 pt-2 border-t border-gray-200/50 dark:border-gray-700/50 flex items-center justify-between text-[10px] text-gray-400">
                   <span>
                     {message.timestamp

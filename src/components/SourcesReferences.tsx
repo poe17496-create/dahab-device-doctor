@@ -219,11 +219,18 @@ export default function SourcesReferences({ sources }: SourcesReferencesProps) {
 
   if (!sources || sources.length === 0) {
     const quickLinks = [
-      { name: 'GSM-Forum', url: 'https://forum.gsmhosting.com/', icon: <MessageSquare className="w-5 h-5" />, desc: 'أكبر مجتمع عالمي لمهندسي الصيانة' },
-      { name: 'iFixit', url: 'https://www.ifixit.com/', icon: <Wrench className="w-5 h-5" />, desc: 'دلائل الإصلاح وتفكيك الأجهزة' },
-      { name: 'مجتمع الصيانة العربي', url: 'https://phonerepairing.net/', icon: <Search className="w-5 h-5" />, desc: 'شروحات ومقالات صيانة باللغة العربية' },
-      { name: 'قناة REWA Technology', url: 'https://www.youtube.com/@RewaElectronics', icon: <Youtube className="w-5 h-5" />, desc: 'فيديوهات احترافية لصيانة المايكرو' },
-      { name: 'ZXW Schematics Tools', url: 'https://zxwteam.cn/', icon: <Cpu className="w-5 h-5" />, desc: 'مخططات البوردة وتتبع المسارات' }
+      { name: 'قناة تليجرام: مخططات وبيوس اللابتوب', url: 'https://t.me/laptop_schematics', icon: <Cpu className="w-5 h-5 text-sky-500" />, desc: 'مكتبة تليجرام ضخمة لملفات BIOS BIN وبوردفيو لجميع أجيال المازربورد' },
+      { name: 'قناة تليجرام: دامبات البيوس المسحوبة', url: 'https://t.me/bios_dump', icon: <BookOpen className="w-5 h-5 text-blue-500" />, desc: 'ملفات BIOS BIN مسحوبة ومختبرة بالمبرمجات RT809H و CH341A' },
+      { name: 'قناة تليجرام: مخططات الموبايل والسيرفس', url: 'https://t.me/mobile_schematics_firmware', icon: <Search className="w-5 h-5 text-indigo-500" />, desc: 'مخططات تفصيلية وسيرفس مانوال لآيفون وسامسونج وشاومي' },
+      { name: 'منتدى Badcaps لملفات الـ BIN', url: 'https://www.badcaps.net/forum/', icon: <Wrench className="w-5 h-5 text-amber-500" />, desc: 'أكبر مجتمع عالمي مجاني لدامبات البيوس والمخططات الهندسية' },
+      { name: 'موقع Vinafix للمخططات والبيوس', url: 'https://vinafix.com/', icon: <Cpu className="w-5 h-5 text-emerald-500" />, desc: 'بنك ملفات BIOS BIN ومخططات اللابتوب والماك بوك' },
+      { name: 'موقع LabOneInside لملفات Clear ME', url: 'https://www.laboneinside.com/', icon: <Cpu className="w-5 h-5 text-purple-500" />, desc: 'تحميل ملفات بيوس جاهزة مع تنظيف الـ ME Region مجاناً' },
+      { name: 'Borneo Schematics التفاعلي', url: 'https://borneoschematics.com/', icon: <Zap className="w-5 h-5 text-rose-500" />, desc: 'أشهر منصة للمخططات التفاعلية وقياسات الممانعة للموبايل' },
+      { name: 'Phoneboard (بوردفيو مجاني)', url: 'https://phoneboard.co/', icon: <Cpu className="w-5 h-5 text-teal-500" />, desc: 'برنامج بوردفيو مجاني مفتوح المصدر لآيفون وسامسونج' },
+      { name: 'ZXW Schematics Tools', url: 'https://zxwteam.cn/', icon: <Cpu className="w-5 h-5 text-dahab-500" />, desc: 'دونجل تتبع مسارات البوردة وتحديد الشورت' },
+      { name: 'GSM-Forum العالمي', url: 'https://forum.gsmhosting.com/', icon: <MessageSquare className="w-5 h-5 text-blue-600" />, desc: 'أكبر مجتمع دولي لحلول السوفتوير والدونجلات والتفليش' },
+      { name: 'iFixit العربي والدولي', url: 'https://www.ifixit.com/', icon: <Wrench className="w-5 h-5 text-gray-500" />, desc: 'دلائل الإصلاح وتفكيك الأجهزة خطوة بخطوة' },
+      { name: 'قناة REWA لصيانة المايكرو', url: 'https://www.youtube.com/@RewaElectronics', icon: <Youtube className="w-5 h-5 text-red-500" />, desc: 'فيديوهات احترافية لحفر المعالجات والشبلنة واللحام الدقيق' },
     ];
 
     return (

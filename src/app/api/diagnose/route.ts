@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
       readings,
     });
 
-    // استدعاء محرك AI مع استرجاع التجربة للزائر في حال حدوث أي خطأ
+    // استدعاء محرك AI مع تشغيل البث الحي الحقيقي (True Realtime Streaming)
     let aiResponse;
     try {
       aiResponse = await callAIEngine({
@@ -104,6 +104,7 @@ export async function POST(req: NextRequest) {
         imageBase64,
         preferredEngine: preferredEngine as AIEngine,
         customKeys,
+        stream: true,
       });
     } catch (aiErr) {
       if (guestTrialInfo) {
@@ -111,18 +112,6 @@ export async function POST(req: NextRequest) {
       }
       throw aiErr;
     }
-
-    // حفظ رد المساعد في ملف JSON
-    appendMessageToSession(currentSessionId, {
-      id: `msg_ai_${Date.now()}`,
-      sender: 'assistant',
-      timestamp: new Date().toLocaleTimeString('ar-EG'),
-      text: aiResponse.text,
-      metrics: aiResponse.metrics,
-    });
-
-    // إنشاء تدفق البث الحي
-    const stream = createStreamingResponse(aiResponse.text);
 
     const responseHeaders = new Headers({
       'Content-Type': 'text/plain; charset=utf-8',
@@ -137,6 +126,45 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // إذا كان البث الحي الحقيقي متوفراً، نمرره فوراً للمتصفح بدون أي تأخير
+    if (aiResponse.stream) {
+      const decoder = new TextDecoder();
+      let accumulatedText = '';
+
+      const transformStream = new TransformStream({
+        transform(chunk, controller) {
+          accumulatedText += decoder.decode(chunk, { stream: true });
+          controller.enqueue(chunk);
+        },
+        flush() {
+          // حفظ رد المساعد في ملف JSON بعد اكتمال التدفق في الخلفية
+          try {
+            appendMessageToSession(currentSessionId, {
+              id: `msg_ai_${Date.now()}`,
+              sender: 'assistant',
+              timestamp: new Date().toLocaleTimeString('ar-EG'),
+              text: accumulatedText,
+            });
+          } catch (e) {
+            console.error('فشل حفظ الرسالة في جلسة التشخيص:', e);
+          }
+        },
+      });
+
+      return new Response(aiResponse.stream.pipeThrough(transformStream), { headers: responseHeaders });
+    }
+
+    // حفظ رد المساعد في ملف JSON في حال المحرك المحلي
+    appendMessageToSession(currentSessionId, {
+      id: `msg_ai_${Date.now()}`,
+      sender: 'assistant',
+      timestamp: new Date().toLocaleTimeString('ar-EG'),
+      text: aiResponse.text,
+      metrics: aiResponse.metrics,
+    });
+
+    // إنشاء تدفق بديل للمحرك المحلي
+    const stream = createStreamingResponse(aiResponse.text);
     return new Response(stream, { headers: responseHeaders });
   } catch (error) {
     console.error('خطأ في مسار التشخيص /api/diagnose:', error);

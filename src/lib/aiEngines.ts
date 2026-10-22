@@ -173,15 +173,19 @@ async function tryCallGemini(
       if (params.stream) {
         const result = await model.generateContentStream(contentParts);
         const encoder = new TextEncoder();
+        
+        let fullText = '';
         const stream = new ReadableStream({
           async start(controller) {
             try {
               for await (const chunk of result.stream) {
                 const chunkText = chunk.text();
                 if (chunkText) {
+                  fullText += chunkText;
                   controller.enqueue(encoder.encode(chunkText));
                 }
               }
+              recordKeySuccess('gemini');
               controller.close();
             } catch (err) {
               controller.error(err);
@@ -189,19 +193,11 @@ async function tryCallGemini(
           },
         });
 
-        // Collect full text for metrics extraction
-        let fullText = '';
-        for await (const chunk of result.stream) {
-          fullText += chunk.text();
-        }
-
-        recordKeySuccess('gemini');
         return {
-          text: fullText,
-          metrics: extractMetrics(fullText),
+          text: '',
+          stream,
           engine: 'gemini',
           modelUsed: modelName,
-          stream,
         };
       }
 
@@ -304,6 +300,7 @@ async function tryCallOpenRouter(
                   controller.enqueue(encoder.encode(delta));
                 }
               }
+              recordKeySuccess('openrouter');
               controller.close();
             } catch (err) {
               controller.error(err);
@@ -311,16 +308,8 @@ async function tryCallOpenRouter(
           },
         });
 
-        // Collect full text for metrics
-        let fullText = '';
-        for await (const chunk of stream) {
-          fullText += chunk.choices[0]?.delta?.content || '';
-        }
-
-        recordKeySuccess('openrouter');
         return {
-          text: fullText,
-          metrics: extractMetrics(fullText),
+          text: '',
           engine: 'openrouter',
           modelUsed: model,
           stream: readableStream,
