@@ -1337,9 +1337,10 @@ export default function BoardViewPage() {
           {viewMode === 'vector' && (
             <div className="absolute inset-0 z-10 w-full h-full">
               <VectorBoardViewCAD
-                boardName={boardName || undefined}
+                boardName={boardName || searchInput || undefined}
                 selectedNet={selectedNet}
                 onNetSelect={(net) => setSelectedNet(net)}
+                onBoardChange={(newBoard) => setBoardName(newBoard)}
               />
             </div>
           )}

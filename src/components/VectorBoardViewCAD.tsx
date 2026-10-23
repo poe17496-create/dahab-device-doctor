@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   ZoomIn,
   ZoomOut,
@@ -21,277 +21,26 @@ import {
   Eye,
   FileCode,
   Hash,
+  Activity,
+  Sliders,
+  Check,
+  ChevronDown,
 } from 'lucide-react';
-
-export interface VectorPin {
-  id: string;
-  pinNumber: number | string;
-  netName: string;
-  x: number; // relative PCB coordinate (e.g. 0 to 1000)
-  y: number;
-  radius?: number;
-  isGround?: boolean;
-  isPower?: boolean;
-  diodeReading?: string;
-  voltage?: string;
-}
-
-export interface VectorComponent {
-  name: string; // e.g. U1001, C2015, PU401
-  type: 'IC' | 'Capacitor' | 'Resistor' | 'Inductor' | 'Connector' | 'Mosfet' | 'Diode';
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  side: 'TOP' | 'BOTTOM';
-  pins: VectorPin[];
-  value?: string;
-  description?: string;
-}
-
-export interface VectorBoardModel {
-  name: string;
-  boardCode: string;
-  deviceType: 'mobile' | 'laptop' | 'desktop';
-  width: number;
-  height: number;
-  outline: Array<{ x: number; y: number }>;
-  components: VectorComponent[];
-}
-
-// =========================================================================
-// نماذج بوردات فيكتور هندسية حقيقية متكاملة (موبايل ولابتوب) مدمجة مسبقاً
-// =========================================================================
-const BUILTIN_VECTOR_BOARDS: VectorBoardModel[] = [
-  {
-    name: 'iPhone 13 Pro Max (Logic Board)',
-    boardCode: '820-02384',
-    deviceType: 'mobile',
-    width: 900,
-    height: 700,
-    outline: [
-      { x: 50, y: 50 },
-      { x: 850, y: 50 },
-      { x: 850, y: 650 },
-      { x: 50, y: 650 },
-    ],
-    components: [
-      {
-        name: 'U1000_CPU',
-        type: 'IC',
-        x: 350,
-        y: 200,
-        width: 180,
-        height: 180,
-        side: 'TOP',
-        description: 'Apple A15 Bionic SoC Processor',
-        pins: [
-          { id: 'cpu_p1', pinNumber: 1, netName: 'PP_CPU_CORE', x: 370, y: 220, diodeReading: '0.025V', isPower: true },
-          { id: 'cpu_p2', pinNumber: 2, netName: 'PP_CPU_CORE', x: 390, y: 220, diodeReading: '0.025V', isPower: true },
-          { id: 'cpu_p3', pinNumber: 3, netName: 'GND', x: 410, y: 220, isGround: true },
-          { id: 'cpu_p4', pinNumber: 4, netName: 'PP1V8_S2', x: 430, y: 220, diodeReading: '0.450V', isPower: true },
-          { id: 'cpu_p5', pinNumber: 5, netName: 'PP_VDD_MAIN', x: 450, y: 220, diodeReading: '0.380V', isPower: true },
-          { id: 'cpu_p6', pinNumber: 6, netName: 'SOC_RESET_L', x: 470, y: 220, diodeReading: '0.550V' },
-          { id: 'cpu_p7', pinNumber: 7, netName: 'GND', x: 490, y: 220, isGround: true },
-          // الصف الثاني
-          { id: 'cpu_p8', pinNumber: 8, netName: 'PP_GPU_CORE', x: 370, y: 350, diodeReading: '0.035V', isPower: true },
-          { id: 'cpu_p9', pinNumber: 9, netName: 'GND', x: 390, y: 350, isGround: true },
-          { id: 'cpu_p10', pinNumber: 10, netName: 'PP1V2_LPDDR5', x: 410, y: 350, diodeReading: '0.310V', isPower: true },
-          { id: 'cpu_p11', pinNumber: 11, netName: 'PP_VDD_MAIN', x: 430, y: 350, diodeReading: '0.380V', isPower: true },
-        ],
-      },
-      {
-        name: 'U1200_PMIC',
-        type: 'IC',
-        x: 120,
-        y: 200,
-        width: 140,
-        height: 140,
-        side: 'TOP',
-        description: 'Main Power Management IC (PMIC)',
-        pins: [
-          { id: 'pmic_p1', pinNumber: 1, netName: 'PP_BATT_VCC', x: 140, y: 220, diodeReading: '0.480V', isPower: true, voltage: '3.8V-4.3V' },
-          { id: 'pmic_p2', pinNumber: 2, netName: 'PP_VDD_MAIN', x: 160, y: 220, diodeReading: '0.380V', isPower: true, voltage: '3.8V-4.2V' },
-          { id: 'pmic_p3', pinNumber: 3, netName: 'PP_VDD_BOOST', x: 180, y: 220, diodeReading: '0.420V', isPower: true, voltage: '4.0V' },
-          { id: 'pmic_p4', pinNumber: 4, netName: 'GND', x: 200, y: 220, isGround: true },
-          { id: 'pmic_p5', pinNumber: 5, netName: 'PP1V8_ALWAYS', x: 220, y: 220, diodeReading: '0.490V', isPower: true, voltage: '1.8V' },
-          { id: 'pmic_p6', pinNumber: 6, netName: 'PP_CPU_CORE', x: 140, y: 310, diodeReading: '0.025V', isPower: true, voltage: '0.8V' },
-          { id: 'pmic_p7', pinNumber: 7, netName: 'PP_GPU_CORE', x: 160, y: 310, diodeReading: '0.035V', isPower: true, voltage: '0.9V' },
-          { id: 'pmic_p8', pinNumber: 8, netName: 'GND', x: 180, y: 310, isGround: true },
-          { id: 'pmic_p9', pinNumber: 9, netName: 'PMIC_RESET_OUT', x: 200, y: 310, diodeReading: '0.620V', voltage: '1.8V' },
-        ],
-      },
-      {
-        name: 'U3300_CHARGER',
-        type: 'IC',
-        x: 620,
-        y: 200,
-        width: 120,
-        height: 110,
-        side: 'TOP',
-        description: 'Hydra USB-PD Charging IC',
-        pins: [
-          { id: 'chg_p1', pinNumber: 1, netName: 'PP_VBUS_USB', x: 640, y: 220, diodeReading: '0.520V', isPower: true, voltage: '5V/9V' },
-          { id: 'chg_p2', pinNumber: 2, netName: 'PP_VDD_MAIN', x: 660, y: 220, diodeReading: '0.380V', isPower: true, voltage: '3.8V' },
-          { id: 'chg_p3', pinNumber: 3, netName: 'USB_DP', x: 680, y: 220, diodeReading: '0.680V' },
-          { id: 'chg_p4', pinNumber: 4, netName: 'USB_DN', x: 700, y: 220, diodeReading: '0.680V' },
-          { id: 'chg_p5', pinNumber: 5, netName: 'GND', x: 640, y: 290, isGround: true },
-          { id: 'chg_p6', pinNumber: 6, netName: 'PP1V8_S2', x: 660, y: 290, diodeReading: '0.450V', isPower: true },
-        ],
-      },
-      {
-        name: 'C1501',
-        type: 'Capacitor',
-        x: 280,
-        y: 220,
-        width: 35,
-        height: 20,
-        side: 'TOP',
-        value: '22uF 6.3V',
-        description: 'VDD_MAIN Decoupling Filter',
-        pins: [
-          { id: 'c1501_1', pinNumber: 1, netName: 'PP_VDD_MAIN', x: 285, y: 230, diodeReading: '0.380V', isPower: true },
-          { id: 'c1501_2', pinNumber: 2, netName: 'GND', x: 310, y: 230, isGround: true },
-        ],
-      },
-      {
-        name: 'C1502',
-        type: 'Capacitor',
-        x: 280,
-        y: 260,
-        width: 35,
-        height: 20,
-        side: 'TOP',
-        value: '10uF 6.3V',
-        description: 'VDD_MAIN Filter',
-        pins: [
-          { id: 'c1502_1', pinNumber: 1, netName: 'PP_VDD_MAIN', x: 285, y: 270, diodeReading: '0.380V', isPower: true },
-          { id: 'c1502_2', pinNumber: 2, netName: 'GND', x: 310, y: 270, isGround: true },
-        ],
-      },
-      {
-        name: 'L1200_COIL',
-        type: 'Inductor',
-        x: 120,
-        y: 370,
-        width: 50,
-        height: 40,
-        side: 'TOP',
-        value: '1.0uH 4A',
-        description: 'Buck Converter Inductor for CPU',
-        pins: [
-          { id: 'l1200_1', pinNumber: 1, netName: 'PP_VDD_MAIN', x: 130, y: 390, isPower: true },
-          { id: 'l1200_2', pinNumber: 2, netName: 'PP_CPU_CORE', x: 160, y: 390, isPower: true, diodeReading: '0.025V' },
-        ],
-      },
-      // الوجه السفلي (BOTTOM SIDE)
-      {
-        name: 'U3000_NAND',
-        type: 'IC',
-        x: 350,
-        y: 200,
-        width: 170,
-        height: 150,
-        side: 'BOTTOM',
-        description: 'NVMe Flash Storage Memory (NAND)',
-        pins: [
-          { id: 'nand_p1', pinNumber: 1, netName: 'PP_VDD_MAIN', x: 370, y: 220, isPower: true, diodeReading: '0.380V' },
-          { id: 'nand_p2', pinNumber: 2, netName: 'PP1V8_ALWAYS', x: 390, y: 220, isPower: true, diodeReading: '0.490V' },
-          { id: 'nand_p3', pinNumber: 3, netName: 'PP2V5_NAND', x: 410, y: 220, isPower: true, diodeReading: '0.410V' },
-          { id: 'nand_p4', pinNumber: 4, netName: 'GND', x: 430, y: 220, isGround: true },
-          { id: 'nand_p5', pinNumber: 5, netName: 'PCIE_NAND_TX', x: 450, y: 220, diodeReading: '0.330V' },
-        ],
-      },
-      {
-        name: 'U5000_WIFI',
-        type: 'IC',
-        x: 600,
-        y: 400,
-        width: 130,
-        height: 130,
-        side: 'BOTTOM',
-        description: 'Wi-Fi 6 & Bluetooth Module (Broadcom)',
-        pins: [
-          { id: 'wifi_p1', pinNumber: 1, netName: 'PP_VDD_MAIN', x: 620, y: 420, isPower: true, diodeReading: '0.380V' },
-          { id: 'wifi_p2', pinNumber: 2, netName: 'PP1V8_S2', x: 640, y: 420, isPower: true, diodeReading: '0.450V' },
-          { id: 'wifi_p3', pinNumber: 3, netName: 'WLAN_PCIE_CLK', x: 660, y: 420, diodeReading: '0.360V' },
-          { id: 'wifi_p4', pinNumber: 4, netName: 'GND', x: 680, y: 420, isGround: true },
-        ],
-      },
-    ],
-  },
-  {
-    name: 'Dell Inspiron 5521 (LA-9104P Motherboard)',
-    boardCode: 'LA-9104P / QCL00',
-    deviceType: 'laptop',
-    width: 950,
-    height: 750,
-    outline: [
-      { x: 40, y: 40 },
-      { x: 910, y: 40 },
-      { x: 910, y: 710 },
-      { x: 40, y: 710 },
-    ],
-    components: [
-      {
-        name: 'PU401_3V5V',
-        type: 'IC',
-        x: 200,
-        y: 180,
-        width: 120,
-        height: 120,
-        side: 'TOP',
-        description: 'TPS51125 Dual Step-Down Controller (3.3V / 5V Always)',
-        pins: [
-          { id: 'pu401_p16', pinNumber: 16, netName: '+19V_VIN', x: 220, y: 195, isPower: true, diodeReading: '0.450V', voltage: '19.5V' },
-          { id: 'pu401_p8', pinNumber: 8, netName: '+3VALWP', x: 250, y: 195, isPower: true, diodeReading: '0.380V', voltage: '3.3V' },
-          { id: 'pu401_p17', pinNumber: 17, netName: '+5VALWP', x: 280, y: 195, isPower: true, diodeReading: '0.410V', voltage: '5.0V' },
-          { id: 'pu401_p1', pinNumber: 1, netName: 'ENTRIP1', x: 220, y: 285, diodeReading: '0.520V' },
-          { id: 'pu401_p6', pinNumber: 6, netName: 'ENTRIP2', x: 250, y: 285, diodeReading: '0.520V' },
-          { id: 'pu401_gnd', pinNumber: 25, netName: 'GND', x: 280, y: 285, isGround: true },
-        ],
-      },
-      {
-        name: 'PQ401_MOSFET',
-        type: 'Mosfet',
-        x: 100,
-        y: 180,
-        width: 60,
-        height: 60,
-        side: 'TOP',
-        description: 'High-Side MOSFET for 19V Input Path',
-        pins: [
-          { id: 'pq401_s', pinNumber: '1-3', netName: '+19V_VIN', x: 110, y: 200, isPower: true, voltage: '19.5V' },
-          { id: 'pq401_g', pinNumber: '4', netName: 'CHG_GATE', x: 130, y: 200, voltage: '24V' },
-          { id: 'pq401_d', pinNumber: '5-8', netName: '+BATT_PWR', x: 150, y: 200, isPower: true },
-        ],
-      },
-      {
-        name: 'KB9012_EC_IO',
-        type: 'IC',
-        x: 500,
-        y: 350,
-        width: 160,
-        height: 160,
-        side: 'TOP',
-        description: 'ENE KB9012QF Keyboard & Embedded Controller (EC/KBC)',
-        pins: [
-          { id: 'kbc_vcc', pinNumber: 9, netName: '+3VALWP', x: 520, y: 370, isPower: true, diodeReading: '0.380V', voltage: '3.3V' },
-          { id: 'kbc_pwr_btn', pinNumber: 110, netName: 'ON/OFF_BTN#', x: 550, y: 370, diodeReading: '0.620V', voltage: '3.3V' },
-          { id: 'kbc_gnd', pinNumber: 22, netName: 'GND', x: 580, y: 370, isGround: true },
-          { id: 'kbc_rsmrst', pinNumber: 100, netName: 'EC_RSMRST#', x: 610, y: 370, diodeReading: '0.580V', voltage: '3.3V' },
-          { id: 'kbc_lid', pinNumber: 115, netName: 'LID_SW#', x: 640, y: 370, diodeReading: '0.610V', voltage: '3.3V' },
-        ],
-      },
-    ],
-  },
-];
+import {
+  generateVectorBoard,
+  getPopularBoardsList,
+  findBoardInMatrix,
+  VectorBoardModel,
+  VectorComponent,
+  VectorPin,
+} from '@/lib/vectorBoardGenerator';
 
 interface VectorBoardViewCADProps {
   boardName?: string;
   selectedNet?: string | null;
   onNetSelect?: (netName: string) => void;
   onComponentSelect?: (compName: string) => void;
+  onBoardChange?: (newBoardName: string) => void;
 }
 
 export default function VectorBoardViewCAD({
@@ -299,16 +48,23 @@ export default function VectorBoardViewCAD({
   selectedNet: initialNet,
   onNetSelect,
   onComponentSelect,
+  onBoardChange,
 }: VectorBoardViewCADProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // حالة البورد والمشهد المتجه
-  const [activeBoard, setActiveBoard] = useState<VectorBoardModel>(BUILTIN_VECTOR_BOARDS[0]);
+  const [activeBoard, setActiveBoard] = useState<VectorBoardModel>(() =>
+    generateVectorBoard(boardName || 'iPhone 13 Pro Max')
+  );
   const [boardSide, setBoardSide] = useState<'TOP' | 'BOTTOM'>('TOP');
   const [selectedNet, setSelectedNet] = useState<string | null>(initialNet || 'PP_VDD_MAIN');
   const [hoveredPin, setHoveredPin] = useState<VectorPin | null>(null);
   const [hoveredComponent, setHoveredComponent] = useState<VectorComponent | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+
+  // حالات البحث
+  const [netSearchQuery, setNetSearchQuery] = useState('');
+  const [boardSearchInput, setBoardSearchInput] = useState('');
+  const [showBoardDropdown, setShowBoardDropdown] = useState(false);
 
   // تحكم الكاميرا (Pan & Zoom)
   const [scale, setScale] = useState(1);
@@ -317,20 +73,48 @@ export default function VectorBoardViewCAD({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
-  // مزامنة النموذج مع اسم البورد الممرر
+  // مزامنة النموذج تلقائياً عند تغيير اسم البورد الممرر من شريط البحث الرئيسي
   useEffect(() => {
-    if (boardName) {
-      const match = BUILTIN_VECTOR_BOARDS.find(
-        (b) =>
-          b.name.toLowerCase().includes(boardName.toLowerCase()) ||
-          b.boardCode.toLowerCase().includes(boardName.toLowerCase())
-      );
-      if (match) setActiveBoard(match);
+    if (boardName && boardName !== activeBoard.name && boardName !== activeBoard.boardCode) {
+      const generated = generateVectorBoard(boardName);
+      setActiveBoard(generated);
+      // ضبط أول مسار رئيسي تلقائياً
+      if (generated.powerRails && generated.powerRails.length > 0) {
+        setSelectedNet(generated.powerRails[0].rail);
+      }
     }
   }, [boardName]);
 
-  // استخراج قائمة المسارات المتاحة على الوجه الحالي
-  const availableNets = React.useMemo(() => {
+  // قائمة البوردات المتطابقة مع بحث المستخدم في الفيكتور
+  const popularBoards = useMemo(() => getPopularBoardsList(), []);
+
+  const searchedBoardSuggestions = useMemo(() => {
+    if (!boardSearchInput.trim()) return popularBoards;
+    const q = boardSearchInput.toLowerCase().trim();
+    return popularBoards.filter(
+      (b) =>
+        b.name.toLowerCase().includes(q) ||
+        b.boardCode.toLowerCase().includes(q) ||
+        q.includes(b.boardCode.toLowerCase())
+    );
+  }, [boardSearchInput, popularBoards]);
+
+  // اختيار بوردة وتطبيقها فوراً
+  const handleSelectBoard = (targetNameOrCode: string) => {
+    const newBoard = generateVectorBoard(targetNameOrCode);
+    setActiveBoard(newBoard);
+    setBoardSearchInput('');
+    setShowBoardDropdown(false);
+    if (newBoard.powerRails && newBoard.powerRails.length > 0) {
+      setSelectedNet(newBoard.powerRails[0].rail);
+    }
+    if (onBoardChange) {
+      onBoardChange(`${newBoard.brand} ${newBoard.model}`);
+    }
+  };
+
+  // استخراج قائمة المسارات المتاحة
+  const availableNets = useMemo(() => {
     const set = new Set<string>();
     activeBoard.components.forEach((c) => {
       c.pins.forEach((p) => {
@@ -340,6 +124,78 @@ export default function VectorBoardViewCAD({
     return Array.from(set).sort();
   }, [activeBoard]);
 
+  // معلومات المسار النشط الحالي
+  const activeRailInfo = useMemo(() => {
+    if (!selectedNet) return null;
+    return activeBoard.powerRails?.find(
+      (r) => r.rail.toLowerCase() === selectedNet.toLowerCase()
+    );
+  }, [selectedNet, activeBoard]);
+
+  /**
+   * 📐 رسم مسار نحاسي هندسي متعامد بزوايا 45 درجة وVia Holes (Manhattan Orthogonal Routing)
+   */
+  const drawManhattanTrace = (
+    ctx: CanvasRenderingContext2D,
+    p1: { x: number; y: number },
+    p2: { x: number; y: number },
+    isPower: boolean
+  ) => {
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+
+    ctx.save();
+    ctx.lineWidth = isPower ? 3.5 : 2.5;
+    ctx.strokeStyle = isPower ? '#f59e0b' : '#38bdf8';
+    ctx.shadowColor = isPower ? '#f59e0b' : '#38bdf8';
+    ctx.shadowBlur = 10;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+
+    if (Math.abs(dx) > Math.abs(dy)) {
+      const midX = p1.x + dx * 0.5;
+      const cornerSize = Math.min(15, Math.abs(dx) * 0.25, Math.abs(dy) * 0.5);
+      const signX = Math.sign(dx) || 1;
+      const signY = Math.sign(dy) || 1;
+
+      ctx.lineTo(midX - cornerSize * signX, p1.y);
+      ctx.lineTo(midX + cornerSize * signX, p1.y + cornerSize * 2 * signY);
+      ctx.lineTo(midX + cornerSize * signX, p2.y - cornerSize * signY);
+      ctx.lineTo(p2.x, p2.y);
+    } else {
+      const midY = p1.y + dy * 0.5;
+      const cornerSize = Math.min(15, Math.abs(dy) * 0.25, Math.abs(dx) * 0.5);
+      const signX = Math.sign(dx) || 1;
+      const signY = Math.sign(dy) || 1;
+
+      ctx.lineTo(p1.x, midY - cornerSize * signY);
+      ctx.lineTo(p1.x + cornerSize * 2 * signX, midY + cornerSize * signY);
+      ctx.lineTo(p2.x - cornerSize * signX, midY + cornerSize * signY);
+      ctx.lineTo(p2.x, p2.y);
+    }
+
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // رسم Via Hole (دونات نحاسية مجوفة) عند نقطة التفرع
+    const viaX = p1.x + dx * 0.5;
+    const viaY = p1.y + dy * 0.5;
+    ctx.fillStyle = isPower ? '#fbbf24' : '#7dd3fc';
+    ctx.beginPath();
+    ctx.arc(viaX, viaY, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#0a0f1d';
+    ctx.beginPath();
+    ctx.arc(viaX, viaY, 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  };
+
   // رسم المشهد المتجه على Canvas 2D
   const renderCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -347,7 +203,6 @@ export default function VectorBoardViewCAD({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // ضبط مقاس الـ Canvas الحقيقي
     const dpr = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
     canvas.width = rect.width * dpr;
@@ -355,17 +210,16 @@ export default function VectorBoardViewCAD({
     ctx.scale(dpr, dpr);
 
     // خلفية معمل الصيانة المظلمة (Deep PCB CAD Background)
-    ctx.fillStyle = '#0a0f1d';
+    ctx.fillStyle = '#070b14';
     ctx.fillRect(0, 0, rect.width, rect.height);
 
     ctx.save();
-    // تطبيق تحريك الكاميرا والتكبير
     ctx.translate(rect.width / 2 + panX, rect.height / 2 + panY);
     ctx.scale(scale, scale);
     ctx.translate(-activeBoard.width / 2, -activeBoard.height / 2);
 
-    // 1. رسم شبكة الميكروميتر الهندسية الدقيقة
-    ctx.strokeStyle = '#1e293b';
+    // 1. شبكة الميكروميتر الهندسية الدقيقة
+    ctx.strokeStyle = '#111c30';
     ctx.lineWidth = 0.5;
     const gridSize = 40;
     for (let x = 0; x <= activeBoard.width; x += gridSize) {
@@ -381,16 +235,15 @@ export default function VectorBoardViewCAD({
       ctx.stroke();
     }
 
-    // 2. رسم مضلع البوردة الرئيسي (PCB Board Outline)
-    ctx.fillStyle = '#0f172a';
-    ctx.strokeStyle = '#38bdf8';
+    // 2. مضلع البوردة الرئيسي (PCB Board Outline)
+    ctx.fillStyle = '#0c1527';
+    ctx.strokeStyle = activeBoard.deviceType === 'laptop' ? '#38bdf8' : '#f59e0b';
     ctx.lineWidth = 2.5;
-    ctx.shadowColor = '#0284c7';
-    ctx.shadowBlur = 12;
+    ctx.shadowColor = activeBoard.deviceType === 'laptop' ? '#0284c7' : '#d97706';
+    ctx.shadowBlur = 14;
 
     ctx.beginPath();
     activeBoard.outline.forEach((pt, i) => {
-      // إذا كان الوجه سفلي، نعكس الإحداثي الأفقي (Mirror X for Bottom Side)
       const px = boardSide === 'BOTTOM' ? activeBoard.width - pt.x : pt.x;
       if (i === 0) ctx.moveTo(px, pt.y);
       else ctx.lineTo(px, pt.y);
@@ -398,41 +251,37 @@ export default function VectorBoardViewCAD({
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-    ctx.shadowBlur = 0; // إزالة الضل
+    ctx.shadowBlur = 0;
 
-    // علامة الوجه الحالي في زاوية البوردة
-    ctx.fillStyle = '#38bdf8';
-    ctx.font = 'bold 16px monospace';
-    ctx.fillText(`SIDE: ${boardSide} • [${activeBoard.boardCode}]`, 60, 80);
+    // علامة الوجه والموديل في زاوية البوردة
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = 'bold 14px monospace';
+    ctx.fillText(
+      `${activeBoard.brand} ${activeBoard.model} [${activeBoard.boardCode}] • SIDE: ${boardSide}`,
+      70,
+      85
+    );
 
     // 3. تصفية المكونات حسب الوجه الحالي (TOP أو BOTTOM)
     const visibleComponents = activeBoard.components.filter((c) => c.side === boardSide);
 
-    // 4. رسم خطوط المسار المحدد (Traces) الواصلة بين الأرجل
+    // 4. رسم خطوط المسار المحدد (Traces) بتنسيق متعامد احترافي (Manhattan Routing)
     if (selectedNet) {
-      const netPins: Array<{ x: number; y: number }> = [];
+      const netPins: Array<{ x: number; y: number; isPower: boolean }> = [];
       visibleComponents.forEach((c) => {
         c.pins.forEach((p) => {
           if (p.netName.toLowerCase() === selectedNet.toLowerCase()) {
             const px = boardSide === 'BOTTOM' ? activeBoard.width - p.x : p.x;
-            netPins.push({ x: px, y: p.y });
+            netPins.push({ x: px, y: p.y, isPower: !!p.isPower });
           }
         });
       });
 
-      // رسم شعاع كهربائي متوهج بين نقاط المسار
+      // رسم مسارات النحاس المتعامدة
       if (netPins.length > 1) {
-        ctx.strokeStyle = '#f59e0b';
-        ctx.lineWidth = 3;
-        ctx.shadowColor = '#f59e0b';
-        ctx.shadowBlur = 15;
-        ctx.beginPath();
         for (let i = 0; i < netPins.length - 1; i++) {
-          ctx.moveTo(netPins[i].x, netPins[i].y);
-          ctx.lineTo(netPins[i + 1].x, netPins[i + 1].y);
+          drawManhattanTrace(ctx, netPins[i], netPins[i + 1], netPins[i].isPower || netPins[i + 1].isPower);
         }
-        ctx.stroke();
-        ctx.shadowBlur = 0;
       }
     }
 
@@ -442,23 +291,36 @@ export default function VectorBoardViewCAD({
       const cy = comp.y;
       const isCompHovered = hoveredComponent?.name === comp.name;
 
-      // هيكل الآيسي
-      ctx.fillStyle = isCompHovered ? '#1e293b' : '#111827';
-      ctx.strokeStyle = isCompHovered ? '#f59e0b' : '#475569';
-      ctx.lineWidth = 1.5;
-      ctx.fillRect(cx, cy, comp.width, comp.height);
-      ctx.strokeRect(cx, cy, comp.width, comp.height);
+      // هيكل الآيسي / المكون
+      ctx.fillStyle = isCompHovered ? '#1e293b' : comp.type === 'TestPoint' ? '#78350f' : '#0f172a';
+      ctx.strokeStyle = isCompHovered ? '#f59e0b' : comp.type === 'IC' ? '#64748b' : '#334155';
+      ctx.lineWidth = comp.type === 'IC' ? 1.8 : 1.2;
 
-      // نقطة الدليل Pin 1 Dot
-      ctx.fillStyle = '#f59e0b';
-      ctx.beginPath();
-      ctx.arc(cx + 8, cy + 8, 3, 0, Math.PI * 2);
-      ctx.fill();
+      if (comp.type === 'TestPoint') {
+        // رسم نقطة الفحص الذهبية
+        ctx.fillStyle = '#f59e0b';
+        ctx.beginPath();
+        ctx.arc(cx + comp.width / 2, cy + comp.height / 2, comp.width / 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      } else {
+        ctx.fillRect(cx, cy, comp.width, comp.height);
+        ctx.strokeRect(cx, cy, comp.width, comp.height);
 
-      // اسم المكون بالحرير السيلك سكرين (Silk Screen Label)
-      ctx.fillStyle = isCompHovered ? '#fbbf24' : '#94a3b8';
-      ctx.font = 'bold 11px monospace';
-      ctx.fillText(comp.name, cx + 12, cy + comp.height / 2 + 4);
+        // نقطة الدليل Pin 1 Dot للآيسيهات
+        if (comp.type === 'IC') {
+          ctx.fillStyle = '#f59e0b';
+          ctx.beginPath();
+          ctx.arc(cx + 8, cy + 8, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // اسم المكون بالحرير السيلك سكرين (Silk Screen Label)
+        ctx.fillStyle = isCompHovered ? '#fbbf24' : '#cbd5e1';
+        ctx.font = 'bold 11px monospace';
+        const label = comp.name.length > 22 ? comp.name.slice(0, 20) + '..' : comp.name;
+        ctx.fillText(label, cx + 8, cy + comp.height / 2 + 4);
+      }
 
       // 6. رسم الأرجل ونقاط التلامس (Copper Pins / Pads)
       comp.pins.forEach((pin) => {
@@ -468,14 +330,14 @@ export default function VectorBoardViewCAD({
         const isPinHovered = hoveredPin?.id === pin.id;
 
         ctx.beginPath();
-        ctx.arc(px, py, isNetActive ? 7 : 5, 0, Math.PI * 2);
+        ctx.arc(px, py, isNetActive ? 7.5 : 5, 0, Math.PI * 2);
 
         if (pin.isGround) {
-          ctx.fillStyle = isNetActive ? '#ef4444' : '#64748b'; // الأرضي
+          ctx.fillStyle = isNetActive ? '#ef4444' : '#475569'; // الأرضي
         } else if (isNetActive) {
-          ctx.fillStyle = '#f59e0b'; // المسار المختار يتوهج بذهبي ساطع
+          ctx.fillStyle = '#fbbf24'; // المسار المختار يتوهج بذهبي ساطع
           ctx.shadowColor = '#f59e0b';
-          ctx.shadowBlur = 12;
+          ctx.shadowBlur = 14;
         } else if (pin.isPower) {
           ctx.fillStyle = '#38bdf8'; // خطوط التغذية الرئيسية زرقاء
         } else {
@@ -487,14 +349,14 @@ export default function VectorBoardViewCAD({
 
         // إطار الرجل
         ctx.strokeStyle = isPinHovered ? '#ffffff' : '#0f172a';
-        ctx.lineWidth = isPinHovered ? 2 : 1;
+        ctx.lineWidth = isPinHovered ? 2.5 : 1;
         ctx.stroke();
 
         // رقم الرجل عند التكبير العالي
-        if (scale > 1.4) {
+        if (scale > 1.3 && pin.pinNumber) {
           ctx.fillStyle = '#ffffff';
           ctx.font = '8px monospace';
-          ctx.fillText(String(pin.pinNumber), px - 3, py - 8);
+          ctx.fillText(String(pin.pinNumber), px - 4, py - 9);
         }
       });
     });
@@ -507,7 +369,6 @@ export default function VectorBoardViewCAD({
     renderCanvas();
   }, [renderCanvas]);
 
-  // مراقبة أبعاد الشاشة
   useEffect(() => {
     const handleResize = () => renderCanvas();
     window.addEventListener('resize', handleResize);
@@ -535,20 +396,18 @@ export default function VectorBoardViewCAD({
       return;
     }
 
-    // اكتشاف الوقوف فوق الأرجل والمكونات (Hit Testing)
+    // Hit Testing لاكتشاف الرجل أو المكون تحت الماوس
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    // تحويل إحداثيات الشاشة إلى إحداثيات البوردة
     const boardX = (mouseX - (rect.width / 2 + panX)) / scale + activeBoard.width / 2;
     const boardY = (mouseY - (rect.height / 2 + panY)) / scale + activeBoard.height / 2;
 
     const visibleComponents = activeBoard.components.filter((c) => c.side === boardSide);
 
-    // فحص الأرجل
     let foundPin: VectorPin | null = null;
     let foundComp: VectorComponent | null = null;
 
@@ -583,7 +442,6 @@ export default function VectorBoardViewCAD({
     setIsDragging(false);
   };
 
-  // اختيار المسار عند الضغط على الرجل
   const handleClick = () => {
     if (hoveredPin) {
       setSelectedNet(hoveredPin.netName);
@@ -593,7 +451,6 @@ export default function VectorBoardViewCAD({
     }
   };
 
-  // تدوير أو قلب البوردة
   const toggleFlipSide = () => {
     setBoardSide((prev) => (prev === 'TOP' ? 'BOTTOM' : 'TOP'));
   };
@@ -605,31 +462,82 @@ export default function VectorBoardViewCAD({
   };
 
   return (
-    <div className="w-full h-full flex flex-col bg-[#070b14] select-none overflow-hidden relative font-sans text-right">
+    <div className="w-full h-full flex flex-col bg-[#070b14] select-none overflow-hidden relative font-sans text-right" dir="rtl">
       
       {/* 🎛️ شريط التحكم العلوي لمحرك الفيكتور (CAD Control Bar) */}
-      <div className="p-3 bg-gray-950/90 border-b border-gray-800 flex flex-wrap items-center justify-between gap-2.5 z-20 backdrop-blur-md">
+      <div className="p-2.5 md:p-3 bg-gray-950/95 border-b border-gray-800 flex flex-wrap items-center justify-between gap-2.5 z-20 backdrop-blur-md">
         
-        {/* اختيار موديل البوردة والوجه */}
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-dahab-500 flex items-center justify-center text-slate-950 font-black shadow-md">
+        {/* اختيار موديل البوردة والوجه والبحث السريع */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-dahab-500 flex items-center justify-center text-slate-950 font-black shadow-md shrink-0">
             <CircuitBoard className="w-4 h-4" />
           </div>
-          
-          <select
-            value={activeBoard.boardCode}
-            onChange={(e) => {
-              const b = BUILTIN_VECTOR_BOARDS.find((x) => x.boardCode === e.target.value);
-              if (b) setActiveBoard(b);
-            }}
-            className="bg-gray-900 border border-gray-700 text-gray-100 text-xs rounded-xl px-3 py-1.5 outline-none focus:border-dahab-500 font-bold"
-          >
-            {BUILTIN_VECTOR_BOARDS.map((b) => (
-              <option key={b.boardCode} value={b.boardCode}>
-                {b.name} [{b.boardCode}]
-              </option>
-            ))}
-          </select>
+
+          {/* محرك البحث عن البوردة في الفيكتور مع قائمة منسدلة */}
+          <div className="relative">
+            <div className="flex items-center gap-1.5 bg-gray-900 border border-gray-700 rounded-xl px-2.5 py-1.5">
+              <Search className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+              <input
+                type="text"
+                value={boardSearchInput}
+                onChange={(e) => {
+                  setBoardSearchInput(e.target.value);
+                  setShowBoardDropdown(true);
+                }}
+                onFocus={() => setShowBoardDropdown(true)}
+                placeholder="ابحث برقم البوردة أو الموديل..."
+                className="bg-transparent border-none text-xs text-gray-100 placeholder-gray-500 outline-none w-36 sm:w-48 font-bold"
+              />
+              <button
+                type="button"
+                onClick={() => setShowBoardDropdown(!showBoardDropdown)}
+                className="text-gray-400 hover:text-white"
+              >
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* القائمة المنسدلة للبوردات المتاحة في مصفوفة الـ 863 */}
+            {showBoardDropdown && (
+              <div className="absolute top-full right-0 mt-1.5 w-72 max-h-72 bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl overflow-y-auto p-1.5 z-50 space-y-1">
+                <div className="px-2 py-1 text-[10px] font-bold text-amber-400 border-b border-gray-800 flex items-center justify-between">
+                  <span>اختر بوردة لعرضها فوراً في فيكتور CAD:</span>
+                  <span className="text-gray-500 font-mono">863 بوردة</span>
+                </div>
+                {searchedBoardSuggestions.slice(0, 15).map((b) => (
+                  <button
+                    key={b.boardCode}
+                    type="button"
+                    onClick={() => handleSelectBoard(b.boardCode)}
+                    className={`w-full text-right px-2.5 py-1.5 rounded-xl text-xs transition flex items-center justify-between gap-1.5 ${
+                      activeBoard.boardCode === b.boardCode
+                        ? 'bg-amber-500 text-slate-950 font-black'
+                        : 'text-gray-200 hover:bg-gray-800'
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <div className="font-bold truncate">{b.name}</div>
+                      <div className={`text-[10px] font-mono ${activeBoard.boardCode === b.boardCode ? 'text-slate-900' : 'text-gray-400'}`}>
+                        {b.boardCode}
+                      </div>
+                    </div>
+                    <span className="text-[10px] shrink-0 opacity-80">
+                      {b.category === 'mobile' ? '📱' : '💻'}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* البوردة الحالية */}
+          <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-900 border border-gray-800 text-xs font-bold text-gray-200">
+            <span className="text-amber-500">البوردة:</span>
+            <span className="font-mono text-white">{activeBoard.name}</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-amber-400 font-mono">
+              {activeBoard.boardCode}
+            </span>
+          </div>
 
           {/* زر قلب البوردة (Flip Side) */}
           <button
@@ -639,23 +547,23 @@ export default function VectorBoardViewCAD({
                 ? 'bg-amber-500 text-slate-950 border-amber-400'
                 : 'bg-sky-500 text-slate-950 border-sky-400'
             }`}
-            title="قلب البوردة بين الوجه العلوي والسفلي (Spacebar / Flip)"
+            title="قلب البوردة بين الوجه العلوي والسفلي (Flip TOP / BOTTOM)"
           >
             <RotateCw className="w-3.5 h-3.5" />
-            <span>وجه البوردة: {boardSide === 'TOP' ? 'العلوي (TOP) 🔼' : 'السفلي (BOTTOM) 🔽'}</span>
+            <span>الوجه: {boardSide === 'TOP' ? 'العلوي (TOP) 🔼' : 'السفلي (BOTTOM) 🔽'}</span>
           </button>
         </div>
 
-        {/* البحث السريع في المسارات */}
+        {/* البحث السريع في المسارات وتكبير الشاشة */}
         <div className="flex items-center gap-2">
           <div className="relative">
             <Search className="w-3.5 h-3.5 text-gray-400 absolute right-3 top-2.5" />
             <input
               type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={netSearchQuery}
+              onChange={(e) => setNetSearchQuery(e.target.value)}
               placeholder="ابحث في المسارات (VDD_MAIN / 19V)..."
-              className="pr-8 pl-3 py-1.5 bg-gray-900 border border-gray-700 rounded-xl text-xs text-gray-100 outline-none focus:border-dahab-500 w-48 sm:w-56 font-mono"
+              className="pr-8 pl-3 py-1.5 bg-gray-900 border border-gray-700 rounded-xl text-xs text-gray-100 outline-none focus:border-dahab-500 w-44 sm:w-56 font-mono"
             />
           </div>
 
@@ -702,6 +610,28 @@ export default function VectorBoardViewCAD({
           className="w-full h-full block"
         />
 
+        {/* ⚡ شريط معلومات المسار النشط الهندسي (Active Net HUD) */}
+        {selectedNet && (
+          <div className="absolute top-4 left-4 z-20 px-4 py-2.5 rounded-2xl bg-gray-950/90 border border-amber-500/50 backdrop-blur-md shadow-2xl flex items-center gap-3 animate-fadeIn">
+            <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping" />
+            <div className="text-right">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono font-black text-amber-400">{selectedNet}</span>
+                {activeRailInfo?.voltage && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold font-mono">
+                    {activeRailInfo.voltage}
+                  </span>
+                )}
+              </div>
+              {activeRailInfo?.diodeMode && (
+                <div className="text-[10px] text-sky-300 font-mono mt-0.5">
+                  ممانعة الدايود الطبيعية: <strong>{activeRailInfo.diodeMode}</strong>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* 💡 بطاقة الفحص الهندسي للرجل المشتبه بها (Pin Inspector Tooltip) */}
         {hoveredPin && (
           <div className="absolute bottom-4 left-4 z-30 p-3.5 bg-gray-950/95 border border-amber-500/50 rounded-2xl shadow-2xl backdrop-blur-md text-xs space-y-1.5 animate-fadeIn max-w-xs pointer-events-none">
@@ -740,17 +670,17 @@ export default function VectorBoardViewCAD({
         )}
 
         {/* قائمة المسارات الجانبية السريعة */}
-        <div className="absolute top-4 right-4 z-20 max-h-72 w-52 bg-gray-950/90 border border-gray-800 rounded-2xl p-2.5 backdrop-blur-md overflow-hidden flex flex-col shadow-xl">
+        <div className="absolute top-4 right-4 z-20 max-h-80 w-56 bg-gray-950/90 border border-gray-800 rounded-2xl p-2.5 backdrop-blur-md overflow-hidden flex flex-col shadow-xl">
           <div className="text-[11px] font-black text-gray-300 pb-1.5 border-b border-gray-800 flex items-center justify-between">
             <span className="flex items-center gap-1">
-              <Zap className="w-3.5 h-3.5 text-amber-500" /> المسارات (Nets):
+              <Zap className="w-3.5 h-3.5 text-amber-500" /> مسارات البوردة (Nets):
             </span>
             <span className="text-[9px] font-mono text-dahab-400">{availableNets.length}</span>
           </div>
 
           <div className="overflow-y-auto space-y-1 pt-1.5 flex-1 pr-1">
             {availableNets
-              .filter((n) => !searchQuery || n.toLowerCase().includes(searchQuery.toLowerCase()))
+              .filter((n) => !netSearchQuery || n.toLowerCase().includes(netSearchQuery.toLowerCase()))
               .map((net) => {
                 const isActive = selectedNet && net.toLowerCase() === selectedNet.toLowerCase();
                 return (
@@ -785,7 +715,7 @@ export default function VectorBoardViewCAD({
         </div>
         <div className="flex items-center gap-2 text-emerald-400 font-mono font-bold">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span>Vector CAD Engine 60 FPS</span>
+          <span>Vector CAD Engine • 863 Boards Live</span>
         </div>
       </div>
 
