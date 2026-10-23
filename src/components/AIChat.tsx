@@ -30,6 +30,9 @@ import {
 } from 'lucide-react';
 import { useDiagnosticContext } from '@/contexts/DiagnosticContext';
 import MicroscopeCameraModal from '@/components/MicroscopeCameraModal';
+import QuickDiodeEvaluatorModal from '@/components/QuickDiodeEvaluatorModal';
+import SilkScreenCheatSheetModal from '@/components/SilkScreenCheatSheetModal';
+import ComponentInspectorModal, { ComponentInfo } from '@/components/ComponentInspectorModal';
 import FormattedChatMessage from '@/components/FormattedChatMessage';
 import { cleanAIResponseText } from '@/lib/cleanResponse';
 import { exportChatAsPDF } from '@/lib/chatPdfExport';
@@ -105,6 +108,9 @@ export default function AIChat({ currentUser, guestRemaining, onRemainingChange 
   const [isListening, setIsListening] = useState(false);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [showMicroscopeInChat, setShowMicroscopeInChat] = useState(false);
+  const [showDiodeEvaluator, setShowDiodeEvaluator] = useState(false);
+  const [showSilkScreen, setShowSilkScreen] = useState(false);
+  const [inspectedComponent, setInspectedComponent] = useState<ComponentInfo | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [savedSessions, setSavedSessions] = useState<SavedChatSession[]>([]);
@@ -918,6 +924,28 @@ export default function AIChat({ currentUser, guestRemaining, onRemainingChange 
 
           {/* Action Buttons */}
           <div className="flex items-center gap-1.5 shrink-0">
+            {/* زر مقيم الممانعة السريع */}
+            <button
+              type="button"
+              onClick={() => setShowDiodeEvaluator(true)}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/30 text-xs font-bold transition shadow-sm"
+              title="مقيم ممانعة الدايود السريع (فحص سلامة المسارات)"
+            >
+              <span className="text-sm">⚡</span>
+              <span className="hidden lg:inline">مقيم الممانعة</span>
+            </button>
+
+            {/* زر دليل رموز السلك سكرين */}
+            <button
+              type="button"
+              onClick={() => setShowSilkScreen(true)}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-700 dark:text-sky-400 border border-sky-500/30 text-xs font-bold transition shadow-sm"
+              title="دليل اختصارات ورموز السلك سكرين بالمخططات (PU, PQ, PL, PR...)"
+            >
+              <span className="text-sm">🏷️</span>
+              <span className="hidden lg:inline">رموز المخططات</span>
+            </button>
+
             {/* زر تصدير المحادثة كـ PDF معتمد */}
             <button
               type="button"
@@ -995,6 +1023,7 @@ export default function AIChat({ currentUser, guestRemaining, onRemainingChange 
                 <FormattedChatMessage
                   content={message.content}
                   isAssistant={message.role === 'assistant'}
+                  onSelectComponent={(comp) => setInspectedComponent(comp)}
                 />
               </div>
 
@@ -1405,6 +1434,24 @@ export default function AIChat({ currentUser, guestRemaining, onRemainingChange 
         onCapture={(img) => {
           setImageBase64(img);
         }}
+      />
+
+      {/* نافذة مقيم ممانعة الدايود السريع */}
+      <QuickDiodeEvaluatorModal
+        isOpen={showDiodeEvaluator}
+        onClose={() => setShowDiodeEvaluator(false)}
+      />
+
+      {/* نافذة دليل رموز السلك سكرين بالمخططات */}
+      <SilkScreenCheatSheetModal
+        isOpen={showSilkScreen}
+        onClose={() => setShowSilkScreen(false)}
+      />
+
+      {/* نافذة فحص تفاصيل المكون المرجعي الشامل */}
+      <ComponentInspectorModal
+        component={inspectedComponent}
+        onClose={() => setInspectedComponent(null)}
       />
     </div>
   );

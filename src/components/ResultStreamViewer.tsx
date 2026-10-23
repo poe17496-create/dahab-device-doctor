@@ -17,6 +17,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import ComponentBadge from '@/components/ComponentBadge';
+import ComponentInspectorModal, { ComponentInfo } from '@/components/ComponentInspectorModal';
 import { cleanAIResponseText } from '@/lib/cleanResponse';
 import { playArabicSpeech, stopSpeech } from '@/lib/speechService';
 
@@ -34,6 +35,7 @@ export default function ResultStreamViewer({ rawOutput, loading, onPrint, onComp
   const [displayedText, setDisplayedText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [highlightedComponent, setHighlightedComponent] = useState<string | null>(null);
+  const [selectedComponent, setSelectedComponent] = useState<ComponentInfo | null>(null);
 
   // Typewriter Effect - عرض النص تدريجياً
   useEffect(() => {
@@ -74,33 +76,46 @@ export default function ResultStreamViewer({ rawOutput, loading, onPrint, onComp
     }
   }, [rawOutput, displayedText]);
 
-  // دالة للكشف عن المكونات في النص وتحويلها إلى Badges
+  // دالة ذكية ودقيقة للكشف عن المكونات والمسارات دون تقطيع أكواد الآيسيهات
   const highlightComponents = (text: string) => {
-    // نمط للكشف عن أسماء المكونات (مثل U1001, C2015, R1502, etc.)
-    const componentPattern = /([UFRCKQLD]\d{3,4}|[A-Z]\d{3,4})/g;
+    // نمط شامل يستخدم حدود الكلمات (\b) حتى لا يقتطع أجزاء من أسماء الآيسيهات مثل 338S00930 أو SN3100A0
+    const componentPattern = /\b(PP_[A-Z0-9_]+|\+[0-9]+V[A-Z0-9_]*|338S\d{4,5}[A-Z\d]*|SN\d{4}[A-Z\d]*|PM[I|X]?\d{4}[A-Z\d]*|SDX\d{2,3}[A-Z\d]*|ISL\d{4,5}[A-Z\d]*|BQ\d{4,5}[A-Z\d]*|TPS\d{4,5}[A-Z\d]*|RT\d{4,5}[A-Z\d]*|MAX\d{4,5}[A-Z\d]*|P[UQLCRD]\d{1,5}|FL\d{1,5}|TP\d{1,5}|CN\d{1,5}|[UCRLQDYX]\d{2,5})\b/gi;
     
     let lastIndex = 0;
-    const parts: { text: string; isComponent: boolean; name?: string; type?: 'ic' | 'capacitor' | 'resistor' | 'trace' }[] = [];
+    const parts: { text: string; isComponent: boolean; name?: string; type?: ComponentInfo['type'] }[] = [];
     
     let match;
     while ((match = componentPattern.exec(text)) !== null) {
-      // إضافة النص قبل المكون
       if (match.index > lastIndex) {
         parts.push({ text: text.slice(lastIndex, match.index), isComponent: false });
       }
       
       const componentName = match[1];
-      // تحديد نوع المكون
-      let type: 'ic' | 'capacitor' | 'resistor' | 'trace' = 'ic';
-      if (componentName.startsWith('C')) type = 'capacitor';
-      else if (componentName.startsWith('R')) type = 'resistor';
-      else if (componentName.startsWith('F') || componentName.startsWith('T')) type = 'trace';
+      const upper = componentName.toUpperCase();
+      
+      let type: ComponentInfo['type'] = 'ic';
+      if (upper.startsWith('PC') || (upper.startsWith('C') && !upper.startsWith('CN'))) {
+        type = 'capacitor';
+      } else if (upper.startsWith('PR') || upper.startsWith('R')) {
+        type = 'resistor';
+      } else if (upper.startsWith('PQ') || upper.startsWith('Q')) {
+        type = 'mosfet';
+      } else if (upper.startsWith('PL') || upper.startsWith('L') || upper.startsWith('FL')) {
+        type = 'coil';
+      } else if (upper.startsWith('PD') || upper.startsWith('D')) {
+        type = 'diode';
+      } else if (upper.startsWith('Y') || upper.startsWith('X')) {
+        type = 'crystal';
+      } else if (upper.startsWith('PP_') || upper.startsWith('+') || upper.startsWith('TP') || upper.startsWith('CN')) {
+        type = 'trace';
+      } else {
+        type = 'ic';
+      }
       
       parts.push({ text: componentName, isComponent: true, name: componentName, type });
       lastIndex = componentPattern.lastIndex;
     }
     
-    // إضافة النص بعد آخر مكون
     if (lastIndex < text.length) {
       parts.push({ text: text.slice(lastIndex), isComponent: false });
     }
@@ -170,6 +185,7 @@ export default function ResultStreamViewer({ rawOutput, loading, onPrint, onComp
                   key={idx}
                   name={part.name}
                   type={part.type}
+                  onClick={() => setSelectedComponent({ name: part.name!, type: part.type! })}
                   onHover={() => part.name && handleComponentHover(part.name)}
                   onLeave={handleComponentLeave}
                   isHighlighted={highlightedComponent === part.name}
@@ -233,6 +249,7 @@ export default function ResultStreamViewer({ rawOutput, loading, onPrint, onComp
                           key={pIdx}
                           name={part.name}
                           type={part.type}
+                          onClick={() => setSelectedComponent({ name: part.name!, type: part.type! })}
                           onHover={() => part.name ? handleComponentHover(part.name) : undefined}
                           onLeave={handleComponentLeave}
                           isHighlighted={highlightedComponent === part.name}
@@ -338,6 +355,12 @@ export default function ResultStreamViewer({ rawOutput, loading, onPrint, onComp
           </div>
         )}
       </div>
+
+      {/* نافذة فحص وتفاصيل المكون المرجعي الشامل */}
+      <ComponentInspectorModal
+        component={selectedComponent}
+        onClose={() => setSelectedComponent(null)}
+      />
     </div>
   );
 }

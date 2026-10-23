@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import QuickDiodeEvaluatorModal from '@/components/QuickDiodeEvaluatorModal';
+import SilkScreenCheatSheetModal from '@/components/SilkScreenCheatSheetModal';
 import {
   Wrench,
   Smartphone,
@@ -451,6 +453,8 @@ const DIODE_MODE_DATA = {
    ========================================================================= */
 
 export default function EngineeringToolsTab() {
+  const [showDiodeEvaluatorModal, setShowDiodeEvaluatorModal] = useState(false);
+  const [showSilkScreenModal, setShowSilkScreenModal] = useState(false);
   const [category, setCategory] = useState<ToolCategory>('mobile');
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -581,6 +585,51 @@ export default function EngineeringToolsTab() {
             طي / فتح الكل
           </button>
         </div>
+      </div>
+
+      {/* أدوات سريعة منبثقة بنقرة واحدة */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+        <button
+          type="button"
+          onClick={() => setShowDiodeEvaluatorModal(true)}
+          className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/30 hover:border-amber-500/60 hover:bg-amber-500/15 text-right transition-all group shadow-sm flex items-center justify-between"
+        >
+          <div className="space-y-1 min-w-0 pr-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">⚡</span>
+              <span className="font-black text-sm text-gray-900 dark:text-gray-100 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition">
+                مقيم الممانعة السريع (Diode Mode Evaluator)
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              أدخل قيمة الفولت أو الممانعة واعرف فوراً هل الخط سليم أم شورت أم تسريب أم مقطوع OL.
+            </p>
+          </div>
+          <span className="px-3.5 py-2 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs shrink-0 shadow-sm">
+            فتح الأداة
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setShowSilkScreenModal(true)}
+          className="p-4 rounded-2xl bg-gradient-to-r from-sky-500/10 via-sky-500/5 to-transparent border border-sky-500/30 hover:border-sky-500/60 hover:bg-sky-500/15 text-right transition-all group shadow-sm flex items-center justify-between"
+        >
+          <div className="space-y-1 min-w-0 pr-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🏷️</span>
+              <span className="font-black text-sm text-gray-900 dark:text-gray-100 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition">
+                دليل رموز السلك سكرين (Silk Screen Cheat Sheet)
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              دليل شامل لرموز المخططات (PU, PQ, PL, PC, PR...) وطريقة قياس كل عنصر وأعطاله الشائعة.
+            </p>
+          </div>
+          <span className="px-3.5 py-2 rounded-xl bg-sky-500 text-slate-950 font-bold text-xs shrink-0 shadow-sm">
+            فتح الدليل
+          </span>
+        </button>
       </div>
 
       {/* عرض أدوات الموبايل */}
@@ -800,6 +849,18 @@ export default function EngineeringToolsTab() {
           </ToolCard>
         </div>
       )}
+
+      {/* نافذة مقيم ممانعة الدايود السريع */}
+      <QuickDiodeEvaluatorModal
+        isOpen={showDiodeEvaluatorModal}
+        onClose={() => setShowDiodeEvaluatorModal(false)}
+      />
+
+      {/* نافذة دليل رموز السلك سكرين بالمخططات */}
+      <SilkScreenCheatSheetModal
+        isOpen={showSilkScreenModal}
+        onClose={() => setShowSilkScreenModal(false)}
+      />
     </div>
   );
 }

@@ -2,17 +2,20 @@
 
 import React from 'react';
 import { cleanAIResponseText } from '@/lib/cleanResponse';
+import ComponentBadge, { ComponentType } from '@/components/ComponentBadge';
+import { ComponentInfo } from '@/components/ComponentInspectorModal';
 
 interface FormattedChatMessageProps {
   content: string;
   isAssistant?: boolean;
+  onSelectComponent?: (comp: ComponentInfo) => void;
 }
 
 /**
  * 💬 مكون عرض رسائل الشات بتنسيق ماركداون وهندسي راقٍ
  * ينظف تلقائياً أي كتل JSON أو وسوم ميتريكس ويعرض المحادثة بألوان وعناوين وأزرار أنيقة
  */
-export default function FormattedChatMessage({ content, isAssistant = true }: FormattedChatMessageProps) {
+export default function FormattedChatMessage({ content, isAssistant = true, onSelectComponent }: FormattedChatMessageProps) {
   const cleaned = cleanAIResponseText(content);
   if (!cleaned) return null;
 
@@ -42,7 +45,7 @@ export default function FormattedChatMessage({ content, isAssistant = true }: Fo
               <span className="shrink-0 text-amber-500 font-bold text-xs mt-0.5">
                 {currentList?.isOrdered ? `${idx + 1}.` : '•'}
               </span>
-              <span className="flex-1">{formatInlineText(item)}</span>
+              <span className="flex-1">{formatInlineText(item, onSelectComponent)}</span>
             </li>
           ))}
         </ul>
@@ -68,7 +71,7 @@ export default function FormattedChatMessage({ content, isAssistant = true }: Fo
           key={`h3-${idx}`}
           className="mt-3.5 mb-1.5 pb-1 border-b border-amber-500/20 text-xs md:text-sm font-black text-amber-600 dark:text-amber-400 flex items-center gap-1.5"
         >
-          <span>{formatInlineText(title)}</span>
+          <span>{formatInlineText(title, onSelectComponent)}</span>
         </div>
       );
       return;
@@ -83,7 +86,7 @@ export default function FormattedChatMessage({ content, isAssistant = true }: Fo
           key={`h2-${idx}`}
           className="mt-4 mb-2 p-1.5 px-3 rounded-lg bg-amber-500/10 border-r-4 border-amber-500 text-xs md:text-sm font-bold text-gray-900 dark:text-white"
         >
-          <span>{formatInlineText(title)}</span>
+          <span>{formatInlineText(title, onSelectComponent)}</span>
         </div>
       );
       return;
@@ -114,7 +117,7 @@ export default function FormattedChatMessage({ content, isAssistant = true }: Fo
           className="my-2 p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 text-rose-800 dark:text-rose-300 text-xs leading-relaxed flex items-start gap-2"
         >
           <span className="shrink-0 text-sm">⚠️</span>
-          <div className="flex-1">{formatInlineText(line.replace(/^[⚠️\s]+/, ''))}</div>
+          <div className="flex-1">{formatInlineText(line.replace(/^[⚠️\s]+/, ''), onSelectComponent)}</div>
         </div>
       );
       return;
@@ -123,7 +126,7 @@ export default function FormattedChatMessage({ content, isAssistant = true }: Fo
     // فقرة نصية عادية
     elements.push(
       <p key={`p-${idx}`} className="text-xs md:text-sm leading-relaxed my-1.5 text-gray-800 dark:text-gray-200">
-        {formatInlineText(line)}
+        {formatInlineText(line, onSelectComponent)}
       </p>
     );
   });
@@ -136,7 +139,10 @@ export default function FormattedChatMessage({ content, isAssistant = true }: Fo
 /**
  * معالجة النصوص الداخلية للكلمات العريضة (Bold) والمكونات الإلكترونية
  */
-function formatInlineText(text: string): React.ReactNode {
+function formatInlineText(
+  text: string,
+  onSelectComponent?: (comp: ComponentInfo) => void
+): React.ReactNode {
   // تجزئة النص حسب الكلمات العريضة **نص**
   const parts = text.split(/(\*\*.*?\*\*)/g);
 
@@ -145,28 +151,60 @@ function formatInlineText(text: string): React.ReactNode {
       const boldText = part.slice(2, -2);
       return (
         <strong key={i} className="font-bold text-gray-950 dark:text-white">
-          {boldText}
+          {formatInlineText(boldText, onSelectComponent)}
         </strong>
       );
     }
 
-    // تلوين خفيف للأكواد والمصطلحات الإنجليزية مثل VDD_MAIN, PU301, 19V, 0.350V
-    const subParts = part.split(/(\b[A-Z0-9_+]{3,}\b|\b\d+(?:\.\d+)?(?:V|A|mA|Ω|kΩ|uF|nF|pF)\b)/g);
+    // نمط شامل للقطع الإلكترونية والمسارات والقياسات
+    const subParts = part.split(/(\b(?:PP_[A-Z0-9_]+|\+[0-9]+V[A-Z0-9_]*|338S\d{4,5}[A-Z\d]*|SN\d{4}[A-Z\d]*|PM[I|X]?\d{4}[A-Z\d]*|SDX\d{2,3}[A-Z\d]*|ISL\d{4,5}[A-Z\d]*|BQ\d{4,5}[A-Z\d]*|TPS\d{4,5}[A-Z\d]*|RT\d{4,5}[A-Z\d]*|MAX\d{4,5}[A-Z\d]*|P[UQLCRD]\d{1,5}|FL\d{1,5}|TP\d{1,5}|CN\d{1,5}|[UCRLQDYX]\d{2,5})\b|\b\d+(?:\.\d+)?(?:V|A|mA|Ω|kΩ|uF|nF|pF)\b)/gi);
+
     if (subParts.length > 1) {
       return subParts.map((sub, j) => {
-        if (
-          /^[A-Z0-9_+]{3,}$/.test(sub) ||
-          /^\d+(?:\.\d+)?(?:V|A|mA|Ω|kΩ|uF|nF|pF)$/.test(sub)
-        ) {
+        const upper = sub.toUpperCase();
+
+        // 1. فحص إذا كان قيمة جهد أو قياس كهربائي
+        if (/^\d+(?:\.\d+)?(?:V|A|mA|Ω|kΩ|uF|nF|pF)$/i.test(sub)) {
           return (
             <span
               key={`${i}-${j}`}
-              className="inline-block px-1 py-0.2 mx-0.5 rounded bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 font-mono text-[11px] text-dahab-600 dark:text-amber-400 font-semibold"
+              className="inline-block px-1.5 py-0.2 mx-0.5 rounded bg-amber-500/10 dark:bg-amber-500/20 border border-amber-500/30 font-mono text-[11px] text-amber-700 dark:text-amber-300 font-bold align-middle"
             >
               {sub}
             </span>
           );
         }
+
+        // 2. فحص إذا كان كود مكون إلكتروني
+        const compPattern = /^(PP_[A-Z0-9_]+|\+[0-9]+V[A-Z0-9_]*|338S\d{4,5}[A-Z\d]*|SN\d{4}[A-Z\d]*|PM[I|X]?\d{4}[A-Z\d]*|SDX\d{2,3}[A-Z\d]*|ISL\d{4,5}[A-Z\d]*|BQ\d{4,5}[A-Z\d]*|TPS\d{4,5}[A-Z\d]*|RT\d{4,5}[A-Z\d]*|MAX\d{4,5}[A-Z\d]*|P[UQLCRD]\d{1,5}|FL\d{1,5}|TP\d{1,5}|CN\d{1,5}|[UCRLQDYX]\d{2,5})$/i;
+        if (compPattern.test(sub)) {
+          let type: ComponentType = 'ic';
+          if (upper.startsWith('PC') || (upper.startsWith('C') && !upper.startsWith('CN'))) {
+            type = 'capacitor';
+          } else if (upper.startsWith('PR') || upper.startsWith('R')) {
+            type = 'resistor';
+          } else if (upper.startsWith('PQ') || upper.startsWith('Q')) {
+            type = 'mosfet';
+          } else if (upper.startsWith('PL') || upper.startsWith('L') || upper.startsWith('FL')) {
+            type = 'coil';
+          } else if (upper.startsWith('PD') || upper.startsWith('D')) {
+            type = 'diode';
+          } else if (upper.startsWith('Y') || upper.startsWith('X')) {
+            type = 'crystal';
+          } else if (upper.startsWith('PP_') || upper.startsWith('+') || upper.startsWith('TP') || upper.startsWith('CN')) {
+            type = 'trace';
+          }
+
+          return (
+            <ComponentBadge
+              key={`${i}-${j}`}
+              name={sub}
+              type={type}
+              onClick={onSelectComponent ? () => onSelectComponent({ name: sub, type }) : undefined}
+            />
+          );
+        }
+
         return sub;
       });
     }
