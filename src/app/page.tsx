@@ -217,32 +217,35 @@ export default function DahabFixAiConsole() {
 
   // جلب الجلسات السابقة من ملفات JSON مع نسخة احتياطية في localStorage
   const fetchSessions = async () => {
+    // 1. قراءة فورية من التخزين المحلي لضمان عدم اختفاء أي فحص سابق
+    let localSessions: RepairSession[] = [];
+    try {
+      const backup = localStorage.getItem('dahab_sessions_backup');
+      if (backup) {
+        const parsed = JSON.parse(backup);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          localSessions = parsed;
+          setSessions(parsed);
+        }
+      }
+    } catch {}
+
     try {
       const res = await fetch('/api/memory', { cache: 'no-store' });
       const data = await res.json();
-      if (data.sessions && data.sessions.length > 0) {
-        setSessions(data.sessions);
+      if (data.sessions && Array.isArray(data.sessions) && data.sessions.length > 0) {
+        const idMap = new Map();
+        localSessions.forEach((s) => idMap.set(s.id, s));
+        data.sessions.forEach((s: any) => idMap.set(s.id, s));
+        const merged = Array.from(idMap.values());
+        setSessions(merged);
         // حفظ نسخة احتياطية محلية
         try {
-          localStorage.setItem('dahab_sessions_backup', JSON.stringify(data.sessions.slice(0, 50)));
-        } catch {}
-      } else {
-        // إذا كان السيرفر فارغاً (cold start)، نحمّل من النسخة الاحتياطية
-        try {
-          const backup = localStorage.getItem('dahab_sessions_backup');
-          if (backup) {
-            const parsed = JSON.parse(backup);
-            if (Array.isArray(parsed) && parsed.length > 0) setSessions(parsed);
-          }
+          localStorage.setItem('dahab_sessions_backup', JSON.stringify(merged.slice(0, 50)));
         } catch {}
       }
     } catch (e) {
-      console.error('فشل في جلب جلسات الذاكرة:', e);
-      // fallback: قراءة من النسخة الاحتياطية المحلية
-      try {
-        const backup = localStorage.getItem('dahab_sessions_backup');
-        if (backup) setSessions(JSON.parse(backup));
-      } catch {}
+      console.error('فشل في جلب جلسات الذاكرة من السيرفر، تم الاعتماد على الذاكرة المحلية:', e);
     }
   };
 
@@ -608,14 +611,22 @@ export default function DahabFixAiConsole() {
       }
 
       setTimeout(() => {
-        fetchSessions();
-        // حفظ نسخة من الجلسة الحالية في localStorage مباشرةً
+        // حفظ نسخة من الجلسة الحالية في الذاكرة والحالة مباشرةً
         try {
-          const currentSession = {
+          let parsedMetrics: any = undefined;
+          const matchMetrics = accumulatedText.match(/<<<DAHAB_DIAGNOSTIC_METRICS>>>([\s\S]*?)<<<END_DAHAB_METRICS>>>/);
+          if (matchMetrics && matchMetrics[1]) {
+            try { parsedMetrics = JSON.parse(matchMetrics[1].trim()); } catch (e) {}
+          }
+
+          const currentSession: RepairSession = {
             id: activeSessionId,
-            title: prompt.slice(0, 50) || 'جلسة تشخيص',
+            title: `${deviceModel}: ${prompt.slice(0, 45)}`,
             deviceModel: deviceModel || 'جهاز غير محدد',
             deviceType: specialty || 'mobile-repair',
+            status: 'diagnosed',
+            metrics: parsedMetrics,
+            powerReadings: readings,
             messages: [
               { id: `msg_u_${Date.now()}`, sender: 'user', text: prompt, timestamp: new Date().toLocaleTimeString('ar-EG') },
               { id: `msg_a_${Date.now()}`, sender: 'assistant', text: cleanAIResponseText(accumulatedText), timestamp: new Date().toLocaleTimeString('ar-EG') },
@@ -623,11 +634,22 @@ export default function DahabFixAiConsole() {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           };
+
+          // تحديث الحالة المعروضة فوراً
+          setSessions((prev) => [currentSession, ...prev.filter((s) => s.id !== activeSessionId)]);
+
           const existing = JSON.parse(localStorage.getItem('dahab_sessions_backup') || '[]');
           const filtered = existing.filter((s: any) => s.id !== activeSessionId);
           localStorage.setItem('dahab_sessions_backup', JSON.stringify([currentSession, ...filtered].slice(0, 50)));
+
+          // إرسال للسيرفر عبر API لحفظه في Supabase
+          fetch('/api/memory', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session: currentSession }),
+          }).catch(() => {});
         } catch {}
-      }, 600);
+      }, 300);
     } catch (err) {
       console.error(err);
       setOutput('حدث خطأ أثناء الاتصال بمحرك التشخيص الهندسي.');

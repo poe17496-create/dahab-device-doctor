@@ -183,19 +183,92 @@ export default function DeviceMemoryTab({
   const [savedChats, setSavedChats] = useState<any[]>([]);
   const [reportModalSession, setReportModalSession] = useState<RepairSession | null>(null);
 
-  // جلسات الشات المؤرشفة - لا تستخدم localStorage الآن
-  // البيانات ستأتي من الـ props أو سيتم حفظها في Supabase لاحقاً
-  useEffect(() => {
-    // في المستقبل، يمكن تحميل جلسات الشات من Supabase
-    // حالياً، نستخدم البيانات القادمة من الـ props
-    setSavedChats([]);
+  // تحميل جلسات ومحادثات المساعد الذكي من التخزين المحلي فوراً
+  const loadSavedChats = React.useCallback(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const savedRaw = localStorage.getItem('dahab_saved_chat_sessions');
+      const savedList = savedRaw ? JSON.parse(savedRaw) : [];
+
+      // فحص المحادثة الجارية والنشطة حالياً
+      const activeRaw = localStorage.getItem('dahab-chat-history');
+      const activeMsgs = activeRaw ? JSON.parse(activeRaw) : [];
+      let activeChatObj: any = null;
+
+      if (Array.isArray(activeMsgs) && activeMsgs.length > 1) {
+        const userMsgs = activeMsgs.filter((m: any) => m.role === 'user');
+        if (userMsgs.length > 0) {
+          const firstPrompt = userMsgs[0].content || 'محادثة جارية';
+          activeChatObj = {
+            id: 'active_current_chat',
+            title: `🟢 محادثة نشطة: ${firstPrompt.length > 35 ? firstPrompt.slice(0, 35) + '...' : firstPrompt}`,
+            date: 'الآن (محادثة نشطة)',
+            messageCount: activeMsgs.length,
+            preview: userMsgs[userMsgs.length - 1]?.content || '',
+            isActive: true,
+            messages: activeMsgs,
+          };
+        }
+      }
+
+      const combined = activeChatObj ? [activeChatObj, ...savedList] : savedList;
+      setSavedChats(combined);
+    } catch (e) {
+      console.warn('Error loading chats in memory tab:', e);
+    }
   }, []);
+
+  useEffect(() => {
+    loadSavedChats();
+    const handleStorage = () => loadSavedChats();
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [loadSavedChats]);
+
+  const handleOpenChat = (chat: any) => {
+    if (typeof window !== 'undefined') {
+      if (chat.messages && chat.messages.length > 0) {
+        localStorage.setItem('dahab-chat-history', JSON.stringify(chat.messages));
+        localStorage.setItem('dahab_pending_restore_chat_id', chat.id);
+      }
+    }
+    onSwitchToChat();
+  };
+
+  const handleDeleteChat = (chatId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const savedRaw = localStorage.getItem('dahab_saved_chat_sessions');
+      if (savedRaw) {
+        const list = JSON.parse(savedRaw);
+        const updated = list.filter((c: any) => c.id !== chatId);
+        localStorage.setItem('dahab_saved_chat_sessions', JSON.stringify(updated));
+      }
+      if (chatId === 'active_current_chat') {
+        localStorage.removeItem('dahab-chat-history');
+      }
+      loadSavedChats();
+    } catch (err) {}
+  };
 
   // دمج الجلسات الفعلية مع الحالات الاسترشادية النموذجية
   const allDisplaySessions: RepairSession[] = React.useMemo(() => {
-    const userSessionIds = new Set(sessions.map((s) => s.id));
+    let currentSessions = sessions || [];
+    if (typeof window !== 'undefined' && currentSessions.length === 0) {
+      try {
+        const backup = localStorage.getItem('dahab_sessions_backup');
+        if (backup) {
+          const parsed = JSON.parse(backup);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            currentSessions = parsed;
+          }
+        }
+      } catch {}
+    }
+
+    const userSessionIds = new Set(currentSessions.map((s) => s.id));
     const uniqueRefs = BENCHMARK_REFERENCE_SESSIONS.filter((r) => !userSessionIds.has(r.id));
-    return [...sessions, ...uniqueRefs];
+    return [...currentSessions, ...uniqueRefs];
   }, [sessions]);
 
   // حساب الإحصائيات
@@ -697,10 +770,21 @@ export default function DeviceMemoryTab({
                     <span className="text-[10px] text-gray-400 block">{chat.date}</span>
                   </div>
 
-                  <div className="pt-3 mt-3 border-t border-gray-100 dark:border-gray-800 flex justify-end">
+                  <div className="pt-3 mt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
                     <button
-                      onClick={onSwitchToChat}
-                      className="px-3.5 py-1.5 rounded-xl bg-dahab-500 hover:bg-dahab-600 text-slate-950 text-xs font-black transition flex items-center gap-1.5"
+                      type="button"
+                      onClick={(e) => handleDeleteChat(chat.id, e)}
+                      className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs transition flex items-center gap-1"
+                      title="حذف المحادثة من الأرشيف"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span className="text-[10px]">حذف</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleOpenChat(chat)}
+                      className="px-3.5 py-1.5 rounded-xl bg-dahab-500 hover:bg-dahab-600 text-slate-950 text-xs font-black transition flex items-center gap-1.5 shadow-sm"
                     >
                       <span>فتح المحادثة بالمساعد</span>
                       <ArrowRight className="w-3.5 h-3.5" />

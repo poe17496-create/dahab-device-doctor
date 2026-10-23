@@ -147,6 +147,34 @@ export default function AIChat({ currentUser, guestRemaining, onRemainingChange 
 
   useEffect(() => {
     loadSavedSessions();
+
+    const checkPendingRestore = () => {
+      if (typeof window !== 'undefined') {
+        const pendingRestoreId = localStorage.getItem('dahab_pending_restore_chat_id');
+        if (pendingRestoreId) {
+          localStorage.removeItem('dahab_pending_restore_chat_id');
+          const savedHistory = localStorage.getItem('dahab-chat-history');
+          if (savedHistory) {
+            try {
+              const parsed = JSON.parse(savedHistory);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                setMessages(
+                  parsed.map((m: any) => ({
+                    ...m,
+                    timestamp: new Date(m.timestamp),
+                  }))
+                );
+                setToastMsg('تم استرجاع المحادثة بنجاح ✅');
+              }
+            } catch {}
+          }
+        }
+      }
+    };
+
+    checkPendingRestore();
+    window.addEventListener('focus', checkPendingRestore);
+    return () => window.removeEventListener('focus', checkPendingRestore);
   }, []);
 
   // حفظ المحادثة الحالية في localStorage تلقائياً
