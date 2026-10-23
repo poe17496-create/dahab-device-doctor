@@ -412,6 +412,25 @@ export default function DahabFixAiConsole() {
     };
   }, []);
 
+  // مزامنة الموديل والفئة تلقائياً مع معمل البورد فيو
+  useEffect(() => {
+    const targetCat = specialty === 'laptop-motherboard' ? 'laptop' : (specialty === 'general-electronics' || specialty === 'tv-power-boards' ? 'desktop' : 'mobile');
+    const targetModel = deviceModel || ctxDeviceModel || '';
+
+    if (typeof window !== 'undefined') {
+      if (targetModel) localStorage.setItem('dahab_current_model', targetModel);
+      localStorage.setItem('dahab_current_category', targetCat);
+    }
+
+    if (boardviewRef.current?.contentWindow) {
+      boardviewRef.current.contentWindow.postMessage({
+        type: 'board-sync',
+        boardName: targetModel,
+        category: targetCat,
+      }, '*');
+    }
+  }, [deviceModel, ctxDeviceModel, specialty, activeTab]);
+
   // حذف جلسة من ملفات الـ JSON
   const handleDeleteSession = async (sessionId: string) => {
     try {
@@ -1029,7 +1048,7 @@ export default function DahabFixAiConsole() {
                   {/* Iframe for boardview */}
                   <iframe
                     ref={boardviewRef}
-                    src={`/boardview?theme=${isDarkTheme ? 'dark' : 'light'}`}
+                    src={`/boardview?theme=${isDarkTheme ? 'dark' : 'light'}&model=${encodeURIComponent(deviceModel || ctxDeviceModel || '')}&category=${encodeURIComponent(specialty === 'laptop-motherboard' ? 'laptop' : (specialty === 'general-electronics' || specialty === 'tv-power-boards' ? 'desktop' : 'mobile'))}`}
                     className="w-full h-full border-0 bg-gray-900"
                     sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
                     onLoad={(e) => {
@@ -1039,10 +1058,17 @@ export default function DahabFixAiConsole() {
                       if (loadingDiv) {
                         (loadingDiv as HTMLElement).style.display = 'none';
                       }
-                      // إرسال الـ theme عبر postMessage بعد التحميل
+                      // إرسال الـ theme والـ model والـ category عبر postMessage بعد التحميل
                       if (target.contentWindow) {
+                        const targetCat = specialty === 'laptop-motherboard' ? 'laptop' : (specialty === 'general-electronics' || specialty === 'tv-power-boards' ? 'desktop' : 'mobile');
                         target.contentWindow.postMessage({
                           type: 'theme-change',
+                          isDark: isDarkTheme
+                        }, '*');
+                        target.contentWindow.postMessage({
+                          type: 'board-sync',
+                          boardName: deviceModel || ctxDeviceModel || '',
+                          category: targetCat,
                           isDark: isDarkTheme
                         }, '*');
                       }

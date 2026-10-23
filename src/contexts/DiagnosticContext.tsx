@@ -57,6 +57,17 @@ export function DiagnosticProvider({ children }: { children: ReactNode }) {
   const [boardName, setBoardName] = useState('');
   const [selectedNet, setSelectedNet] = useState<string | null>(null);
 
+  // Initialize from localStorage if available
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedModel = localStorage.getItem('dahab_current_model');
+      if (savedModel) {
+        setDeviceModel(savedModel);
+        setBoardName(savedModel);
+      }
+    }
+  }, []);
+
   // Record a diagnosis completion
   const recordDiagnosis = (minutesSpent: number) => {
     if (typeof window === 'undefined') return;

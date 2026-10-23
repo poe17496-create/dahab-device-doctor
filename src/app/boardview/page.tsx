@@ -28,14 +28,18 @@ export default function BoardViewPage() {
 
   // Get current user from localStorage
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [boardCategory, setBoardCategory] = useState<'mobile' | 'laptop' | 'desktop'>('mobile');
 
-  // Theme sync with parent page
+  // Theme & Model/Category sync with parent page
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // 1. Read theme from URL params (initial load)
+    // 1. Read theme, model, category from URL params (initial load)
     const urlParams = new URLSearchParams(window.location.search);
     const themeParam = urlParams.get('theme');
+    const modelParam = urlParams.get('model');
+    const categoryParam = urlParams.get('category');
+
     const isDark = themeParam !== 'light';
 
     // Apply theme
@@ -47,9 +51,29 @@ export default function BoardViewPage() {
       localStorage.setItem('dahab_theme', 'light');
     }
 
-    // 2. Listen for theme changes from parent via postMessage
+    // Apply model & category from URL or localStorage
+    const savedModel = modelParam || localStorage.getItem('dahab_current_model') || '';
+    const savedCat = (categoryParam || localStorage.getItem('dahab_current_category') || '') as any;
+
+    if (savedModel) {
+      setBoardName(savedModel);
+      setSearchInput(savedModel);
+    }
+    if (savedCat === 'laptop' || savedCat === 'desktop' || savedCat === 'mobile') {
+      setBoardCategory(savedCat);
+    } else if (savedModel) {
+      if (/dell|hp|lenovo|thinkpad|macbook|laptop|notebook|la-|nm-|da0/i.test(savedModel)) {
+        setBoardCategory('laptop');
+      } else if (/desktop|كمبيوتر|motherboard|pc|b450|b550/i.test(savedModel)) {
+        setBoardCategory('desktop');
+      }
+    }
+
+    // 2. Listen for theme & board changes from parent via postMessage
     const handleMessage = (event: MessageEvent) => {
-      if (event.data && event.data.type === 'theme-change') {
+      if (!event.data) return;
+
+      if (event.data.type === 'theme-change') {
         const isDark = event.data.isDark;
         if (isDark) {
           document.documentElement.classList.add('dark');
@@ -57,6 +81,16 @@ export default function BoardViewPage() {
         } else {
           document.documentElement.classList.remove('dark');
           localStorage.setItem('dahab_theme', 'light');
+        }
+      }
+
+      if (event.data.type === 'board-sync' || event.data.type === 'board-change') {
+        if (event.data.boardName) {
+          setBoardName(event.data.boardName);
+          setSearchInput(event.data.boardName);
+        }
+        if (event.data.category) {
+          setBoardCategory(event.data.category);
         }
       }
     };
@@ -301,6 +335,27 @@ export default function BoardViewPage() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
+  // جلب صورة البوردة تلقائياً بناءً على الموديل والفئة المحددة دون الحاجة لإعادة كتابتها
+  useEffect(() => {
+    const targetBoard = boardName || searchInput;
+    if (!targetBoard) return;
+
+    fetch('/api/get-board', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ boardName: targetBoard, category: boardCategory }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.imageUrl) {
+          setCustomImage(data.imageUrl);
+        }
+      })
+      .catch((e) => console.error('Auto board fetch error:', e));
+  }, [boardName, boardCategory]);
+
   const handleSearch = async () => {
     if (!searchInput.trim()) return;
 
@@ -317,7 +372,7 @@ export default function BoardViewPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ boardName: searchInput }),
+        body: JSON.stringify({ boardName: searchInput, category: boardCategory }),
       });
       const boardData = await boardResponse.json();
       console.log('Board image response:', boardData);
@@ -1338,9 +1393,13 @@ export default function BoardViewPage() {
             <div className="absolute inset-0 z-10 w-full h-full">
               <VectorBoardViewCAD
                 boardName={boardName || searchInput || undefined}
+                category={boardCategory}
                 selectedNet={selectedNet}
                 onNetSelect={(net) => setSelectedNet(net)}
-                onBoardChange={(newBoard) => setBoardName(newBoard)}
+                onBoardChange={(newBoard) => {
+                  setBoardName(newBoard);
+                  setSearchInput(newBoard);
+                }}
               />
             </div>
           )}

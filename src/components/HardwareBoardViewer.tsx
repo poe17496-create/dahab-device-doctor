@@ -285,12 +285,13 @@ export function HardwareBoardViewer({
       setLoading(true);
       setError(null);
 
+      const savedCategory = typeof window !== 'undefined' ? localStorage.getItem('dahab_current_category') : null;
       const response = await fetch('/api/get-board', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ boardName }),
+        body: JSON.stringify({ boardName, category: savedCategory || undefined }),
       });
 
       const data = await response.json();

@@ -34,9 +34,11 @@ import {
   VectorComponent,
   VectorPin,
 } from '@/lib/vectorBoardGenerator';
+import matrixData from '@/lib/hardwareSchematicsMatrix.json';
 
 interface VectorBoardViewCADProps {
   boardName?: string;
+  category?: 'mobile' | 'laptop' | 'desktop';
   selectedNet?: string | null;
   onNetSelect?: (netName: string) => void;
   onComponentSelect?: (compName: string) => void;
@@ -45,6 +47,7 @@ interface VectorBoardViewCADProps {
 
 export default function VectorBoardViewCAD({
   boardName,
+  category,
   selectedNet: initialNet,
   onNetSelect,
   onComponentSelect,
@@ -54,7 +57,7 @@ export default function VectorBoardViewCAD({
 
   // حالة البورد والمشهد المتجه
   const [activeBoard, setActiveBoard] = useState<VectorBoardModel>(() =>
-    generateVectorBoard(boardName || 'iPhone 13 Pro Max')
+    generateVectorBoard(boardName, category)
   );
   const [boardSide, setBoardSide] = useState<'TOP' | 'BOTTOM'>('TOP');
   const [selectedNet, setSelectedNet] = useState<string | null>(initialNet || 'PP_VDD_MAIN');
@@ -74,33 +77,47 @@ export default function VectorBoardViewCAD({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
-  // مزامنة النموذج تلقائياً عند تغيير اسم البورد الممرر من شريط البحث الرئيسي
+  // مزامنة النموذج تلقائياً عند تغيير اسم البورد الممرر أو الفئة
   useEffect(() => {
-    if (boardName && boardName !== activeBoard.name && boardName !== activeBoard.boardCode) {
-      const generated = generateVectorBoard(boardName);
-      setActiveBoard(generated);
-      setScale(1);
-      setPanX(0);
-      setPanY(0);
-      // ضبط أول مسار رئيسي تلقائياً
-      if (generated.powerRails && generated.powerRails.length > 0) {
-        setSelectedNet(generated.powerRails[0].rail);
-      }
+    const generated = generateVectorBoard(boardName, category);
+    setActiveBoard(generated);
+    setScale(1);
+    setPanX(0);
+    setPanY(0);
+    // ضبط أول مسار رئيسي تلقائياً
+    if (generated.powerRails && generated.powerRails.length > 0) {
+      setSelectedNet(generated.powerRails[0].rail);
     }
-  }, [boardName]);
+  }, [boardName, category]);
 
-  // قائمة البوردات المتطابقة مع بحث المستخدم في الفيكتور
+  // قائمة البوردات المتطابقة مع بحث المستخدم في الفيكتور من كامل مصفوفة الـ 863
   const popularBoards = useMemo(() => getPopularBoardsList(), []);
 
   const searchedBoardSuggestions = useMemo(() => {
     if (!boardSearchInput.trim()) return popularBoards;
     const q = boardSearchInput.toLowerCase().trim();
-    return popularBoards.filter(
-      (b) =>
-        b.name.toLowerCase().includes(q) ||
-        b.boardCode.toLowerCase().includes(q) ||
-        q.includes(b.boardCode.toLowerCase())
-    );
+    const all = (matrixData as any[]) || [];
+    const matches = all
+      .filter((b) => {
+        const full = `${b.brand || ''} ${b.model || ''}`.toLowerCase();
+        const code = (b.boardCode || '').toLowerCase();
+        const cat = (b.category || '').toLowerCase();
+        return (
+          full.includes(q) ||
+          code.includes(q) ||
+          (q.includes('lap') && cat === 'laptop') ||
+          (q.includes('لابتوب') && cat === 'laptop') ||
+          (q.includes('كمبيوتر') && cat === 'desktop') ||
+          (q.includes('pc') && cat === 'desktop')
+        );
+      })
+      .map((b) => ({
+        name: `${b.brand} ${b.model}`,
+        boardCode: b.boardCode || '',
+        category: b.category || 'mobile',
+      }));
+
+    return matches.length > 0 ? matches : popularBoards;
   }, [boardSearchInput, popularBoards]);
 
   // اختيار بوردة وتطبيقها فوراً
@@ -523,6 +540,11 @@ export default function VectorBoardViewCAD({
                   setShowBoardDropdown(true);
                 }}
                 onFocus={() => setShowBoardDropdown(true)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && boardSearchInput.trim()) {
+                    handleSelectBoard(boardSearchInput.trim());
+                  }
+                }}
                 placeholder="ابحث برقم البوردة أو الموديل..."
                 className="bg-transparent border-none text-xs text-gray-100 placeholder-gray-500 outline-none w-36 sm:w-48 font-bold"
               />
@@ -532,6 +554,46 @@ export default function VectorBoardViewCAD({
                 className="text-gray-400 hover:text-white"
               >
                 <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* أزرار التبديل الفوري بين الفئات الهندسية */}
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => handleSelectBoard('laptop')}
+                className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition ${
+                  activeBoard.deviceType === 'laptop'
+                    ? 'bg-sky-500 text-slate-950 border-sky-400 shadow-sm'
+                    : 'bg-gray-900 text-gray-300 border-gray-700 hover:bg-gray-800'
+                }`}
+                title="عرض مخططات اللابتوب والماك بوك"
+              >
+                💻 لابتوب
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectBoard('desktop')}
+                className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition ${
+                  activeBoard.deviceType === 'desktop'
+                    ? 'bg-purple-500 text-white border-purple-400 shadow-sm'
+                    : 'bg-gray-900 text-gray-300 border-gray-700 hover:bg-gray-800'
+                }`}
+                title="عرض مخططات الكمبيوتر المكتبي والمادربورد"
+              >
+                🖥️ كمبيوتر
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectBoard('mobile')}
+                className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition ${
+                  activeBoard.deviceType === 'mobile'
+                    ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-sm'
+                    : 'bg-gray-900 text-gray-300 border-gray-700 hover:bg-gray-800'
+                }`}
+                title="عرض مخططات الهواتف الذكية"
+              >
+                📱 موبايل
               </button>
             </div>
 

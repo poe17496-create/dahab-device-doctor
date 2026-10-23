@@ -78,12 +78,18 @@ function getBoardSeed(str: string): number {
 /**
  * البحث الذكي في مصفوفة المخططات مع مطابقة مرجحة وعالية الدقة
  */
-export function findBoardInMatrix(query: string): any | null {
-  if (!query || !matrixData || !Array.isArray(matrixData)) return null;
-  const q = query.trim().toLowerCase();
-  if (q.length === 0) return null;
+export function findBoardInMatrix(query: string, categoryHint?: string): any | null {
+  if (!matrixData || !Array.isArray(matrixData)) return null;
+  const q = (query || '').trim().toLowerCase();
 
   const boards = matrixData as any[];
+
+  // إذا لم يتم تمرير بحث ولكن تم تمرير فئة
+  if (q.length === 0) {
+    if (categoryHint === 'laptop') return boards.find((b) => b.category === 'laptop') || null;
+    if (categoryHint === 'desktop') return boards.find((b) => b.category === 'desktop') || null;
+    return boards[0];
+  }
 
   // 1. تطابق تام بكود البوردة
   const exactCode = boards.find(
@@ -108,14 +114,33 @@ export function findBoardInMatrix(query: string): any | null {
     const brand = (b.brand || '').toLowerCase();
     const model = (b.model || '').toLowerCase();
     const code = (b.boardCode || '').toLowerCase();
+    const cat = (b.category || '').toLowerCase();
 
     let score = 0;
+    if (categoryHint && cat === categoryHint) {
+      score += 30;
+    }
+
     for (const token of queryTokens) {
       if (code === token) score += 40;
       else if (code.includes(token)) score += 20;
 
       if (model.includes(token)) score += 15;
-      if (brand === token) score += 5;
+      if (brand === token) score += 8;
+
+      // مطابقة الفئة والأجهزة
+      if (token === 'laptop' || token === 'لابتوب' || token === 'notebook' || token === 'dell' || token === 'thinkpad' || token === 'hp' || token === 'lenovo' || token === 'acer' || token === 'asus' || token === 'msi') {
+        if (cat === 'laptop') score += 35;
+      }
+      if (token === 'desktop' || token === 'كمبيوتر' || token === 'pc' || token === 'motherboard' || token === 'b450' || token === 'b550' || token === 'h81') {
+        if (cat === 'desktop') score += 35;
+      }
+      if (token === 'mobile' || token === 'موبايل' || token === 'هاتف' || token === 'iphone' || token === 'samsung' || token === 'redmi' || token === 'xiaomi') {
+        if (cat === 'mobile') score += 35;
+      }
+      if (token === 'macbook' || token === 'ماك') {
+        if (model.includes('macbook') || brand.includes('apple')) score += 45;
+      }
     }
 
     if (score > highestScore) {
@@ -128,12 +153,19 @@ export function findBoardInMatrix(query: string): any | null {
     return bestMatch;
   }
 
-  // 4. مطابقة احتياطية
+  // 4. مطابقة احتياطية حسب الكلمات الدلالية للفئات
+  if (categoryHint === 'laptop' || /laptop|لابتوب|dell|hp|lenovo|thinkpad|notebook|macbook|acer|asus/i.test(q)) {
+    return boards.find((b) => b.category === 'laptop') || null;
+  }
+  if (categoryHint === 'desktop' || /desktop|كمبيوتر|pc|motherboard/i.test(q)) {
+    return boards.find((b) => b.category === 'desktop') || null;
+  }
+
   return (
     boards.find((b) => {
       const full = `${b.brand || ''} ${b.model || ''}`.toLowerCase();
       return full.includes(q) || (b.boardCode && b.boardCode.toLowerCase().includes(q));
-    }) || null
+    }) || boards[0]
   );
 }
 
@@ -148,14 +180,14 @@ function detectFormFactor(board: any): {
   const model = (board.model || '').toLowerCase();
   const cat = (board.category || '').toLowerCase();
 
-  if (cat === 'laptop' || brand.includes('apple') && (model.includes('macbook') || model.includes('mac'))) {
+  if (cat === 'laptop' || (brand.includes('apple') && (model.includes('macbook') || model.includes('mac')))) {
     if (brand.includes('apple') || model.includes('macbook')) {
       return { formFactor: 'macbook-blade', category: 'laptop' };
     }
     return { formFactor: 'pc-laptop', category: 'laptop' };
   }
 
-  if (cat === 'desktop' || cat === 'gpu' || model.includes('desktop') || model.includes('rtx') || model.includes('gtx')) {
+  if (cat === 'desktop' || cat === 'gpu' || model.includes('desktop') || model.includes('rtx') || model.includes('gtx') || model.includes('motherboard') || model.includes('pc')) {
     return { formFactor: 'desktop', category: 'desktop' };
   }
 
@@ -202,9 +234,19 @@ export function getPopularBoardsList(): Array<{ name: string; boardCode: string;
 /**
  * إنشاء نموذج بوردة فيكتور CAD متكاملة هندسياً مع مسارات ونقاط فحص وأشكال ومضلعات حقيقية
  */
-export function generateVectorBoard(queryOrName?: string): VectorBoardModel {
-  const matched = queryOrName ? findBoardInMatrix(queryOrName) : null;
-  const rawBoard = matched || (matrixData as any[])[0]; // افتراضي
+export function generateVectorBoard(queryOrName?: string, categoryHint?: string): VectorBoardModel {
+  const boards = (matrixData as any[]) || [];
+  const matched = queryOrName || categoryHint ? findBoardInMatrix(queryOrName || '', categoryHint) : null;
+  
+  // اختيار افتراضي ذكي بناءً على الفئة المطلوبة إن لم يتطابق الاسم بالضبط
+  let defaultBoard = boards[0];
+  if (categoryHint === 'laptop' || (queryOrName && /laptop|لابتوب|dell|hp|lenovo|thinkpad|notebook|macbook|la-|nm-|da0/i.test(queryOrName))) {
+    defaultBoard = boards.find((b) => b.category === 'laptop') || defaultBoard;
+  } else if (categoryHint === 'desktop' || (queryOrName && /desktop|كمبيوتر|pc|motherboard|b450|b550|h81|z690/i.test(queryOrName))) {
+    defaultBoard = boards.find((b) => b.category === 'desktop') || defaultBoard;
+  }
+  
+  const rawBoard = matched || defaultBoard;
 
   const brand = rawBoard.brand || 'Engineering PCB';
   const model = rawBoard.model || 'Universal Board';

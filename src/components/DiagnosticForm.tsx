@@ -303,6 +303,17 @@ export default function DiagnosticForm({
 
   const handleCategorySelect = (catId: CategoryId) => {
     setSelectedCategory(catId);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dahab_current_category', catId);
+    }
+    const catData = CATEGORIES.find(c => c.id === catId);
+    if (catData && catData.chips && catData.chips.length > 0) {
+      const defaultModel = catData.chips[0];
+      setDeviceModel(defaultModel);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('dahab_current_model', defaultModel);
+      }
+    }
   };
 
   const activeCategoryData = CATEGORIES.find(c => c.id === selectedCategory) || CATEGORIES[0];
@@ -634,7 +645,12 @@ export default function DiagnosticForm({
           <input
             type="text"
             value={deviceModel}
-            onChange={(e) => setDeviceModel(e.target.value)}
+            onChange={(e) => {
+              setDeviceModel(e.target.value);
+              if (typeof window !== 'undefined') {
+                localStorage.setItem('dahab_current_model', e.target.value);
+              }
+            }}
             placeholder={
               selectedCategory === 'laptop' || selectedCategory === 'desktop' || specialty === 'laptop-motherboard'
                 ? 'اكتب كود البوردة المطبوع، مثل: LA-D801P أو NM-A311 أو DA0X12MB6D0 أو 820-00165...'
@@ -642,6 +658,33 @@ export default function DiagnosticForm({
             }
             className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:border-dahab-500 focus:ring-1 focus:ring-dahab-500 outline-none transition shadow-inner"
           />
+
+          {/* شرائح الموديلات السريعة للفئة المحددة */}
+          {activeCategoryData.chips && activeCategoryData.chips.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400">موديلات شائعة:</span>
+              {activeCategoryData.chips.slice(0, 8).map((chip) => (
+                <button
+                  key={chip}
+                  type="button"
+                  onClick={() => {
+                    setDeviceModel(chip);
+                    if (typeof window !== 'undefined') {
+                      localStorage.setItem('dahab_current_model', chip);
+                      localStorage.setItem('dahab_current_category', selectedCategory);
+                    }
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition border ${
+                    deviceModel === chip
+                      ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-sm'
+                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-amber-400 dark:hover:border-amber-500'
+                  }`}
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
+          )}
 
           {(selectedCategory === 'laptop' || selectedCategory === 'desktop' || specialty === 'laptop-motherboard') && (
             <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/40 text-[11px] text-blue-800 dark:text-blue-300 flex items-start gap-2">
@@ -663,7 +706,15 @@ export default function DiagnosticForm({
                     <button
                       key={`pn-${i}`}
                       type="button"
-                      onClick={() => { setDeviceModel(`${m.brand} ${m.model}`); setShowBoardSuggestions(false); }}
+                      onClick={() => {
+                        const name = `${m.brand} ${m.model}`;
+                        setDeviceModel(name);
+                        if (typeof window !== 'undefined') {
+                          localStorage.setItem('dahab_current_model', name);
+                          if (m.category) localStorage.setItem('dahab_current_category', m.category);
+                        }
+                        setShowBoardSuggestions(false);
+                      }}
                       className="w-full text-right px-2.5 py-1.5 rounded-lg bg-white dark:bg-gray-700 hover:bg-amber-50 dark:hover:bg-amber-900/30 border border-gray-200 dark:border-gray-600 text-xs transition-all flex items-center justify-between gap-2"
                     >
                       <span className="text-gray-900 dark:text-gray-100 font-medium">{m.brand} {m.model}</span>
@@ -678,7 +729,15 @@ export default function DiagnosticForm({
                     <button
                       key={`em-${i}`}
                       type="button"
-                      onClick={() => { setDeviceModel(`${m.brand} ${m.model}`); setShowBoardSuggestions(false); }}
+                      onClick={() => {
+                        const name = `${m.brand} ${m.model}`;
+                        setDeviceModel(name);
+                        if (typeof window !== 'undefined') {
+                          localStorage.setItem('dahab_current_model', name);
+                          if (m.category) localStorage.setItem('dahab_current_category', m.category);
+                        }
+                        setShowBoardSuggestions(false);
+                      }}
                       className="w-full text-right px-2.5 py-1.5 rounded-lg bg-white dark:bg-gray-700 hover:bg-amber-50 dark:hover:bg-amber-900/30 border border-gray-200 dark:border-gray-600 text-xs transition-all flex items-center justify-between gap-2"
                     >
                       <span className="text-gray-900 dark:text-gray-100 font-medium">{m.brand} {m.model}</span>
