@@ -25,7 +25,6 @@ import DiagnosticTabs from '@/components/DiagnosticTabs';
 import VisualHighlightOverlay from '@/components/VisualHighlightOverlay';
 import InteractiveDiagnosticBoard from '@/components/InteractiveDiagnosticBoard';
 import SchematicBoard from '@/components/SchematicBoard';
-import RepairStatusTracker from '@/components/RepairStatusTracker';
 import CommonFaultsLibrary from '@/components/CommonFaultsLibrary';
 import GuestLockModal from '@/components/GuestLockModal';
 import DiagnosticReportModal from '@/components/DiagnosticReportModal';
@@ -902,17 +901,6 @@ export default function DahabFixAiConsole() {
                                 <span>🔄 لم تحل المشكلة؟ اعطني حلاً بديلاً والمسار التالي</span>
                               </button>
                             </div>
-                          )}
-                          {/* Repair Status Tracker */}
-                          {currentTicketId && (
-                            <RepairStatusTracker
-                              ticketId={currentTicketId}
-                              deviceModel={deviceModel}
-                              deviceType={specialty}
-                              symptoms={prompt}
-                              aiDiagnosis={output}
-                              suspectedComponent={metrics?.primarySuspectComponent}
-                            />
                           )}
                         </div>
                       }

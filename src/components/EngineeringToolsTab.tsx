@@ -18,7 +18,6 @@ import {
   ArrowRightLeft,
   BatteryCharging,
   Hash,
-  DollarSign,
   Activity,
   Layers,
   ChevronDown,
@@ -480,7 +479,6 @@ export default function EngineeringToolsTab() {
     bsod: false,
     lap_diode: false,
     current_draw: false,
-    cost: false,
   });
 
   const toggleMobileTool = (id: string) => {
@@ -541,7 +539,7 @@ export default function EngineeringToolsTab() {
               }`}
             >
               <Laptop className="w-4 h-4" />
-              <span>💻 كمبيوتر / لابتوب (7)</span>
+              <span>💻 كمبيوتر / لابتوب (6)</span>
             </button>
           </div>
         </div>
@@ -833,19 +831,6 @@ export default function EngineeringToolsTab() {
             onToggle={() => toggleLaptopTool('current_draw')}
           >
             <CurrentDrawComparator />
-          </ToolCard>
-
-          {/* 7. حاسبة تكلفة وأرباح الإصلاح */}
-          <ToolCard
-            id="cost"
-            title="حاسبة تكلفة الإصلاح وهوامش الربح والفاتورة (Repair Cost & Invoice)"
-            badge="مالي وإداري"
-            icon={DollarSign}
-            color="text-emerald-500"
-            isOpen={expandedLaptopTools.cost}
-            onToggle={() => toggleLaptopTool('cost')}
-          >
-            <RepairCostCalculator />
           </ToolCard>
         </div>
       )}
@@ -2284,130 +2269,6 @@ function CurrentDrawComparator() {
         <div className="pt-2 border-t border-gray-200/50 dark:border-gray-700/50 text-xs">
           <span className="font-bold text-gray-900 dark:text-gray-100">الأعطال والمكونات الأكثر ترجيحاً: </span>
           <span className="text-gray-800 dark:text-gray-200">{diagnosis.suspect}</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* =========================================================================
-   13. حاسبة تكلفة وأرباح الإصلاح والفاتورة (Repair Cost Calculator)
-   ========================================================================= */
-
-function RepairCostCalculator() {
-  const [customerName, setCustomerName] = useState('');
-  const [deviceModel, setDeviceModel] = useState('');
-  const [partsCost, setPartsCost] = useState(250);
-  const [laborHours, setLaborHours] = useState(2);
-  const [hourlyRate, setHourlyRate] = useState(150);
-  const [extraCost, setExtraCost] = useState(50);
-  const [discountPct, setDiscountPct] = useState(0);
-
-  // الحسابات
-  const rawLaborCost = laborHours * hourlyRate;
-  const subtotal = partsCost + rawLaborCost + extraCost;
-  const discountAmount = (subtotal * discountPct) / 100;
-  const totalCustomerEGP = Math.round(subtotal - discountAmount);
-  const netProfitEGP = Math.round(totalCustomerEGP - partsCost - extraCost);
-  const profitMarginPct = totalCustomerEGP > 0 ? ((netProfitEGP / totalCustomerEGP) * 100).toFixed(0) : '0';
-
-  // معادل الدولار التقريبي (سعر صرف تقديري 48.5)
-  const totalUSD = (totalCustomerEGP / 48.5).toFixed(1);
-
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">اسم العميل:</label>
-          <input
-            type="text"
-            value={customerName}
-            onChange={(e) => setCustomerName(e.target.value)}
-            placeholder="مثال: أ. أحمد دهب"
-            className="w-full p-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-900 dark:text-gray-100"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">نوع وموديل الجهاز:</label>
-          <input
-            type="text"
-            value={deviceModel}
-            onChange={(e) => setDeviceModel(e.target.value)}
-            placeholder="مثال: HP ProBook 640 G2"
-            className="w-full p-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-900 dark:text-gray-100"
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-        <div>
-          <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">تكلفة القطع (EGP):</label>
-          <input
-            type="number"
-            value={partsCost}
-            onChange={(e) => setPartsCost(parseFloat(e.target.value) || 0)}
-            className="w-full p-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-mono font-bold text-gray-900 dark:text-gray-100"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">ساعات العمل:</label>
-          <input
-            type="number"
-            step="0.5"
-            value={laborHours}
-            onChange={(e) => setLaborHours(parseFloat(e.target.value) || 0)}
-            className="w-full p-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-mono font-bold text-gray-900 dark:text-gray-100"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">سعر الساعة (EGP):</label>
-          <input
-            type="number"
-            value={hourlyRate}
-            onChange={(e) => setHourlyRate(parseFloat(e.target.value) || 0)}
-            className="w-full p-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-mono font-bold text-gray-900 dark:text-gray-100"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">نسبة الخصم (%):</label>
-          <input
-            type="number"
-            min={0}
-            max={100}
-            value={discountPct}
-            onChange={(e) => setDiscountPct(parseFloat(e.target.value) || 0)}
-            className="w-full p-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-mono font-bold text-gray-900 dark:text-gray-100"
-          />
-        </div>
-      </div>
-
-      {/* ملخص الفاتورة والأرباح */}
-      <div className="p-4 rounded-xl bg-gradient-to-br from-amber-500/10 to-dahab-500/5 border border-amber-300/40 dark:border-amber-700/40 space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-gray-700 dark:text-gray-300">إجمالي الحساب للعميل:</span>
-          <div className="text-right">
-            <span className="text-xl md:text-2xl font-black text-amber-500 font-mono">{totalCustomerEGP} ج.م</span>
-            <span className="text-[11px] text-gray-400 block font-mono">~ {totalUSD} $ USD</span>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2 border-t border-amber-200 dark:border-amber-800 text-xs font-medium">
-          <div>
-            <span className="text-gray-500 dark:text-gray-400 block text-[10px]">تكلفة المصنعية الصافية</span>
-            <span className="font-bold text-gray-900 dark:text-gray-100 font-mono">{rawLaborCost} ج.م</span>
-          </div>
-          <div>
-            <span className="text-gray-500 dark:text-gray-400 block text-[10px]">صافي ربح الورشة</span>
-            <span className="font-bold text-emerald-600 dark:text-emerald-400 font-mono">{netProfitEGP} ج.م</span>
-          </div>
-          <div>
-            <span className="text-gray-500 dark:text-gray-400 block text-[10px]">هامش الربح</span>
-            <span className="font-bold text-amber-600 dark:text-amber-400 font-mono">{profitMarginPct}%</span>
-          </div>
         </div>
       </div>
     </div>
