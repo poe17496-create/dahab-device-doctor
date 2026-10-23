@@ -69,12 +69,14 @@ export async function POST(req: NextRequest) {
             return addSecurityHeaders(errorResponse);
           }
 
-          // التحقق من صلاحية الاشتراك (تاريخ الانتهاء)
-          if ((user as any).expires_at) {
-            const expDate = new Date((user as any).expires_at);
+          // التحقق من صلاحية الاشتراك (فصل الحساب تلقائياً بعد 30 يوماً)
+          if ((user as any).role !== 'admin') {
+            const expDate = (user as any).expires_at
+              ? new Date((user as any).expires_at)
+              : new Date(new Date((user as any).created_at || Date.now()).getTime() + 30 * 24 * 60 * 60 * 1000);
             if (!isNaN(expDate.getTime()) && expDate < new Date()) {
               const errorResponse = NextResponse.json(
-                { success: false, message: 'انتهى اشتراكك، يرجى التواصل مع الإدارة للتحويل والتجديد' },
+                { success: false, message: '⚠️ انتهت فترة اشتراك حسابك (30 يوماً). يرجى التواصل مع إدارة دهب سوفتوير للتجديد والتفعيل.' },
                 { status: 403 }
               );
               return addSecurityHeaders(errorResponse);

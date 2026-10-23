@@ -1,6 +1,7 @@
 /**
  * 📐 محرك توليد وتنسيق البوردات المتجهة للفيكتور CAD (Vector Board CAD Generator)
  * يربط مصفوفة الـ 863 بوردة بجميع الآيسيهات والمسارات والقياسات الحقيقية بمحرك الفيكتور
+ * ويوفر مضلعات وتوزيعاً هندسياً حقيقياً ديناميكياً لكل عائلة وموديل
  */
 
 import matrixData from '@/lib/hardwareSchematicsMatrix.json';
@@ -31,41 +32,146 @@ export interface VectorComponent {
   description?: string;
 }
 
+export interface MountingHole {
+  x: number;
+  y: number;
+  r: number;
+  label?: string;
+}
+
+export interface SilkscreenLabel {
+  text: string;
+  x: number;
+  y: number;
+  size?: number;
+  color?: string;
+}
+
 export interface VectorBoardModel {
   name: string;
   boardCode: string;
   brand: string;
   model: string;
   deviceType: 'mobile' | 'laptop' | 'desktop';
+  formFactor: 'iphone-sandwich' | 'iphone-classic' | 'samsung-vertical' | 'android-compact' | 'macbook-blade' | 'pc-laptop' | 'desktop';
   width: number;
   height: number;
   outline: Array<{ x: number; y: number }>;
+  mountingHoles: MountingHole[];
+  silkscreenLabels: SilkscreenLabel[];
   components: VectorComponent[];
   powerRails: Array<{ rail: string; voltage?: string; diodeMode?: string }>;
 }
 
 /**
- * البحث في المصفوفة عن بوردة مطابقة
+ * دالة لتوليد قيمة تجزئة ثابتة لكل بوردة لتوليد انزياحات واقعية محددة
+ */
+function getBoardSeed(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+/**
+ * البحث الذكي في مصفوفة المخططات مع مطابقة مرجحة وعالية الدقة
  */
 export function findBoardInMatrix(query: string): any | null {
   if (!query || !matrixData || !Array.isArray(matrixData)) return null;
   const q = query.trim().toLowerCase();
+  if (q.length === 0) return null;
 
-  // 1. بحث مباشر بكود البوردة
-  let match = (matrixData as any[]).find(
-    (b) => (b.boardCode && b.boardCode.toLowerCase() === q)
+  const boards = matrixData as any[];
+
+  // 1. تطابق تام بكود البوردة
+  const exactCode = boards.find(
+    (b) => b.boardCode && b.boardCode.toLowerCase() === q
   );
-  if (match) return match;
+  if (exactCode) return exactCode;
 
-  // 2. بحث باسم الموديل أو الماركة
-  match = (matrixData as any[]).find((b) => {
-    const full = `${b.brand || ''} ${b.model || ''}`.toLowerCase();
-    const code = (b.boardCode || '').toLowerCase();
-    const model = (b.model || '').toLowerCase();
-    return full.includes(q) || q.includes(full) || code.includes(q) || q.includes(code) || model.includes(q);
+  // 2. تطابق تام باسم الموديل أو الماركة + الموديل
+  const exactModel = boards.find((b) => {
+    const full = `${b.brand || ''} ${b.model || ''}`.toLowerCase().trim();
+    const model = (b.model || '').toLowerCase().trim();
+    return full === q || model === q;
   });
+  if (exactModel) return exactModel;
 
-  return match || null;
+  // 3. تطابق بالكلمات الموزونة (Scored Token Match)
+  const queryTokens = q.split(/[\s,._\-\/]+/).filter((t) => t.length > 0);
+  let bestMatch: any = null;
+  let highestScore = 0;
+
+  for (const b of boards) {
+    const brand = (b.brand || '').toLowerCase();
+    const model = (b.model || '').toLowerCase();
+    const code = (b.boardCode || '').toLowerCase();
+
+    let score = 0;
+    for (const token of queryTokens) {
+      if (code === token) score += 40;
+      else if (code.includes(token)) score += 20;
+
+      if (model.includes(token)) score += 15;
+      if (brand === token) score += 5;
+    }
+
+    if (score > highestScore) {
+      highestScore = score;
+      bestMatch = b;
+    }
+  }
+
+  if (bestMatch && highestScore >= 10) {
+    return bestMatch;
+  }
+
+  // 4. مطابقة احتياطية
+  return (
+    boards.find((b) => {
+      const full = `${b.brand || ''} ${b.model || ''}`.toLowerCase();
+      return full.includes(q) || (b.boardCode && b.boardCode.toLowerCase().includes(q));
+    }) || null
+  );
+}
+
+/**
+ * تحديد نوع الشكل الهندسي للبوردة بناءً على الماركة والموديل
+ */
+function detectFormFactor(board: any): {
+  formFactor: 'iphone-sandwich' | 'iphone-classic' | 'samsung-vertical' | 'android-compact' | 'macbook-blade' | 'pc-laptop' | 'desktop';
+  category: 'mobile' | 'laptop' | 'desktop';
+} {
+  const brand = (board.brand || '').toLowerCase();
+  const model = (board.model || '').toLowerCase();
+  const cat = (board.category || '').toLowerCase();
+
+  if (cat === 'laptop' || brand.includes('apple') && (model.includes('macbook') || model.includes('mac'))) {
+    if (brand.includes('apple') || model.includes('macbook')) {
+      return { formFactor: 'macbook-blade', category: 'laptop' };
+    }
+    return { formFactor: 'pc-laptop', category: 'laptop' };
+  }
+
+  if (cat === 'desktop' || cat === 'gpu' || model.includes('desktop') || model.includes('rtx') || model.includes('gtx')) {
+    return { formFactor: 'desktop', category: 'desktop' };
+  }
+
+  // أجهزة الموبايل
+  if (brand.includes('apple') || model.includes('iphone')) {
+    if (/iphone\s*(5|6|6s|7|8|se)/i.test(model)) {
+      return { formFactor: 'iphone-classic', category: 'mobile' };
+    }
+    return { formFactor: 'iphone-sandwich', category: 'mobile' };
+  }
+
+  if (brand.includes('samsung') || model.includes('galaxy') || model.includes('sm-')) {
+    return { formFactor: 'samsung-vertical', category: 'mobile' };
+  }
+
+  return { formFactor: 'android-compact', category: 'mobile' };
 }
 
 /**
@@ -73,89 +179,218 @@ export function findBoardInMatrix(query: string): any | null {
  */
 export function getPopularBoardsList(): Array<{ name: string; boardCode: string; category: string }> {
   return [
+    { name: 'Apple iPhone 15 Pro Max', boardCode: '820-03290', category: 'mobile' },
     { name: 'Apple iPhone 14 Pro Max', boardCode: '820-02857', category: 'mobile' },
     { name: 'Apple iPhone 13 Pro Max', boardCode: '820-02384', category: 'mobile' },
     { name: 'Apple iPhone 12 Pro', boardCode: '820-01990', category: 'mobile' },
     { name: 'Apple iPhone 11', boardCode: '820-01535', category: 'mobile' },
+    { name: 'Apple iPhone 8 Plus', boardCode: '820-00843', category: 'mobile' },
     { name: 'Apple MacBook Pro M2 A2338', boardCode: '820-02098', category: 'laptop' },
     { name: 'Apple MacBook Pro M1 A2338', boardCode: '820-02020', category: 'laptop' },
     { name: 'Apple MacBook Air A2179', boardCode: '820-01958', category: 'laptop' },
-    { name: 'Dell Inspiron 5521 / 3521', boardCode: 'LA-9104P', category: 'laptop' },
-    { name: 'Dell Latitude 7490', boardCode: 'LA-F321P', category: 'laptop' },
-    { name: 'Lenovo ThinkPad T480', boardCode: 'NM-B501', category: 'laptop' },
-    { name: 'Lenovo IdeaPad 320', boardCode: 'NM-B242', category: 'laptop' },
-    { name: 'HP ProBook 450 G3', boardCode: 'DA0X63MB6H1', category: 'laptop' },
-    { name: 'HP Pavilion 15-CS', boardCode: 'DAG7BMB18B0', category: 'laptop' },
+    { name: 'Samsung Galaxy S24 Ultra', boardCode: 'SM-S928B', category: 'mobile' },
     { name: 'Samsung Galaxy S23 Ultra', boardCode: 'SM-S918B', category: 'mobile' },
     { name: 'Samsung Galaxy S22 Ultra', boardCode: 'SM-S908B', category: 'mobile' },
-    { name: 'Xiaomi Redmi Note 11', boardCode: '2201117TG', category: 'mobile' },
+    { name: 'Xiaomi Redmi Note 12 Pro', boardCode: '22101316C', category: 'mobile' },
+    { name: 'Dell Latitude 5400', boardCode: 'EDC51 LA-G891P', category: 'laptop' },
+    { name: 'Dell Inspiron 5521 / 3521', boardCode: 'LA-9104P', category: 'laptop' },
+    { name: 'Lenovo ThinkPad T480', boardCode: 'NM-B501', category: 'laptop' },
+    { name: 'HP EliteBook 840 G5', boardCode: '6050A2945601-MB-A01', category: 'laptop' },
   ];
 }
 
 /**
- * إنشاء نموذج بوردة فيكتور CAD متكاملة هندسياً مع مسارات ونقاط فحص
+ * إنشاء نموذج بوردة فيكتور CAD متكاملة هندسياً مع مسارات ونقاط فحص وأشكال ومضلعات حقيقية
  */
 export function generateVectorBoard(queryOrName?: string): VectorBoardModel {
   const matched = queryOrName ? findBoardInMatrix(queryOrName) : null;
-  const rawBoard = matched || (matrixData as any[])[0]; // افتراضي: أول بوردة في المصفوفة
+  const rawBoard = matched || (matrixData as any[])[0]; // افتراضي
 
   const brand = rawBoard.brand || 'Engineering PCB';
   const model = rawBoard.model || 'Universal Board';
   const boardCode = rawBoard.boardCode || 'PCB-820';
-  const category = (rawBoard.category as 'mobile' | 'laptop' | 'desktop') || 'mobile';
+  
+  const { formFactor, category } = detectFormFactor(rawBoard);
+  const seed = getBoardSeed(boardCode + model);
+  const deltaX = (seed % 15) - 7;
+  const deltaY = ((seed >> 2) % 15) - 7;
 
-  // تحديد أبعاد وشكل مضلع البوردة حسب نوع الجهاز
-  let width = 960;
-  let height = 720;
+  let width = 900;
+  let height = 750;
   let outline: Array<{ x: number; y: number }> = [];
+  const mountingHoles: MountingHole[] = [];
+  const silkscreenLabels: SilkscreenLabel[] = [];
+  const components: VectorComponent[] = [];
 
-  if (category === 'mobile') {
-    width = 750;
-    height = 920;
+  // ==========================================
+  // 1. تحديد المضلع والأبعاد حسب العائلة الهندسية
+  // ==========================================
+  if (formFactor === 'iphone-sandwich') {
+    // بوردة آيفون ساندوتش الحديثة (Double-Decker) ذات الحواف المقوسة وتجويف البطارية وإطار التأريض
+    width = 720;
+    height = 940;
+    outline = [
+      { x: 50, y: 50 },
+      { x: 670, y: 50 },
+      { x: 670, y: 320 },
+      { x: 610, y: 320 },
+      { x: 610, y: 650 },
+      { x: 670, y: 650 },
+      { x: 670, y: 890 },
+      { x: 50, y: 890 },
+      { x: 50, y: 620 },
+      { x: 100, y: 620 },
+      { x: 100, y: 280 },
+      { x: 50, y: 280 },
+    ];
+    mountingHoles.push(
+      { x: 80, y: 80, r: 12, label: 'GND_SCREW_1' },
+      { x: 640, y: 80, r: 12, label: 'GND_SCREW_2' },
+      { x: 640, y: 860, r: 12, label: 'GND_SCREW_3' },
+      { x: 80, y: 860, r: 12, label: 'GND_SCREW_4' }
+    );
+  } else if (formFactor === 'iphone-classic') {
+    // بوردة آيفون L-Shaped الكلاسيكية
+    width = 680;
+    height = 960;
+    outline = [
+      { x: 50, y: 50 },
+      { x: 630, y: 50 },
+      { x: 630, y: 360 },
+      { x: 630, y: 910 },
+      { x: 390, y: 910 },
+      { x: 390, y: 440 },
+      { x: 50, y: 440 },
+    ];
+    mountingHoles.push(
+      { x: 80, y: 80, r: 10, label: 'STANDOFF_TOP_LEFT' },
+      { x: 600, y: 80, r: 10, label: 'STANDOFF_TOP_RIGHT' },
+      { x: 420, y: 880, r: 10, label: 'STANDOFF_BOTTOM' }
+    );
+  } else if (formFactor === 'samsung-vertical') {
+    // بوردة سامسونج جالاكسي الطولية مع تجويف كاميرا مستطيل علوي وتطريز المسارات الرأسية
+    width = 700;
+    height = 950;
     outline = [
       { x: 60, y: 50 },
-      { x: 690, y: 50 },
-      { x: 690, y: 340 },
-      { x: 620, y: 340 },
-      { x: 620, y: 640 },
-      { x: 690, y: 640 },
-      { x: 690, y: 870 },
-      { x: 60, y: 870 },
-      { x: 60, y: 580 },
-      { x: 110, y: 580 },
-      { x: 110, y: 300 },
-      { x: 60, y: 300 },
+      { x: 260, y: 50 },
+      { x: 260, y: 130 },
+      { x: 340, y: 130 },
+      { x: 340, y: 50 },
+      { x: 640, y: 50 },
+      { x: 640, y: 890 },
+      { x: 530, y: 890 },
+      { x: 530, y: 920 },
+      { x: 170, y: 920 },
+      { x: 170, y: 890 },
+      { x: 60, y: 890 },
     ];
-  } else if (category === 'laptop') {
-    width = 1100;
-    height = 760;
+    mountingHoles.push(
+      { x: 90, y: 80, r: 11, label: 'M2_SCREW_TOP' },
+      { x: 610, y: 80, r: 11, label: 'M2_SCREW_CAMERA' },
+      { x: 610, y: 860, r: 11, label: 'M2_SCREW_PWR' },
+      { x: 90, y: 860, r: 11, label: 'M2_SCREW_SUB' }
+    );
+  } else if (formFactor === 'macbook-blade') {
+    // بوردة ماك بوك عريضة مع تجاويف مراوح التبريد وقنوات الـ Type-C
+    width = 1200;
+    height = 700;
     outline = [
       { x: 60, y: 60 },
-      { x: 1040, y: 60 },
-      { x: 1040, y: 300 },
-      { x: 990, y: 300 },
-      { x: 990, y: 480 },
-      { x: 1040, y: 480 },
-      { x: 1040, y: 700 },
-      { x: 380, y: 700 },
-      { x: 380, y: 630 },
-      { x: 260, y: 630 },
-      { x: 260, y: 700 },
-      { x: 60, y: 700 },
+      { x: 1140, y: 60 },
+      { x: 1140, y: 240 },
+      { x: 1090, y: 240 },
+      { x: 1090, y: 460 },
+      { x: 1140, y: 460 },
+      { x: 1140, y: 640 },
+      { x: 780, y: 640 },
+      { x: 740, y: 580 },
+      { x: 460, y: 580 },
+      { x: 420, y: 640 },
+      { x: 60, y: 640 },
     ];
+    mountingHoles.push(
+      { x: 100, y: 100, r: 14, label: 'CHASSIS_SCREW_1' },
+      { x: 1100, y: 100, r: 14, label: 'CHASSIS_SCREW_2' },
+      { x: 1100, y: 600, r: 14, label: 'CHASSIS_SCREW_3' },
+      { x: 100, y: 600, r: 14, label: 'CHASSIS_SCREW_4' },
+      { x: 600, y: 100, r: 12, label: 'HEATSINK_STUD' }
+    );
+  } else if (formFactor === 'pc-laptop') {
+    // بوردة لابتوب PC غير متناظرة مع مقابس الرام وتجاويف المنافذ
+    width = 1150;
+    height = 780;
+    outline = [
+      { x: 60, y: 60 },
+      { x: 1090, y: 60 },
+      { x: 1090, y: 280 },
+      { x: 1040, y: 280 },
+      { x: 1040, y: 520 },
+      { x: 1090, y: 520 },
+      { x: 1090, y: 720 },
+      { x: 380, y: 720 },
+      { x: 380, y: 650 },
+      { x: 260, y: 650 },
+      { x: 260, y: 720 },
+      { x: 60, y: 720 },
+    ];
+    mountingHoles.push(
+      { x: 100, y: 100, r: 13, label: 'CASE_SCREW_A' },
+      { x: 1050, y: 100, r: 13, label: 'CASE_SCREW_B' },
+      { x: 1050, y: 680, r: 13, label: 'CASE_SCREW_C' },
+      { x: 100, y: 680, r: 13, label: 'CASE_SCREW_D' },
+      { x: 420, y: 150, r: 11, label: 'CPU_COOLER_1' },
+      { x: 580, y: 150, r: 11, label: 'CPU_COOLER_2' },
+      { x: 420, y: 310, r: 11, label: 'CPU_COOLER_3' },
+      { x: 580, y: 310, r: 11, label: 'CPU_COOLER_4' }
+    );
+  } else if (formFactor === 'desktop') {
+    width = 980;
+    height = 980;
+    outline = [
+      { x: 60, y: 60 },
+      { x: 920, y: 60 },
+      { x: 920, y: 920 },
+      { x: 60, y: 920 },
+    ];
+    mountingHoles.push(
+      { x: 90, y: 90, r: 15, label: 'ATX_MOUNT_1' },
+      { x: 890, y: 90, r: 15, label: 'ATX_MOUNT_2' },
+      { x: 890, y: 890, r: 15, label: 'ATX_MOUNT_3' },
+      { x: 90, y: 890, r: 15, label: 'ATX_MOUNT_4' }
+    );
   } else {
-    // Desktop / Motherboard
-    width = 1000;
-    height = 1000;
+    // Android Compact
+    width = 750;
+    height = 880;
     outline = [
-      { x: 60, y: 60 },
-      { x: 940, y: 60 },
-      { x: 940, y: 940 },
-      { x: 60, y: 940 },
+      { x: 50, y: 50 },
+      { x: 700, y: 50 },
+      { x: 700, y: 830 },
+      { x: 580, y: 830 },
+      { x: 580, y: 780 },
+      { x: 180, y: 780 },
+      { x: 180, y: 830 },
+      { x: 50, y: 830 },
     ];
+    mountingHoles.push(
+      { x: 80, y: 80, r: 10, label: 'FRAME_SCREW_TOP' },
+      { x: 670, y: 80, r: 10, label: 'FRAME_SCREW_R' },
+      { x: 670, y: 800, r: 10, label: 'FRAME_SCREW_BR' },
+      { x: 80, y: 800, r: 10, label: 'FRAME_SCREW_BL' }
+    );
   }
 
-  // مسارات الطاقة من مصفوفة المخططات
+  // ملصقات الحرير الهندسية (Silkscreen Real Markings)
+  silkscreenLabels.push(
+    { text: `${brand.toUpperCase()} - ${model.toUpperCase()}`, x: 80, y: 95, size: 14, color: '#f59e0b' },
+    { text: `P/N: ${boardCode} • REV 1.0`, x: 80, y: 115, size: 11, color: '#38bdf8' },
+    { text: `STACK: 10-LAYER HDI PCB (HF/ROHS)`, x: 80, y: 130, size: 9, color: '#64748b' }
+  );
+
+  // ==========================================
+  // 2. مسارات الطاقة المستخرجة من مصفوفة المخططات
+  // ==========================================
   const powerRails: Array<{ rail: string; voltage?: string; diodeMode?: string }> =
     rawBoard.powerRails && Array.isArray(rawBoard.powerRails) && rawBoard.powerRails.length > 0
       ? rawBoard.powerRails.map((r: any) => ({
@@ -193,17 +428,41 @@ export function generateVectorBoard(queryOrName?: string): VectorBoardModel {
   const auxRailName = powerRails[1]?.rail || (category === 'laptop' ? '+3.3VALW' : 'PP1V8_ALWAYS');
   const auxRailDiode = powerRails[1]?.diodeMode || '0.420V';
 
-  // استخراج الآيسيهات من mainChips
   const chips = rawBoard.mainChips || {};
-  const components: VectorComponent[] = [];
 
-  // 1. المعالج الرئيسي (CPU / SoC)
-  const cpuChip = chips.cpu || chips.soc || chips.processor || (category === 'mobile' ? 'Apple A-Series / Snapdragon' : 'Intel Core / AMD Ryzen');
-  const cpuX = category === 'mobile' ? 260 : 420;
-  const cpuY = category === 'mobile' ? 180 : 160;
-  const cpuW = category === 'mobile' ? 220 : 250;
-  const cpuH = category === 'mobile' ? 200 : 220;
+  // ==========================================
+  // 3. توزيع المكونات الهندسي الديناميكي الحقيقي
+  // ==========================================
+  
+  // أ) المعالج الرئيسي CPU / SoC
+  let cpuX = 260 + deltaX;
+  let cpuY = 180 + deltaY;
+  let cpuW = 220;
+  let cpuH = 200;
 
+  if (formFactor === 'macbook-blade') {
+    cpuX = 470 + deltaX;
+    cpuY = 170 + deltaY;
+    cpuW = 260;
+    cpuH = 240;
+  } else if (formFactor === 'pc-laptop') {
+    cpuX = 420 + deltaX;
+    cpuY = 160 + deltaY;
+    cpuW = 250;
+    cpuH = 230;
+  } else if (formFactor === 'samsung-vertical') {
+    cpuX = 230 + deltaX;
+    cpuY = 220 + deltaY;
+    cpuW = 210;
+    cpuH = 210;
+  } else if (formFactor === 'iphone-classic') {
+    cpuX = 180 + deltaX;
+    cpuY = 130 + deltaY;
+    cpuW = 200;
+    cpuH = 190;
+  }
+
+  const cpuChip = chips.cpu || chips.soc || chips.processor || (category === 'mobile' ? 'Apple A-Series BGA / Snapdragon' : 'Intel Core / AMD Ryzen BGA');
   const cpuPins: VectorPin[] = [];
   const cols = 8;
   const rows = 8;
@@ -243,11 +502,6 @@ export function generateVectorBoard(queryOrName?: string): VectorBoardModel {
         isGnd = false;
         diode = '0.510V';
         v = '1.8V';
-      } else if (r === 7 && c === 2) {
-        net = 'PMIC_EN';
-        isGnd = false;
-        diode = '0.580V';
-        v = '1.8V';
       }
 
       cpuPins.push({
@@ -277,14 +531,36 @@ export function generateVectorBoard(queryOrName?: string): VectorBoardModel {
     description: 'المعالج المركزي ومعالج الرسوميات (SoC/CPU Core)',
   });
 
-  // 2. آيسي الباور الرئيسي (PMIC)
-  const pmicChip = chips.pmic || chips.powerManagement || (category === 'mobile' ? '338S00930 / PM8150' : 'TPS51125 / RT8205');
-  const pmicX = category === 'mobile' ? 270 : 180;
-  const pmicY = category === 'mobile' ? 440 : 200;
-  const pmicW = 160;
-  const pmicH = 150;
-  const pmicPins: VectorPin[] = [];
+  // ب) آيسي الباور الرئيسي PMIC
+  let pmicX = 270 - deltaX;
+  let pmicY = 440 - deltaY;
+  let pmicW = 160;
+  let pmicH = 150;
 
+  if (formFactor === 'macbook-blade') {
+    pmicX = 490 + deltaX;
+    pmicY = 440 + deltaY;
+    pmicW = 180;
+    pmicH = 140;
+  } else if (formFactor === 'pc-laptop') {
+    pmicX = 180 + deltaX;
+    pmicY = 200 + deltaY;
+    pmicW = 150;
+    pmicH = 140;
+  } else if (formFactor === 'samsung-vertical') {
+    pmicX = 250 + deltaX;
+    pmicY = 470 + deltaY;
+    pmicW = 170;
+    pmicH = 160;
+  } else if (formFactor === 'iphone-classic') {
+    pmicX = 410 + deltaX;
+    pmicY = 150 + deltaY;
+    pmicW = 150;
+    pmicH = 150;
+  }
+
+  const pmicChip = chips.pmic || chips.powerManagement || (category === 'mobile' ? '338S00930 / PM8150' : 'TPS51125 / RT8205');
+  const pmicPins: VectorPin[] = [];
   const pCols = 6;
   const pRows = 6;
   const pStepX = (pmicW - 24) / (pCols - 1);
@@ -319,21 +595,6 @@ export function generateVectorBoard(queryOrName?: string): VectorBoardModel {
         isPwr = true;
         diode = auxRailDiode;
         v = '1.8V';
-      } else if (r === 2 && c === 2) {
-        net = 'I2C_SDA';
-        isGnd = false;
-        diode = '0.510V';
-        v = '1.8V';
-      } else if (r === 2 && c === 3) {
-        net = 'I2C_SCL';
-        isGnd = false;
-        diode = '0.510V';
-        v = '1.8V';
-      } else if (r === 3 && c === 3) {
-        net = 'PMIC_EN';
-        isGnd = false;
-        diode = '0.580V';
-        v = '1.8V';
       }
 
       pmicPins.push({
@@ -352,7 +613,7 @@ export function generateVectorBoard(queryOrName?: string): VectorBoardModel {
   }
 
   components.push({
-    name: `U1200_PMIC (${pmicChip})`,
+    name: `U2000_PMIC (${pmicChip})`,
     type: 'IC',
     x: pmicX,
     y: pmicY,
@@ -360,98 +621,56 @@ export function generateVectorBoard(queryOrName?: string): VectorBoardModel {
     height: pmicH,
     side: 'TOP',
     pins: pmicPins,
-    description: 'شريحة إدارة وتوزيع الطاقة الرئيسية (Main PMIC Controller)',
+    description: 'آيسي إدارة الطاقة وتوليد الفولتيات الأساسية (PMU/PMIC)',
   });
 
-  // 3. آيسي الشحن والتحكم بمنفذ التوصيل (Charger / Tristar / Type-C PD)
-  const chargeChip = chips.chargeIc || chips.charger || chips.tigris || (category === 'mobile' ? 'SN3100A0 / 1610A2' : 'BQ24780S / ISL95855');
-  const chgX = category === 'mobile' ? 120 : 180;
-  const chgY = category === 'mobile' ? 660 : 440;
-  const chgW = 120;
-  const chgH = 110;
-  const chgPins: VectorPin[] = [];
+  // ج) آيسي الشحن والـ Type-C PD Controller
+  let chgX = 90 + deltaX;
+  let chgY = 460 + deltaY;
+  let chgW = 100;
+  let chgH = 95;
 
-  for (let i = 0; i < 16; i++) {
-    const isTopSide = i < 4;
-    const isRightSide = i >= 4 && i < 8;
-    const isBotSide = i >= 8 && i < 12;
-    const isLeftSide = i >= 12;
-
-    let px = chgX + 15 + (i % 4) * 28;
-    let py = chgY + 10;
-    if (isRightSide) {
-      px = chgX + chgW - 10;
-      py = chgY + 15 + (i - 4) * 25;
-    } else if (isBotSide) {
-      px = chgX + chgW - 15 - (i - 8) * 28;
-      py = chgY + chgH - 10;
-    } else if (isLeftSide) {
-      px = chgX + 10;
-      py = chgY + chgH - 15 - (i - 12) * 25;
-    }
-
-    let net = 'GND';
-    let isGnd = true;
-    let isPwr = false;
-    let diode = '0.000V';
-    let v = '0V';
-
-    if (i === 1 || i === 2) {
-      net = mainRailName;
-      isGnd = false;
-      isPwr = true;
-      diode = mainRailDiode;
-      v = mainRailVoltage;
-    } else if (i === 5) {
-      net = 'I2C_SDA';
-      isGnd = false;
-      diode = '0.510V';
-      v = '1.8V';
-    } else if (i === 6) {
-      net = 'I2C_SCL';
-      isGnd = false;
-      diode = '0.510V';
-      v = '1.8V';
-    } else if (i === 9 || i === 10) {
-      net = 'VBUS_5V';
-      isGnd = false;
-      isPwr = true;
-      diode = '0.520V';
-      v = '5.0V - 20V';
-    }
-
-    chgPins.push({
-      id: `CHG_P${i + 1}`,
-      pinNumber: i + 1,
-      netName: net,
-      x: px,
-      y: py,
-      isGround: isGnd,
-      isPower: isPwr,
-      diodeReading: diode,
-      voltage: v,
-    });
+  if (formFactor === 'macbook-blade') {
+    chgX = 130 + deltaX;
+    chgY = 220 + deltaY;
+    chgW = 110;
+    chgH = 100;
+  } else if (formFactor === 'pc-laptop') {
+    chgX = 150 + deltaX;
+    chgY = 420 + deltaY;
+    chgW = 120;
+    chgH = 110;
+  } else if (formFactor === 'samsung-vertical') {
+    chgX = 80 + deltaX;
+    chgY = 500 + deltaY;
   }
 
+  const chargerChip = chips.charging || chips.charger || (category === 'mobile' ? 'SN2600 / Tigris / SM5714' : 'BQ24780 / ISL95855');
   components.push({
-    name: `U3300_CHARGER (${chargeChip})`,
+    name: `U3300_CHARGER (${chargerChip})`,
     type: 'IC',
     x: chgX,
     y: chgY,
     width: chgW,
     height: chgH,
     side: 'TOP',
-    pins: chgPins,
-    description: 'شريحة التحكم بالشحن ومدخل الطاقة (Charger IC / Type-C)',
+    pins: [
+      { id: 'CHG_P1', pinNumber: 1, netName: mainRailName, x: chgX + 20, y: chgY + 20, isPower: true, diodeReading: mainRailDiode, voltage: mainRailVoltage },
+      { id: 'CHG_P2', pinNumber: 2, netName: 'PP_BATT_VCC', x: chgX + chgW - 20, y: chgY + 20, isPower: true, diodeReading: '0.420V', voltage: '3.8V' },
+      { id: 'CHG_P3', pinNumber: 3, netName: 'I2C_SDA', x: chgX + 20, y: chgY + chgH - 20, isPower: false, diodeReading: '0.510V', voltage: '1.8V' },
+      { id: 'CHG_P4', pinNumber: 4, netName: 'GND', x: chgX + chgW - 20, y: chgY + chgH - 20, isGround: true, diodeReading: '0.000V', voltage: '0V' },
+    ],
+    description: 'شريحة تنظيم الشحن وإدارة بطارية الليثيوم (Battery Charger & USB-PD)',
   });
 
-  // 4. مكثفات التصفية السطحية SMD Capacitors على مسار الباور الرئيسي
+  // د) مصفوفة مكثفات التنعيم (Filter Capacitors) حول المسار الرئيسي
   const capCoords = [
-    { name: 'C1001', x: pmicX - 35, y: pmicY + 20 },
-    { name: 'C1002', x: pmicX - 35, y: pmicY + 60 },
-    { name: 'C1003', x: pmicX + pmicW + 15, y: pmicY + 20 },
-    { name: 'C1004', x: chgX + chgW + 20, y: chgY + 25 },
-    { name: 'C1005', x: cpuX - 35, y: cpuY + 40 },
+    { name: 'C3301', x: chgX + 15, y: chgY - 35, net: mainRailName, diode: mainRailDiode, v: mainRailVoltage },
+    { name: 'C3302', x: chgX + 55, y: chgY - 35, net: mainRailName, diode: mainRailDiode, v: mainRailVoltage },
+    { name: 'C2001', x: pmicX + 25, y: pmicY - 35, net: mainRailName, diode: mainRailDiode, v: mainRailVoltage },
+    { name: 'C2002', x: pmicX + 75, y: pmicY - 35, net: mainRailName, diode: mainRailDiode, v: mainRailVoltage },
+    { name: 'C1001', x: cpuX + 30, y: cpuY - 35, net: cpuRailName, diode: cpuRailDiode, v: '0.85V' },
+    { name: 'C1002', x: cpuX + 90, y: cpuY - 35, net: cpuRailName, diode: cpuRailDiode, v: '0.85V' },
   ];
 
   capCoords.forEach((cap) => {
@@ -460,40 +679,23 @@ export function generateVectorBoard(queryOrName?: string): VectorBoardModel {
       type: 'Capacitor',
       x: cap.x,
       y: cap.y,
-      width: 20,
-      height: 32,
+      width: 32,
+      height: 18,
       side: 'TOP',
       value: '22uF 6.3V',
-      description: 'مكثف تصفية وتثبيت فولت مسار الباور الرئيسي (Decoupling Capacitor)',
+      description: 'مكثف سيراميك SMD لتثبيت واستقرار الجهد ومنع التموج (Decoupling Cap)',
       pins: [
-        {
-          id: `${cap.name}_P1`,
-          pinNumber: 1,
-          netName: mainRailName,
-          x: cap.x + 10,
-          y: cap.y + 6,
-          isPower: true,
-          diodeReading: mainRailDiode,
-          voltage: mainRailVoltage,
-        },
-        {
-          id: `${cap.name}_P2`,
-          pinNumber: 2,
-          netName: 'GND',
-          x: cap.x + 10,
-          y: cap.y + 26,
-          isGround: true,
-          diodeReading: '0.000V',
-          voltage: '0V',
-        },
+        { id: `${cap.name}_P1`, pinNumber: 1, netName: cap.net, x: cap.x + 6, y: cap.y + 9, isPower: true, diodeReading: cap.diode, voltage: cap.v },
+        { id: `${cap.name}_P2`, pinNumber: 2, netName: 'GND', x: cap.x + 26, y: cap.y + 9, isGround: true, diodeReading: '0.000V', voltage: '0V' },
       ],
     });
   });
 
-  // 5. ملفات وكويلات الباور Power Inductors
+  // هـ) ملفات القدرة Power Chokes
   const coilCoords = [
-    { name: 'PL1200', x: pmicX + pmicW + 15, y: pmicY + 80, net: cpuRailName, diode: cpuRailDiode, v: '0.85V' },
-    { name: 'PL1201', x: chgX + chgW + 20, y: chgY + 70, net: mainRailName, diode: mainRailDiode, v: mainRailVoltage },
+    { name: 'L2001_BUCK', x: pmicX + pmicW + 15, y: pmicY + 15, net: cpuRailName, diode: cpuRailDiode, v: '0.85V' },
+    { name: 'L2002_BUCK', x: pmicX + pmicW + 15, y: pmicY + 70, net: auxRailName, diode: auxRailDiode, v: '1.8V' },
+    { name: 'L3301_BOOST', x: chgX + chgW + 15, y: chgY + 25, net: mainRailName, diode: mainRailDiode, v: mainRailVoltage },
   ];
 
   coilCoords.forEach((coil) => {
@@ -502,41 +704,23 @@ export function generateVectorBoard(queryOrName?: string): VectorBoardModel {
       type: 'Inductor',
       x: coil.x,
       y: coil.y,
-      width: 42,
-      height: 42,
+      width: 44,
+      height: 44,
       side: 'TOP',
       value: '1.0uH 15A',
       description: 'ملف قدرة لتنعيم وتوليد فولت البك (Buck Power Choke)',
       pins: [
-        {
-          id: `${coil.name}_P1`,
-          pinNumber: 1,
-          netName: coil.net,
-          x: coil.x + 8,
-          y: coil.y + 21,
-          isPower: true,
-          diodeReading: coil.diode,
-          voltage: coil.v,
-        },
-        {
-          id: `${coil.name}_P2`,
-          pinNumber: 2,
-          netName: coil.net,
-          x: coil.x + 34,
-          y: coil.y + 21,
-          isPower: true,
-          diodeReading: coil.diode,
-          voltage: coil.v,
-        },
+        { id: `${coil.name}_P1`, pinNumber: 1, netName: coil.net, x: coil.x + 8, y: coil.y + 22, isPower: true, diodeReading: coil.diode, voltage: coil.v },
+        { id: `${coil.name}_P2`, pinNumber: 2, netName: coil.net, x: coil.x + 36, y: coil.y + 22, isPower: true, diodeReading: coil.diode, voltage: coil.v },
       ],
     });
   });
 
-  // 6. موسفيتات القدرة Power Mosfets (High/Low Side)
+  // و) موسفيت التبديل وحماية الشاحن
   components.push({
     name: 'PQ301_MOSFET',
     type: 'Mosfet',
-    x: chgX + chgW + 20,
+    x: chgX + chgW + 15,
     y: chgY - 45,
     width: 38,
     height: 38,
@@ -544,13 +728,13 @@ export function generateVectorBoard(queryOrName?: string): VectorBoardModel {
     value: 'N-Channel 30V',
     description: 'موسفيت التبديل وحماية خط الشاحن والبطارية (DC-IN Power Switch)',
     pins: [
-      { id: 'PQ301_D', pinNumber: 'D', netName: mainRailName, x: chgX + chgW + 28, y: chgY - 40, isPower: true, diodeReading: mainRailDiode, voltage: mainRailVoltage },
-      { id: 'PQ301_S', pinNumber: 'S', netName: mainRailName, x: chgX + chgW + 28, y: chgY - 15, isPower: true, diodeReading: mainRailDiode, voltage: mainRailVoltage },
-      { id: 'PQ301_G', pinNumber: 'G', netName: 'PMIC_EN', x: chgX + chgW + 48, y: chgY - 25, isPower: false, diodeReading: '0.580V', voltage: '1.8V' },
+      { id: 'PQ301_D', pinNumber: 'D', netName: mainRailName, x: chgX + chgW + 24, y: chgY - 40, isPower: true, diodeReading: mainRailDiode, voltage: mainRailVoltage },
+      { id: 'PQ301_S', pinNumber: 'S', netName: mainRailName, x: chgX + chgW + 24, y: chgY - 15, isPower: true, diodeReading: mainRailDiode, voltage: mainRailVoltage },
+      { id: 'PQ301_G', pinNumber: 'G', netName: 'PMIC_EN', x: chgX + chgW + 42, y: chgY - 25, isPower: false, diodeReading: '0.580V', voltage: '1.8V' },
     ],
   });
 
-  // 7. نقاط فحص ممانعة الدايود (Test Points) على المسار الرئيسي
+  // ز) نقاط الفحص المذهبة (Gold Test Points)
   const tpCoords = [
     { name: 'TP_VDD_MAIN_1', x: pmicX + 80, y: pmicY - 25 },
     { name: 'TP_VDD_MAIN_2', x: cpuX - 25, y: cpuY + 120 },
@@ -582,22 +766,22 @@ export function generateVectorBoard(queryOrName?: string): VectorBoardModel {
     });
   });
 
-  // 8. الجانب الخلفي (BOTTOM Side) - شرائح الذاكرة والواي فاي
+  // ح) الجانب الخلفي للبوردة (BOTTOM Side) - شرائح الذاكرة والواي فاي
   const nandChip = chips.nand || chips.storage || chips.ssd || 'Kioxia / Micron Flash';
   const wifiChip = chips.wifi || chips.wlan || chips.bluetooth || 'Broadcom / Qualcomm WiFi';
 
   components.push({
     name: `U3000_NAND (${nandChip})`,
     type: 'IC',
-    x: cpuX - 40,
-    y: cpuY + 20,
+    x: cpuX - 30,
+    y: cpuY + 30,
     width: 170,
     height: 150,
     side: 'BOTTOM',
     pins: [
-      { id: 'NAND_1', pinNumber: 1, netName: mainRailName, x: cpuX - 20, y: cpuY + 40, isPower: true, diodeReading: mainRailDiode, voltage: mainRailVoltage },
-      { id: 'NAND_2', pinNumber: 2, netName: auxRailName, x: cpuX - 20, y: cpuY + 70, isPower: true, diodeReading: auxRailDiode, voltage: '1.8V' },
-      { id: 'NAND_3', pinNumber: 3, netName: 'GND', x: cpuX + 100, y: cpuY + 40, isGround: true, diodeReading: '0.000V', voltage: '0V' },
+      { id: 'NAND_1', pinNumber: 1, netName: mainRailName, x: cpuX - 10, y: cpuY + 50, isPower: true, diodeReading: mainRailDiode, voltage: mainRailVoltage },
+      { id: 'NAND_2', pinNumber: 2, netName: auxRailName, x: cpuX - 10, y: cpuY + 80, isPower: true, diodeReading: auxRailDiode, voltage: '1.8V' },
+      { id: 'NAND_3', pinNumber: 3, netName: 'GND', x: cpuX + 110, y: cpuY + 50, isGround: true, diodeReading: '0.000V', voltage: '0V' },
     ],
     description: 'شريحة الذاكرة الرئيسية ووحدة التخزين السريع (NAND Flash / NVMe Storage)',
   });
@@ -605,14 +789,14 @@ export function generateVectorBoard(queryOrName?: string): VectorBoardModel {
   components.push({
     name: `U5000_WIFI (${wifiChip})`,
     type: 'IC',
-    x: cpuX + 160,
-    y: cpuY + 20,
+    x: cpuX + 170,
+    y: cpuY + 30,
     width: 130,
     height: 120,
     side: 'BOTTOM',
     pins: [
-      { id: 'WIFI_1', pinNumber: 1, netName: auxRailName, x: cpuX + 180, y: cpuY + 40, isPower: true, diodeReading: auxRailDiode, voltage: '1.8V' },
-      { id: 'WIFI_2', pinNumber: 2, netName: 'GND', x: cpuX + 260, y: cpuY + 40, isGround: true, diodeReading: '0.000V', voltage: '0V' },
+      { id: 'WIFI_1', pinNumber: 1, netName: auxRailName, x: cpuX + 190, y: cpuY + 50, isPower: true, diodeReading: auxRailDiode, voltage: '1.8V' },
+      { id: 'WIFI_2', pinNumber: 2, netName: 'GND', x: cpuX + 270, y: cpuY + 50, isGround: true, diodeReading: '0.000V', voltage: '0V' },
     ],
     description: 'وحدة الاتصال اللاسلكي والواي فاي والبلوتوث (WLAN / Bluetooth Module)',
   });
@@ -623,9 +807,12 @@ export function generateVectorBoard(queryOrName?: string): VectorBoardModel {
     brand,
     model,
     deviceType: category,
+    formFactor,
     width,
     height,
     outline,
+    mountingHoles,
+    silkscreenLabels,
     components,
     powerRails,
   };

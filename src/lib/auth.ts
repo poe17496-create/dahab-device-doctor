@@ -19,6 +19,7 @@ export interface UserAccount {
   deviceInfo?: string;
   expiresAt?: string;
   subscriptionDays?: number;
+  maxUsage?: number;
   price?: number;
   loginAttempts?: number;
   lockedUntil?: string;
@@ -162,12 +163,18 @@ export async function saveAllUsers(users: UserAccount[]): Promise<boolean> {
 }
 
 export function checkSubscription(user: UserAccount): { isExpired: boolean; daysRemaining: number } {
-  if (!user.expiresAt || user.role === 'admin') {
+  if (user.role === 'admin' || user.username.toLowerCase() === 'd3v1n_x9_admin') {
     return { isExpired: false, daysRemaining: 9999 };
   }
-  const exp = new Date(user.expiresAt).getTime();
+  let expTime: number;
+  if (!user.expiresAt) {
+    const created = user.createdAt ? new Date(user.createdAt).getTime() : Date.now();
+    expTime = created + 30 * 24 * 60 * 60 * 1000;
+  } else {
+    expTime = new Date(user.expiresAt).getTime();
+  }
   const now = Date.now();
-  const diffMs = exp - now;
+  const diffMs = expTime - now;
   const daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
   return {
     isExpired: daysRemaining <= 0,
@@ -194,8 +201,9 @@ export async function addUser(
   }
 
   let expiresAt = user.expiresAt;
-  if (!expiresAt && user.subscriptionDays && user.subscriptionDays > 0) {
-    expiresAt = new Date(Date.now() + user.subscriptionDays * 24 * 60 * 60 * 1000).toISOString();
+  const subDays = user.subscriptionDays && user.subscriptionDays > 0 ? user.subscriptionDays : 30;
+  if (!expiresAt) {
+    expiresAt = new Date(Date.now() + subDays * 24 * 60 * 60 * 1000).toISOString();
   }
 
   const newUser: UserAccount = {

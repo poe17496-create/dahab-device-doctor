@@ -1,13 +1,16 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { AlertOctagon, CheckCircle2, FileText, Cpu, Search, Sparkles, Copy, Check, Download, Plus, Trash2, X, History, Save } from 'lucide-react';
+import { AlertOctagon, CheckCircle2, FileText, Cpu, Search, Sparkles, Copy, Check, Download, Plus, Trash2, X, History, Save, Eye, Layers } from 'lucide-react';
 import { supabase } from '@/lib/supabaseBrowser';
+import ComponentInspectorModal from '@/components/ComponentInspectorModal';
 
 interface PanicSignature {
   id: string;
   keyword: string;
   component: string;
+  targetComponentId?: string;
+  schematicNet?: string;
   affectedDevices: string;
   symptom: string;
   fixSolution: string;
@@ -20,16 +23,20 @@ const DEFAULT_SIGNATURES: PanicSignature[] = [
     id: 'sig_1',
     keyword: 'prs0',
     component: 'حساس الضغط الجوي (Barometer) وفلاتة مدخل الشحن',
-    affectedDevices: 'iPhone 7 إلى iPhone 14 Pro Max',
+    targetComponentId: 'J3200',
+    schematicNet: 'I2C0_SDA',
+    affectedDevices: 'iPhone 7 إلى iPhone 15 Pro Max',
     symptom: 'إعادة تشغيل (ريستارت) متكرر كل 3 دقائق بالدقيقة والثانية.',
-    fixSolution: 'استبدال فلاتة فلاتة الشحن الأصلية أو فحص مسار I2C0_SDA/SCL المتصل بالحساس.',
+    fixSolution: 'استبدال فلاتة الشحن السفلية الأصلية أو فحص مسار I2C0_SDA/SCL والمقاومة R4001 بقيمة 2.2KΩ.',
     dangerLevel: 'HIGH',
   },
   {
     id: 'sig_2',
     keyword: 'mic2',
     component: 'المايك الثانوي وفلاتة زر الباور / الفلاش',
-    affectedDevices: 'iPhone 11, 11 Pro, 12, 13',
+    targetComponentId: 'J2000',
+    schematicNet: 'PP1V8_ALWAYS',
+    affectedDevices: 'iPhone 11, 11 Pro, 12, 13, 14',
     symptom: 'ريستارت مفاجئ كل 180 ثانية مع توقف أزرار الصوت أو الفلاش.',
     fixSolution: 'تغيير فلاتة الفلاش وزر الباور العلوية (Power/Flash Flex Cable).',
     dangerLevel: 'MEDIUM',
@@ -38,6 +45,7 @@ const DEFAULT_SIGNATURES: PanicSignature[] = [
     id: 'sig_3',
     keyword: 'mic1',
     component: 'المايك الأساسي السفلي في فلاتة الشحن',
+    targetComponentId: 'J3200',
     affectedDevices: 'جميع موديلات iPhone و iPad',
     symptom: 'ريستارت دوري مع انقطاع صوت المكالمات أو عدم تسجيل مذكرات الصوت.',
     fixSolution: 'استبدال فلاتة الشحن السفلية (Charging Port Flex).',
@@ -46,16 +54,20 @@ const DEFAULT_SIGNATURES: PanicSignature[] = [
   {
     id: 'sig_4',
     keyword: 'tg0b',
-    component: 'دائرة قياس سعة البطارية (Battery Gas Gauge / I2C Bus)',
-    affectedDevices: 'iPhone X, XR, XS, 11, 12, 13, 14',
+    component: 'دائرة قياس سعة وتيار البطارية (Battery Gas Gauge / I2C Bus)',
+    targetComponentId: 'U3300',
+    schematicNet: 'PP_BATT_VCC',
+    affectedDevices: 'iPhone X, XR, XS, 11, 12, 13, 14, 15',
     symptom: 'ريستارت متكرر كل 3 دقائق، وعدم ظهور نسبة البطارية (علامة - أو 0%).',
-    fixSolution: 'فحص ريش البطارية، مسار BSI/SWI، مقاومات رفع ناقل I2C بقيمة 2.2KΩ، أو تجربة بطارية أصلية أخرى.',
+    fixSolution: 'فحص ريش البطارية J2500، مسار BSI/SWI، مقاومات رفع ناقل I2C، أو تجربة بطارية أصلية أخرى.',
     dangerLevel: 'HIGH',
   },
   {
     id: 'sig_5',
     keyword: 'aop panic',
     component: 'معالج المستشعرات المستمر (Always-on Processor / FaceID / Proximity)',
+    targetComponentId: 'J4500',
+    schematicNet: 'PP1V8_ALWAYS',
     affectedDevices: 'iPhone X حتى iPhone 15 Pro',
     symptom: 'ريستارت متكرر مع سخونة في أعلى الشاشة أو توقف مستشعر التقارب.',
     fixSolution: 'فصل فلاتة السماعة العلوية ومستشعر الإضاءة (Ear Speaker Flex) وتشغيل الهاتف بدونها للتأكد.',
@@ -63,48 +75,113 @@ const DEFAULT_SIGNATURES: PanicSignature[] = [
   },
   {
     id: 'sig_6',
+    keyword: 'i2c0',
+    component: 'شريحة تنظيم الشحن والناقل الرئيسي (Tigris / Hydra / Tristar)',
+    targetComponentId: 'U3300',
+    schematicNet: 'I2C0_SDA',
+    affectedDevices: 'iPhone 8 إلى iPhone 15 Pro Max',
+    symptom: 'تعليق ناقل البيانات التسلسلي I2C0، شحن بطيء، أو ريستارت عند الشحن.',
+    fixSolution: 'فحص ممانعة مساري I2C0_SDA و I2C0_SCL (الممانعة 0.510V) وسلامة مقاومات الرفع R4001 و R4002 واستبدال شريحة الشحن U3300.',
+    dangerLevel: 'CRITICAL',
+  },
+  {
+    id: 'sig_7',
+    keyword: 'i2c1',
+    component: 'آيسي الصوت الرئيسي ومضخمات السبيكر (Audio Codec / Speaker Amps)',
+    targetComponentId: 'U3100',
+    schematicNet: 'I2C1_SDA',
+    affectedDevices: 'iPhone 7, 8, X, 11, 12, 13',
+    symptom: 'تعليق تطبيق التسجيل، غياب الصوت تماماً أثناء المكالمات، ريستارت دوري.',
+    fixSolution: 'إعادة شبلنة أو استبدال آيسي الصوت الكبير U3100 وفحص مسار I2C1.',
+    dangerLevel: 'HIGH',
+  },
+  {
+    id: 'sig_8',
+    keyword: 'ans panic',
+    component: 'وحدة الذاكرة التخزينية السريعة (Apple NVMe NAND Storage Controller)',
+    targetComponentId: 'U2600',
+    schematicNet: 'PP_NAND_2V5',
+    affectedDevices: 'iPhone X إلى iPhone 15 Pro Max',
+    symptom: 'شاشة زرقاء أو حمراء، تعليق متكرر على اللوجو، وفشل تثبيت السوفتوير كود 4013 أو 9.',
+    fixSolution: 'فحص ريجسترات تغذية الذاكرة 0.9V و 2.5V و 1.8V وإعادة فك وشبلنة شريحة الـ NAND أو برمجتها.',
+    dangerLevel: 'CRITICAL',
+  },
+  {
+    id: 'sig_9',
     keyword: 'wdt timeout',
     component: 'مؤقت الحماية ومسارات الاتصال البيني (Watchdog Timer / I2C Hang)',
+    targetComponentId: 'U2000',
+    schematicNet: 'ALL_SYS_PWRGD',
     affectedDevices: 'أجهزة iOS وأندرويد (Snapdragon / Exynos)',
     symptom: 'تجمد الجهاز لثوانٍ ثم انطفاء مفاجئ نتيجة تعليق أحد مسارات البيانات.',
     fixSolution: 'فحص ممانعات خطوط I2C والـ SPI، والتأكد من عدم وجود شورت في أجهزة الاستشعار أو آيسي الصوت (Audio Codec).',
     dangerLevel: 'CRITICAL',
   },
   {
-    id: 'sig_7',
+    id: 'sig_10',
     keyword: 'smc_panic',
     component: 'متحكم إدارة النظام في الماك بوك (Apple SMC / T2 Controller)',
+    targetComponentId: 'U7800',
+    schematicNet: 'SMC_RESET_L',
     affectedDevices: 'MacBook Pro / MacBook Air (Intel & Apple Silicon)',
     symptom: 'مروحة اللابتوب تعمل بأقصى سرعة ثم ينطفئ الجهاز فوراً (Kernel Panic).',
-    fixSolution: 'فحص حساسات الحرارة الموزعة على البوردة ومسار SMBUS الخاص بالبطارية والشاحن.',
+    fixSolution: 'فحص حساسات الحرارة الموزعة على البوردة ومسار SMBUS الخاص بالبطارية والشاحن ومسار SMC_RESET_L.',
     dangerLevel: 'CRITICAL',
   },
   {
-    id: 'sig_8',
+    id: 'sig_11',
     keyword: 'kernel_task',
     component: 'نواة النظام ومسارات الذاكرة (Kernel / Memory Controller)',
-    affectedDevices: 'MacBook Pro / iMac / Mac Pro',
-    symptom: 'توقف مفاجئ مع شاشة رمادية أو إعادة تشغيل مستمرة بدون سبب واضح.',
-    fixSolution: 'فحص شرائح الذاكرة RAM، موسفيتات تغذية المعالج، أو تثبيت نظام macOS نظيف.',
+    targetComponentId: 'PL601',
+    schematicNet: '+VCORE',
+    affectedDevices: 'MacBook Pro / iMac / Dell Latitude / ThinkPad',
+    symptom: 'توقف مفاجئ مع شاشة رمادية أو استهلاك المعالج 100% وإعادة تشغيل مستمرة.',
+    fixSolution: 'فحص شرائح الذاكرة RAM، كويلات وموسفيتات تغذية المعالج VCORE، أو فحص حساس درجات الحرارة.',
     dangerLevel: 'CRITICAL',
   },
   {
-    id: 'sig_9',
+    id: 'sig_12',
     keyword: 'thermalmonitord',
     component: 'نظام مراقبة الحرارة (Thermal Management System)',
+    targetComponentId: 'U5500',
+    schematicNet: 'SMBUS_SDA',
     affectedDevices: 'iPhone و iPad و MacBook',
-    symptom: 'سخونة شديدة ثم إغلاق تلقائي للحماية من الحرارة.',
-    fixSolution: 'فحص أنبوب الحرارة (Heat Pipe)، المعجون الحراري، أو حساسات الحرارة.',
+    symptom: 'سخونة شديدة ثم إغلاق تلقائي للحماية من الحرارة بعد 3 دقائق.',
+    fixSolution: 'فحص حساس تراك باد الماك بوك (Trackpad Flex) أو حساس فلاتة شحن الآيفون والمعجون الحراري.',
     dangerLevel: 'HIGH',
   },
   {
-    id: 'sig_10',
+    id: 'sig_13',
     keyword: 'baseband panic',
-    component: 'معالج الاتصالات (Baseband / Modem)',
+    component: 'معالج الاتصالات ومودم الشبكة (Baseband Modem / Qualcomm SDX)',
+    targetComponentId: 'U3100_BB',
+    schematicNet: 'PP_VDD_MAIN',
     affectedDevices: 'iPhone و iPad مع LTE/5G',
-    symptom: 'فقدان الإشارة أو عدم القدرة على الاتصال بالشبكة بعد الريستارت.',
-    fixSolution: 'فحص آيسي الـ Baseband، مقاومات الطاقة، أو إعادة تثبيت الفيرموير.',
+    symptom: 'فقدان الإشارة، البحث المستمر عن الشبكة (Searching)، ريستارت متكرر.',
+    fixSolution: 'فحص آيسي الـ Baseband PMIC، خطوط التغذية الـ BUCK، وسلامة اللحام بين طبقتي البوردة (Interposer Pads).',
     dangerLevel: 'HIGH',
+  },
+  {
+    id: 'sig_14',
+    keyword: 'dpc watchdog violation',
+    component: 'قرص التخزين الصلب ووحدة الـ PCIe (Laptop NVMe M.2 SSD)',
+    targetComponentId: 'JSSD1',
+    schematicNet: '+3.3V_SSD',
+    affectedDevices: 'لابتوبات Dell, HP, Lenovo, Asus (Windows)',
+    symptom: 'شاشة زرقاء BSOD برمز DPC_WATCHDOG_VIOLATION وتجمد مؤشر الماوس.',
+    fixSolution: 'فحص مكثف تنعيم خط 3.3V_SSD على سوكت الـ M.2، استبدال قرص الـ SSD، أو تحديث فيرموير التخزين.',
+    dangerLevel: 'CRITICAL',
+  },
+  {
+    id: 'sig_15',
+    keyword: 'bridgeos crash',
+    component: 'شريحة المعالجة الأمنية بالماك بوك (T2 BridgeOS Security Chip)',
+    targetComponentId: 'U7800',
+    schematicNet: 'PP1V8_SLPS2R',
+    affectedDevices: 'MacBook Pro 2018-2020 T2',
+    symptom: 'انطفاء مفاجئ في وضع السكون Sleep Mode، أو رسالة BridgeOS Crash بعد الإقلاع.',
+    fixSolution: 'استعادة السوفتوير عبر تطبيق Apple Configurator 2 (DFU Mode) وفحص فولتيات الـ SLPS2R.',
+    dangerLevel: 'CRITICAL',
   },
 ];
 
@@ -124,6 +201,7 @@ export default function PanicLogAnalyzer() {
     dangerLevel: 'MEDIUM' as 'CRITICAL' | 'HIGH' | 'MEDIUM',
   });
   const [savedLogs, setSavedLogs] = useState<Array<{ id: string; date: string; text: string; results: PanicSignature[] }>>([]);
+  const [selectedInspectorComp, setSelectedInspectorComp] = useState<string | null>(null);
 
   // تحميل البصمات المخصصة والسجلات المحفوظة من Supabase
   useEffect(() => {
@@ -562,6 +640,24 @@ Missing sensor(s): Prs0, Mic2 ...`}
                   <div className="text-xs font-bold text-emerald-300 bg-emerald-950/30 p-2.5 rounded-lg border border-emerald-500/30">
                     <strong className="text-emerald-400">🛠️ الحل الفوري المقترح:</strong> {sig.fixSolution}
                   </div>
+
+                  {sig.targetComponentId && (
+                    <div className="pt-1 flex items-center justify-between gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedInspectorComp(sig.targetComponentId || null)}
+                        className="px-3 py-1.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 hover:text-white text-[11px] font-bold flex items-center gap-1.5 transition border border-purple-500/30 shadow-sm"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>فحص بدائل ومخطط المكون ({sig.targetComponentId})</span>
+                      </button>
+                      {sig.schematicNet && (
+                        <span className="text-[10px] text-gray-400 font-mono">
+                          المسار: <strong className="text-amber-400">{sig.schematicNet}</strong>
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -717,6 +813,14 @@ Missing sensor(s): Prs0, Mic2 ...`}
             </div>
           </div>
         </div>
+      )}
+      {/* نافذة فحص المكون وبدائله الهندسية */}
+      {selectedInspectorComp && (
+        <ComponentInspectorModal
+          isOpen={!!selectedInspectorComp}
+          componentName={selectedInspectorComp}
+          onClose={() => setSelectedInspectorComp(null)}
+        />
       )}
     </div>
   );

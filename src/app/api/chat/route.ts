@@ -133,7 +133,7 @@ async function chatHandler(req: NextRequest) {
   }
 
   // استخراج بيانات المخططات والبوردات وقاعدة الخبرات المضغوطة للمساعد
-  const expertContext = buildExpertPromptContext(message || '');
+  const expertContext = buildExpertPromptContext(message || '', diagnosticContext?.specialty, diagnosticContext?.deviceModel);
 
   // البحث الذكي بالبارت نمبر في رسالة المستخدم
   let boardSearchContext = '';

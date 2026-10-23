@@ -79,6 +79,9 @@ export default function VectorBoardViewCAD({
     if (boardName && boardName !== activeBoard.name && boardName !== activeBoard.boardCode) {
       const generated = generateVectorBoard(boardName);
       setActiveBoard(generated);
+      setScale(1);
+      setPanX(0);
+      setPanY(0);
       // ضبط أول مسار رئيسي تلقائياً
       if (generated.powerRails && generated.powerRails.length > 0) {
         setSelectedNet(generated.powerRails[0].rail);
@@ -104,6 +107,9 @@ export default function VectorBoardViewCAD({
   const handleSelectBoard = (targetNameOrCode: string) => {
     const newBoard = generateVectorBoard(targetNameOrCode);
     setActiveBoard(newBoard);
+    setScale(1);
+    setPanX(0);
+    setPanY(0);
     setBoardSearchInput('');
     setShowBoardDropdown(false);
     if (newBoard.powerRails && newBoard.powerRails.length > 0) {
@@ -254,13 +260,44 @@ export default function VectorBoardViewCAD({
     ctx.stroke();
     ctx.shadowBlur = 0;
 
-    // علامة الوجه والموديل في زاوية البوردة
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = 'bold 14px monospace';
+    // ثقوب التثبيت المعدنية والتأريض (Chassis Mounting Holes)
+    if (activeBoard.mountingHoles && activeBoard.mountingHoles.length > 0) {
+      activeBoard.mountingHoles.forEach((hole) => {
+        const hx = boardSide === 'BOTTOM' ? activeBoard.width - hole.x : hole.x;
+        // حلقة النحاس الأرضي المحيطة
+        ctx.fillStyle = '#334155';
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(hx, hole.y, hole.r + 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // الثقب الأوسط المجوف
+        ctx.fillStyle = '#020617';
+        ctx.beginPath();
+        ctx.arc(hx, hole.y, hole.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    // طباعة الحرير الهندسية (Silkscreen Real Markings)
+    if (activeBoard.silkscreenLabels && activeBoard.silkscreenLabels.length > 0) {
+      activeBoard.silkscreenLabels.forEach((lbl) => {
+        const lx = boardSide === 'BOTTOM' ? activeBoard.width - lbl.x - 200 : lbl.x;
+        ctx.fillStyle = lbl.color || '#94a3b8';
+        ctx.font = `bold ${lbl.size || 11}px monospace`;
+        ctx.fillText(lbl.text, lx, lbl.y);
+      });
+    }
+
+    // علامة الوجه والموديل وشكل البوردة
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = 'bold 12px monospace';
     ctx.fillText(
-      `${activeBoard.brand} ${activeBoard.model} [${activeBoard.boardCode}] • SIDE: ${boardSide}`,
+      `FORM: ${activeBoard.formFactor?.toUpperCase() || 'CAD'} • SIDE: ${boardSide}`,
       70,
-      85
+      150
     );
 
     // 3. تصفية المكونات حسب الوجه الحالي (TOP أو BOTTOM)

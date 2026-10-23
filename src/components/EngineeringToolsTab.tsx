@@ -3,6 +3,8 @@
 import React, { useState, useMemo } from 'react';
 import QuickDiodeEvaluatorModal from '@/components/QuickDiodeEvaluatorModal';
 import SilkScreenCheatSheetModal from '@/components/SilkScreenCheatSheetModal';
+import TopDiodeMatrixModal from '@/components/TopDiodeMatrixModal';
+import WorkshopCasesModal from '@/components/WorkshopCasesModal';
 import {
   Wrench,
   Smartphone,
@@ -454,6 +456,8 @@ const DIODE_MODE_DATA = {
 export default function EngineeringToolsTab() {
   const [showDiodeEvaluatorModal, setShowDiodeEvaluatorModal] = useState(false);
   const [showSilkScreenModal, setShowSilkScreenModal] = useState(false);
+  const [showTopDiodeModal, setShowTopDiodeModal] = useState(false);
+  const [showWorkshopCasesModal, setShowWorkshopCasesModal] = useState(false);
   const [category, setCategory] = useState<ToolCategory>('mobile');
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -626,6 +630,50 @@ export default function EngineeringToolsTab() {
           </div>
           <span className="px-3.5 py-2 rounded-xl bg-sky-500 text-slate-950 font-bold text-xs shrink-0 shadow-sm">
             فتح الدليل
+          </span>
+        </button>
+
+        {/* 3. جدول ممانعات أهم 20 موديلاً */}
+        <button
+          type="button"
+          onClick={() => setShowTopDiodeModal(true)}
+          className="p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/30 hover:border-emerald-500/60 hover:bg-emerald-500/15 text-right transition-all group shadow-sm flex items-center justify-between"
+        >
+          <div className="space-y-1 min-w-0 pr-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">📊</span>
+              <span className="font-black text-sm text-gray-900 dark:text-gray-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition">
+                جدول ممانعات أهم 20 موديلاً (Top 20 Diode Matrix)
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              مرجع قياسات الدايود القياسية لأجهزة iPhone 11-15، سامسونج S21-S24، وماك بوك ولابتوبات Dell و Lenovo.
+            </p>
+          </div>
+          <span className="px-3.5 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs shrink-0 shadow-sm">
+            عرض الممانعات
+          </span>
+        </button>
+
+        {/* 4. سجل حالات الورشة المؤكدة (تعلّم بوزن النجاح) */}
+        <button
+          type="button"
+          onClick={() => setShowWorkshopCasesModal(true)}
+          className="p-4 rounded-2xl bg-gradient-to-r from-purple-500/10 via-purple-500/5 to-transparent border border-purple-500/30 hover:border-purple-500/60 hover:bg-purple-500/15 text-right transition-all group shadow-sm flex items-center justify-between"
+        >
+          <div className="space-y-1 min-w-0 pr-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🏆</span>
+              <span className="font-black text-sm text-gray-900 dark:text-gray-100 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition">
+                سجل حالات الورشة المؤكدة (تعلّم بوزن النجاح)
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              استعراض الحالات المحلولة بنجاح بالورشة، والتصويت على الحلول، وتوثيق أعطال جديدة لترقية الذكاء الاصطناعي.
+            </p>
+          </div>
+          <span className="px-3.5 py-2 rounded-xl bg-purple-500 text-white font-bold text-xs shrink-0 shadow-sm">
+            سجل الورشة
           </span>
         </button>
       </div>
@@ -845,6 +893,19 @@ export default function EngineeringToolsTab() {
       <SilkScreenCheatSheetModal
         isOpen={showSilkScreenModal}
         onClose={() => setShowSilkScreenModal(false)}
+      />
+
+      {/* نافذة جدول ممانعات أهم 20 موديلاً */}
+      <TopDiodeMatrixModal
+        isOpen={showTopDiodeModal}
+        onClose={() => setShowTopDiodeModal(false)}
+      />
+
+      {/* نافذة سجل حالات الورشة المؤكدة (تعلّم بوزن النجاح) */}
+      <WorkshopCasesModal
+        isOpen={showWorkshopCasesModal}
+        onClose={() => setShowWorkshopCasesModal(false)}
+        defaultCategory={category === 'laptop' ? 'laptop' : 'mobile'}
       />
     </div>
   );

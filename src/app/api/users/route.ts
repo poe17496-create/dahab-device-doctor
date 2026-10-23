@@ -200,7 +200,7 @@ export async function POST(req: NextRequest) {
 
     const cleanUsername = String(username).trim();
     const cleanPassword = password || '123456';
-    const isUnlimited = subscriptionDays === 'unlimited' || subscriptionDays === undefined;
+    const isUnlimited = role === 'admin' || subscriptionDays === 'unlimited';
 
     let computedExpiresAt: string | undefined = undefined;
     if (!isUnlimited) {
@@ -208,7 +208,8 @@ export async function POST(req: NextRequest) {
         computedExpiresAt = expiresAt;
       } else {
         const d = new Date();
-        d.setDate(d.getDate() + Number(subscriptionDays || 30));
+        const days = Number(subscriptionDays) > 0 ? Number(subscriptionDays) : 30;
+        d.setDate(d.getDate() + days);
         computedExpiresAt = d.toISOString();
       }
     }
@@ -259,7 +260,7 @@ export async function POST(req: NextRequest) {
       specialty: specialty || 'فني صيانة إلكترونيات',
       password: cleanPassword,
       active: true,
-      subscriptionDays: isUnlimited ? undefined : Number(subscriptionDays),
+      subscriptionDays: isUnlimited ? undefined : Number(subscriptionDays || 30),
       expiresAt: computedExpiresAt,
       price: price !== undefined ? Number(price) : 2900,
     }) as UserAccount;

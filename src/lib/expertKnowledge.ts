@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { searchWorkshopCases, WorkshopCase } from './workshopCases';
 
 export interface ExpertPattern {
   symptom: string;
@@ -84,7 +85,7 @@ function loadPatterns(): ExpertPattern[] {
   return [];
 }
 
-// بحث متقدم وسريع في الأنماط المرجعية
+// بحث متقدم وسريع في الأنماط المرجعية مع عزل صارم للتخصص
 export function findRelevantPatterns(symptom: string, category?: string): ExpertPattern[] {
   const patterns = loadPatterns();
   if (!patterns.length) return [];
@@ -92,14 +93,29 @@ export function findRelevantPatterns(symptom: string, category?: string): Expert
   const queryTerms = symptom.toLowerCase().split(/[\s,._\-\/]+/).filter(t => t.length > 1);
   if (!queryTerms.length) return [];
 
+  const targetCat = mapSpecialtyToCategory(category);
+
   const scoredPatterns = patterns.map(pattern => {
+    const patternCategory = (pattern.category || '').toLowerCase();
+
+    // 🛡️ عزل صارم 100%: إذا كان الجهاز لابتوب نمنع تماماً أنماط الموبايل، والعكس بالعكس
+    if (targetCat === 'laptop') {
+      if (patternCategory.includes('mobile') || patternCategory.includes('phone') || patternCategory.includes('iphone') || patternCategory.includes('samsung')) {
+        return { pattern, score: -100 };
+      }
+    } else if (targetCat === 'mobile') {
+      if (patternCategory.includes('laptop') || patternCategory.includes('macbook') || patternCategory.includes('motherboard') || patternCategory.includes('dell')) {
+        return { pattern, score: -100 };
+      }
+    }
+
     let score = 0;
     const patternSymptom = (pattern.symptom || '').toLowerCase();
     const patternSolution = (pattern.solution || '').toLowerCase();
     
     // مكافأة مطابقة الفئة
     if (category && pattern.category && pattern.category.toLowerCase().includes(category.toLowerCase())) {
-      score += 2;
+      score += 4;
     }
 
     queryTerms.forEach(term => {
@@ -205,14 +221,33 @@ export function getCompressedExpertKnowledge(query: string, specialty?: string, 
   };
 }
 
-// صياغة سياق الذكاء الاصطناعي بدقة متناهية وبأقل استهلاك للتوكنز
+// صياغة سياق الذكاء الاصطناعي بدقة متناهية وبأقل استهلاك للتوكنز مع أولوية سجل حالات الورشة
 export function buildExpertPromptContext(query: string, specialty?: string, deviceModel?: string): string {
   const { expertPatterns, schematicContext } = getCompressedExpertKnowledge(query, specialty, deviceModel);
+  const targetCategory = mapSpecialtyToCategory(specialty);
+
+  // 1. البحث في سجل الحالات المؤكدة من الورشة بوزن النجاح
+  const workshopCases = searchWorkshopCases(query, targetCategory as any, deviceModel);
 
   let context = '';
 
+  // 🏆 أولوية قصوى: حالات الورشة المؤكدة بنجاح
+  if (workshopCases.length > 0) {
+    context += `### 🏆 سوابق وحالات مؤكدة 100% من واقع الورشة الهندسية (معتمدة بأعلى أوزان النجاح):\n`;
+    workshopCases.slice(0, 3).forEach((wc, idx) => {
+      context += `الحالة المؤكدة ${idx + 1} [أولوية نجاح مثبتة: ${wc.weight} صوت تأكيد]:\n`;
+      context += `- الجهاز: ${wc.model} ${wc.boardCode ? `(${wc.boardCode})` : ''}\n`;
+      context += `- العَرَض الدقيق: ${wc.symptom}\n`;
+      if (wc.measurements?.bootCurrentmA) {
+        context += `- سحب الباور سبلاي: ${wc.measurements.bootCurrentmA}\n`;
+      }
+      context += `- السبب الجذري المؤكد: ${wc.rootCause}\n`;
+      context += `- الحل العملي الناجح: ${wc.solution}\n\n`;
+    });
+  }
+
   if (schematicContext) {
-    context += `\n### بيانات المخطط ومصفوفة الهاردوير للجهاز (${schematicContext.deviceTitle || schematicContext.deviceModel}):\n`;
+    context += `### بيانات المخطط ومصفوفة الهاردوير للجهاز (${schematicContext.deviceTitle || schematicContext.deviceModel}):\n`;
     if (schematicContext.boardCode) {
       context += `- كود المازربورد (Board Part Number): ${schematicContext.boardCode}\n`;
     }
@@ -245,7 +280,7 @@ export function buildExpertPromptContext(query: string, specialty?: string, devi
   }
 
   if (context) {
-    context = `\n--- [معطيات المخططات وقاعدة الخبرات الهندسية المضغوطة] ---\n${context}القاعدة الإلزامية: استخدم المعطيات المرجعية والرموز وأسماء الآيسيات وكود المازربورد المذكور أعلاه كدليل أساسي في إجابتك وتشخيصك.\n--- [نهاية المعطيات المرجعية] ---\n\n`;
+    context = `\n--- [معطيات المخططات وسجل حالات الورشة الهندسية المعتمدة] ---\n${context}القاعدة الإلزامية: إذا وُجدت "حالات مؤكدة 100% من واقع الورشة"، قدم حلها فوراً كأول توصية عملية رئيسية للفني، واستخدم المعطيات المرجعية والرموز وأسماء الآيسيات وكود المازربورد المذكور أعلاه كدليل أساسي في إجابتك وتشخيصك.\n--- [نهاية المعطيات المرجعية] ---\n\n`;
   }
 
   return context;

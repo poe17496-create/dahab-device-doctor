@@ -1522,14 +1522,14 @@ export default function AdminDashboardPage() {
                           </td>
 
                           <td className="p-3">
-                            {u.role === 'admin' || !u.expiresAt ? (
+                            {u.role === 'admin' ? (
                               <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">
-                                ∞ غير محدود (دائم)
+                                ∞ دائم (مشرف عام)
                               </span>
                             ) : isExpired ? (
-                              <span className="px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 font-black text-[10px] border border-rose-500/30 flex items-center gap-1 max-w-fit">
+                              <span className="px-2.5 py-1 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 font-black text-[10px] border border-rose-500/40 flex items-center gap-1 max-w-fit animate-pulse">
                                 <AlertTriangle className="w-3 h-3" />
-                                <span>انتهى الاشتراك</span>
+                                <span>انتهت الصلاحية (مفصول 🔴)</span>
                               </span>
                             ) : (
                               <div className="space-y-0.5">
