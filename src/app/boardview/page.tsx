@@ -123,6 +123,7 @@ export default function BoardViewPage() {
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [customImage, setCustomImage] = useState<string | null>(null);
+  const [isUserUploaded, setIsUserUploaded] = useState(false);
   const [sidePanelOpen, setSidePanelOpen] = useState(true);
   const [netSearchQuery, setNetSearchQuery] = useState('');
   const [showAddNetModal, setShowAddNetModal] = useState(false);
@@ -335,8 +336,11 @@ export default function BoardViewPage() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  // جلب صورة البوردة تلقائياً بناءً على الموديل والفئة المحددة دون الحاجة لإعادة كتابتها
+  // جلب صورة البوردة تلقائياً بناءً على الموديل والفئة المحددة (فقط إذا لم يكن المستخدم قد رفع صورة مخصصة)
   useEffect(() => {
+    // إذا قام الفني برفع صورة بورد مخصصة بيده أو التقطها بالميكروسكوب، لا نقوم أبداً باستبدالها
+    if (isUserUploaded) return;
+
     const targetBoard = boardName || searchInput;
     if (!targetBoard) return;
 
@@ -349,16 +353,17 @@ export default function BoardViewPage() {
     })
       .then((res) => res.json())
       .then((data) => {
-        if (data.success && data.imageUrl) {
+        if (data.success && data.imageUrl && !isUserUploaded) {
           setCustomImage(data.imageUrl);
         }
       })
       .catch((e) => console.error('Auto board fetch error:', e));
-  }, [boardName, boardCategory]);
+  }, [boardName, boardCategory, isUserUploaded]);
 
   const handleSearch = async () => {
     if (!searchInput.trim()) return;
 
+    setIsUserUploaded(false);
     setIsSearching(true);
     setBoardName(searchInput);
 
@@ -505,8 +510,10 @@ export default function BoardViewPage() {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
+        setIsUserUploaded(true);
         setCustomImage(reader.result as string);
-        setBoardName(file.name);
+        setViewMode('photo');
+        setBoardName(file.name.replace(/\.[^/.]+$/, ''));
       };
       reader.readAsDataURL(file);
     }
@@ -892,6 +899,7 @@ export default function BoardViewPage() {
                         key={`bv-pn-${i}`}
                         type="button"
                         onClick={() => {
+                          setIsUserUploaded(false);
                           setSearchInput(`${m.brand} ${m.model}`);
                           setBoardSearchResults(null);
                           setShowSearchDropdown(false);
@@ -919,6 +927,7 @@ export default function BoardViewPage() {
                         key={`bv-em-${i}`}
                         type="button"
                         onClick={() => {
+                          setIsUserUploaded(false);
                           setSearchInput(`${m.brand} ${m.model}`);
                           setBoardSearchResults(null);
                           setShowSearchDropdown(false);
@@ -943,6 +952,7 @@ export default function BoardViewPage() {
                         key={`bv-sim-${i}`}
                         type="button"
                         onClick={() => {
+                          setIsUserUploaded(false);
                           setSearchInput(`${s.brand} ${s.model}`);
                           setBoardSearchResults(null);
                           setShowSearchDropdown(false);
@@ -1397,6 +1407,7 @@ export default function BoardViewPage() {
                 selectedNet={selectedNet}
                 onNetSelect={(net) => setSelectedNet(net)}
                 onBoardChange={(newBoard) => {
+                  setIsUserUploaded(false);
                   setBoardName(newBoard);
                   setSearchInput(newBoard);
                 }}
@@ -1420,6 +1431,12 @@ export default function BoardViewPage() {
               onExportConfig={handleExportConfig}
               onImportConfig={handleImportConfig}
               onAnalyzeBoard={handleAnalyzeBoard}
+              onImageUpload={(compressedImage, originalFile) => {
+                setIsUserUploaded(true);
+                setCustomImage(compressedImage);
+                setBoardName(originalFile.name);
+                setViewMode('photo');
+              }}
               onSchematicToggle={setShowSchematicOverlay}
               editingNetId={editingNetId}
               className="h-full"
@@ -1754,6 +1771,7 @@ export default function BoardViewPage() {
             isOpen={showBoardViewMicroscope}
             onClose={() => setShowBoardViewMicroscope(false)}
             onCapture={(img) => {
+              setIsUserUploaded(true);
               setCustomImage(img);
               setBoardName('Microscope Capture');
               setViewMode('photo');
