@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { ReferenceSource } from '@/lib/types';
-import { ExternalLink, BookOpen, Youtube, Cpu, MessageSquare, Wrench, Search, Scale, Shield, Filter, Plus, X, Tag, Globe, FileText, Video } from 'lucide-react';
+import { ExternalLink, BookOpen, Youtube, Cpu, MessageSquare, Wrench, Search, Scale, Shield, Filter, Plus, X, Tag, Globe, FileText, Video, Zap } from 'lucide-react';
 import { supabase } from '@/lib/supabaseBrowser';
 
 interface SourcesReferencesProps {
