@@ -65,6 +65,7 @@ export default function VectorBoardViewCAD({
   const [netSearchQuery, setNetSearchQuery] = useState('');
   const [boardSearchInput, setBoardSearchInput] = useState('');
   const [showBoardDropdown, setShowBoardDropdown] = useState(false);
+  const [isNetsBoxOpen, setIsNetsBoxOpen] = useState(true);
 
   // تحكم الكاميرا (Pan & Zoom)
   const [scale, setScale] = useState(1);
@@ -669,39 +670,56 @@ export default function VectorBoardViewCAD({
           </div>
         )}
 
-        {/* قائمة المسارات الجانبية السريعة */}
-        <div className="absolute top-4 right-4 z-20 max-h-80 w-56 bg-gray-950/90 border border-gray-800 rounded-2xl p-2.5 backdrop-blur-md overflow-hidden flex flex-col shadow-xl">
-          <div className="text-[11px] font-black text-gray-300 pb-1.5 border-b border-gray-800 flex items-center justify-between">
-            <span className="flex items-center gap-1">
-              <Zap className="w-3.5 h-3.5 text-amber-500" /> مسارات البوردة (Nets):
+        {/* قائمة المسارات الجانبية السريعة - منقولة لأسفل لتجنب أي تداخل مع قائمة البحث */}
+        <div className="absolute top-24 md:top-28 right-4 z-20 w-56 bg-gray-950/95 border border-gray-800 rounded-2xl p-2.5 backdrop-blur-md shadow-2xl transition-all flex flex-col">
+          <div
+            className="text-[11px] font-black text-gray-300 pb-1.5 border-b border-gray-800 flex items-center justify-between cursor-pointer select-none"
+            onClick={() => setIsNetsBoxOpen(!isNetsBoxOpen)}
+          >
+            <span className="flex items-center gap-1.5 text-amber-400">
+              <Zap className="w-3.5 h-3.5 text-amber-500" />
+              <span>مسارات البوردة (Nets)</span>
             </span>
-            <span className="text-[9px] font-mono text-dahab-400">{availableNets.length}</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-gray-800 text-dahab-400 font-bold">
+                {availableNets.length}
+              </span>
+              <button
+                type="button"
+                className="text-gray-400 hover:text-white text-xs px-1"
+                title={isNetsBoxOpen ? 'تصغير / إخفاء القائمة' : 'فتح القائمة'}
+              >
+                {isNetsBoxOpen ? '▲' : '▼'}
+              </button>
+            </div>
           </div>
 
-          <div className="overflow-y-auto space-y-1 pt-1.5 flex-1 pr-1">
-            {availableNets
-              .filter((n) => !netSearchQuery || n.toLowerCase().includes(netSearchQuery.toLowerCase()))
-              .map((net) => {
-                const isActive = selectedNet && net.toLowerCase() === selectedNet.toLowerCase();
-                return (
-                  <button
-                    key={net}
-                    onClick={() => {
-                      setSelectedNet(net);
-                      if (onNetSelect) onNetSelect(net);
-                    }}
-                    className={`w-full text-right px-2.5 py-1.5 rounded-xl text-[10px] font-mono font-bold transition flex items-center justify-between ${
-                      isActive
-                        ? 'bg-amber-500 text-slate-950 shadow-md font-black'
-                        : 'text-gray-300 hover:bg-gray-850 hover:text-white'
-                    }`}
-                  >
-                    <span className="truncate">{net}</span>
-                    {isActive && <CheckCircle2 className="w-3 h-3 shrink-0" />}
-                  </button>
-                );
-              })}
-          </div>
+          {isNetsBoxOpen && (
+            <div className="overflow-y-auto max-h-72 space-y-1 pt-1.5 flex-1 pr-1">
+              {availableNets
+                .filter((n) => !netSearchQuery || n.toLowerCase().includes(netSearchQuery.toLowerCase()))
+                .map((net) => {
+                  const isActive = selectedNet && net.toLowerCase() === selectedNet.toLowerCase();
+                  return (
+                    <button
+                      key={net}
+                      onClick={() => {
+                        setSelectedNet(net);
+                        if (onNetSelect) onNetSelect(net);
+                      }}
+                      className={`w-full text-right px-2.5 py-1.5 rounded-xl text-[10px] font-mono font-bold transition flex items-center justify-between ${
+                        isActive
+                          ? 'bg-amber-500 text-slate-950 shadow-md font-black'
+                          : 'text-gray-300 hover:bg-gray-850 hover:text-white'
+                      }`}
+                    >
+                      <span className="truncate">{net}</span>
+                      {isActive && <CheckCircle2 className="w-3 h-3 shrink-0" />}
+                    </button>
+                  );
+                })}
+            </div>
+          )}
         </div>
 
       </div>
