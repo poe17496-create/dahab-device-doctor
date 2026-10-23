@@ -19,8 +19,13 @@ import {
   MicOff,
   HardDrive,
   Camera,
+  Activity,
+  Cpu,
+  Sparkles,
 } from 'lucide-react';
 import MicroscopeCameraModal from '@/components/MicroscopeCameraModal';
+import QuickDiodeEvaluatorModal from '@/components/QuickDiodeEvaluatorModal';
+import SilkScreenCheatSheetModal from '@/components/SilkScreenCheatSheetModal';
 import { universalBoardSearch } from '@/lib/universalBoardSearch';
 
 interface DiagnosticFormProps {
@@ -248,6 +253,8 @@ export default function DiagnosticForm({
   const [loadingStep, setLoadingStep] = useState(0);
   const [boardSuggestions, setBoardSuggestions] = useState<any>(null);
   const [showBoardSuggestions, setShowBoardSuggestions] = useState(false);
+  const [showDiodeModal, setShowDiodeModal] = useState(false);
+  const [showSilkScreenModal, setShowSilkScreenModal] = useState(false);
 
   useEffect(() => {
     if (!deviceModel || deviceModel.length < 3) {
@@ -561,6 +568,32 @@ export default function DiagnosticForm({
         </div>
       </div>
 
+      {/* أدوات المعمل السريعة (مقيّم الممانعة + دليل رموز السلك سكرين) */}
+      <div className="flex items-center justify-between flex-wrap gap-2 p-3 rounded-2xl bg-gradient-to-r from-amber-500/5 via-emerald-500/5 to-blue-500/5 border border-gray-200 dark:border-gray-800">
+        <span className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+          <Sparkles className="w-4 h-4 text-dahab-500" />
+          <span>أدوات فحص وسلك سكرين فورية:</span>
+        </span>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setShowDiodeModal(true)}
+            className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/40 border border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+          >
+            <Activity className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span>⚡ مقيّم الممانعة السريع (Diode Mode)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowSilkScreenModal(true)}
+            className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/30 dark:hover:bg-amber-900/40 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+          >
+            <Cpu className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+            <span>🏷️ دليل رموز السلك سكرين (PU, PQ, PL)</span>
+          </button>
+        </div>
+      </div>
+
       {/* 1. اختيار التخصص الدقيق (قائمة منسدلة مبسطة) */}
       <div className="space-y-2 animate-fadeIn">
         <label className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
@@ -673,19 +706,7 @@ export default function DiagnosticForm({
             </div>
           )}
 
-          {/* شرائح الاختيار السريع للموديل */}
-          <div className="flex flex-wrap gap-2">
-            {activeCategoryData.chips.map((chip, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => setDeviceModel(chip)}
-                className="text-[11px] px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 border border-transparent hover:border-gray-300 text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-300 transition-colors"
-              >
-                {chip}
-              </button>
-            ))}
-          </div>
+
         </div>
 
         {/* زر إظهار لوحة أجهزة المعمل */}
@@ -837,20 +858,7 @@ export default function DiagnosticForm({
           </div>
         )}
 
-        {/* أزرار سريعة للأعطال الشائعة */}
-        <div className="flex flex-wrap gap-2 pt-1 items-center">
-          <span className="text-[11px] font-bold text-gray-600 dark:text-gray-400 py-1">أعطال سريعة:</span>
-          {activeCategoryData.prompts.map((q, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => setPrompt(q)}
-              className="text-[11px] px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 border border-gray-200 text-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800 dark:border-gray-800 dark:text-gray-400 dark:hover:text-dahab-300 transition-colors"
-            >
-              {q}
-            </button>
-          ))}
-        </div>
+
       </div>
 
       {/* 4. رفع الصور وزر التشخيص الأساسي */}
@@ -957,6 +965,18 @@ export default function DiagnosticForm({
         isOpen={showMicroscopeModal}
         onClose={() => setShowMicroscopeModal(false)}
         onCapture={(img) => setImageBase64(img)}
+      />
+
+      {/* نافذة مقيم الممانعة السريع */}
+      <QuickDiodeEvaluatorModal
+        isOpen={showDiodeModal}
+        onClose={() => setShowDiodeModal(false)}
+      />
+
+      {/* نافذة دليل رموز السلك سكرين على البوردة */}
+      <SilkScreenCheatSheetModal
+        isOpen={showSilkScreenModal}
+        onClose={() => setShowSilkScreenModal(false)}
       />
     </div>
   );

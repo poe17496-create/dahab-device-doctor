@@ -914,12 +914,6 @@ export default function DahabFixAiConsole() {
                               suspectedComponent={metrics?.primarySuspectComponent}
                             />
                           )}
-                          {/* Feedback Widget */}
-                          <FeedbackWidget
-                            sessionId={activeSessionId}
-                            deviceModel={deviceModel}
-                            aiOutput={output}
-                          />
                         </div>
                       }
                       visualContent={
