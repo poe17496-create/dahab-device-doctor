@@ -30,6 +30,7 @@ export default function AdminDashboard() {
 
     // جلب بيانات المستخدمين مع حالة الاتصال
     const fetchUsers = async () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       try {
         const res = await fetch('/api/admin/users');
         if (res.ok) {
@@ -45,9 +46,16 @@ export default function AdminDashboard() {
 
     fetchUsers();
 
-    // تحديث الحالة كل 30 ثانية
-    const interval = setInterval(fetchUsers, 30000);
-    return () => clearInterval(interval);
+    // تحديث الحالة كل 60 ثانية لتخفيف استهلاك السيرفر
+    const interval = setInterval(fetchUsers, 60000);
+    const handleVisibility = () => {
+      if (!document.hidden) fetchUsers();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, []);
 
   if (!stats) {

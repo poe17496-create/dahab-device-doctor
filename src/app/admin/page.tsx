@@ -135,6 +135,7 @@ export default function AdminDashboardPage() {
   }, []);
 
   const fetchData = async () => {
+    if (typeof document !== 'undefined' && document.hidden) return;
     try {
       const usersRes = await fetch('/api/users', { cache: 'no-store' });
       if (!usersRes.ok) {
@@ -185,8 +186,15 @@ export default function AdminDashboardPage() {
         const stored = JSON.parse(localStorage.getItem('dahab_schematics') || '[]');
         setSchematics(stored);
       } catch (e) {}
-      const interval = setInterval(fetchData, 20000);
-      return () => clearInterval(interval);
+      const interval = setInterval(fetchData, 60000); // تحديث كل دقيقة بدلاً من 20 ثانية لتوفير موارد الخادم
+      const handleVisibility = () => {
+        if (!document.hidden) fetchData();
+      };
+      document.addEventListener('visibilitychange', handleVisibility);
+      return () => {
+        clearInterval(interval);
+        document.removeEventListener('visibilitychange', handleVisibility);
+      };
     }
   }, [isAdminAuthenticated]);
 

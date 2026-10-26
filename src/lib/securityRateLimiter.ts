@@ -24,9 +24,9 @@ interface RateLimitRecord {
 const ipRequestMap = new Map<string, RateLimitRecord>();
 const loginAttemptMap = new Map<string, RateLimitRecord>();
 
-// Periodic memory cleanup every 5 minutes
+// Periodic memory cleanup every 5 minutes (unref to not keep serverless lambdas alive)
 if (typeof setInterval !== 'undefined') {
-  setInterval(() => {
+  const timer = setInterval(() => {
     const now = Date.now();
     ipRequestMap.forEach((record, ip) => {
       if (now > record.resetTime) {
@@ -39,6 +39,9 @@ if (typeof setInterval !== 'undefined') {
       }
     });
   }, 5 * 60 * 1000);
+  if (timer && typeof timer === 'object' && 'unref' in timer) {
+    (timer as any).unref();
+  }
 }
 
 /**

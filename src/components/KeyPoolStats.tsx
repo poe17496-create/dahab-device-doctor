@@ -29,6 +29,7 @@ export default function KeyPoolStats() {
   const [loading, setLoading] = useState(true);
 
   const fetchStats = async () => {
+    if (typeof document !== 'undefined' && document.hidden) return;
     try {
       const res = await fetch('/api/admin/key-pool-stats');
       if (res.ok) {
@@ -59,8 +60,15 @@ export default function KeyPoolStats() {
 
   useEffect(() => {
     fetchStats();
-    const interval = setInterval(fetchStats, 30000); // Refresh every 30s
-    return () => clearInterval(interval);
+    const interval = setInterval(fetchStats, 60000); // Refresh every 60s
+    const handleVisibility = () => {
+      if (!document.hidden) fetchStats();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, []);
 
   if (loading) {

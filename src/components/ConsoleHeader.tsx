@@ -58,6 +58,7 @@ export default function ConsoleHeader({
     if (!sessionToken) return;
 
     const sendHeartbeat = async () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       try {
         const deviceInfo = `${navigator.platform || 'PC'} - ${navigator.userAgent.includes('Chrome') ? 'Chrome' : 'Browser'}`;
         const res = await fetch('/api/users', {
@@ -88,8 +89,15 @@ export default function ConsoleHeader({
     };
 
     sendHeartbeat();
-    const timer = setInterval(sendHeartbeat, 30000);
-    return () => clearInterval(timer);
+    const timer = setInterval(sendHeartbeat, 90000); // تحديث نبض كل دقيقة ونصف لتوفير استدعاءات السيرفر
+    const handleVisibility = () => {
+      if (!document.hidden) sendHeartbeat();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [currentUser, onLogout, isAdmin]);
 
   const handleLogout = () => {

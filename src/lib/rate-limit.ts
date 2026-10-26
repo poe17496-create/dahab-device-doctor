@@ -14,15 +14,20 @@ interface RateLimitEntry {
 // For production, consider using Redis or Upstash
 const rateLimitStore = new Map<string, RateLimitEntry>();
 
-// Cleanup expired entries every minute
-setInterval(() => {
-  const now = Date.now();
-  rateLimitStore.forEach((entry, key) => {
-    if (now > entry.resetTime) {
-      rateLimitStore.delete(key);
-    }
-  });
-}, 60 * 1000);
+// Cleanup expired entries every minute (unref to not keep serverless lambdas alive)
+if (typeof setInterval !== 'undefined') {
+  const timer = setInterval(() => {
+    const now = Date.now();
+    rateLimitStore.forEach((entry, key) => {
+      if (now > entry.resetTime) {
+        rateLimitStore.delete(key);
+      }
+    });
+  }, 60 * 1000);
+  if (timer && typeof timer === 'object' && 'unref' in timer) {
+    (timer as any).unref();
+  }
+}
 
 /**
  * Check if request is rate limited

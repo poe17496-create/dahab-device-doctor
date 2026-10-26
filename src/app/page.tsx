@@ -262,10 +262,11 @@ export default function DahabFixAiConsole() {
     return () => window.removeEventListener('dahab_guest_trial_consumed', handleTrialConsumed);
   }, []);
 
-  // نبض دوري لتأكيد نشاط الزائر الحالي في لوحة التحكم
+  // نبض دوري لتأكيد نشاط الزائر الحالي في لوحة التحكم مع توفير الباندويث وحماية السيرفر
   useEffect(() => {
     if (!currentUser?.isGuest || !currentUser?.id) return;
     const sendGuestHeartbeat = () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       fetch('/api/guests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -273,8 +274,15 @@ export default function DahabFixAiConsole() {
       }).catch(() => {});
     };
     sendGuestHeartbeat();
-    const interval = setInterval(sendGuestHeartbeat, 45000);
-    return () => clearInterval(interval);
+    const interval = setInterval(sendGuestHeartbeat, 120000); // كل دقيقتين بدلاً من 45 ثانية لتوفير الاستدعاءات
+    const handleVisibility = () => {
+      if (!document.hidden) sendGuestHeartbeat();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [currentUser]);
 
   // مزامنة الحالة المحلية مع الـ Context

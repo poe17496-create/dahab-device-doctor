@@ -168,8 +168,18 @@ export default function MicroscopeCameraModal({
     const canvas = canvasRef.current;
     if (!video || !canvas) return null;
 
-    const width = video.videoWidth || 1280;
-    const height = video.videoHeight || 720;
+    let width = video.videoWidth || 1280;
+    let height = video.videoHeight || 720;
+    const MAX_DIM = 1920;
+    if (width > MAX_DIM || height > MAX_DIM) {
+      if (width > height) {
+        height = Math.round((height * MAX_DIM) / width);
+        width = MAX_DIM;
+      } else {
+        width = Math.round((width * MAX_DIM) / height);
+        height = MAX_DIM;
+      }
+    }
 
     canvas.width = width;
     canvas.height = height;
@@ -191,7 +201,7 @@ export default function MicroscopeCameraModal({
     ctx.drawImage(video, 0, 0, width, height);
     ctx.restore();
 
-    return canvas.toDataURL('image/jpeg', 0.95);
+    return canvas.toDataURL('image/jpeg', 0.85);
   };
 
   // التقاط الصورة وتمريرها لمحرك الفحص الذكي

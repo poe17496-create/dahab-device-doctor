@@ -11,11 +11,19 @@ export default function OnlineUsersPage() {
 
   useEffect(() => {
     fetchUsers();
-    const interval = setInterval(fetchUsers, 15000); // تحديث كل 15 ثانية
-    return () => clearInterval(interval);
+    const interval = setInterval(fetchUsers, 45000); // تحديث كل 45 ثانية لتوفير استدعاءات الخادم
+    const handleVisibility = () => {
+      if (!document.hidden) fetchUsers();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, []);
 
   const fetchUsers = async () => {
+    if (typeof document !== 'undefined' && document.hidden) return;
     try {
       const res = await fetch('/api/admin/users');
       if (res.ok) {

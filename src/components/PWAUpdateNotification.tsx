@@ -10,10 +10,11 @@ export default function PWAUpdateNotification() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
-  // فحص أحدث إصدار منشور في السيرفر ومقارنته بالنسخة المخزنة
+  // فحص أحدث إصدار منشور في السيرفر ومقارنته بالنسخة المخزنة مع حماية الباندويث
   const checkForUpdates = useCallback(async () => {
+    if (typeof document !== 'undefined' && document.hidden) return;
     try {
-      const res = await fetch(`/api/version?t=${Date.now()}`, { cache: 'no-store' });
+      const res = await fetch(`/api/version`, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         const storedBuild = localStorage.getItem('dahab_app_build_id');
@@ -30,7 +31,7 @@ export default function PWAUpdateNotification() {
 
   useEffect(() => {
     checkForUpdates();
-    const interval = setInterval(checkForUpdates, 30000); // فحص كل 30 ثانية
+    const interval = setInterval(checkForUpdates, 600000); // فحص كل 10 دقائق لتوفير استهلاك الخادم والـ Serverless
     window.addEventListener('focus', checkForUpdates);
     return () => {
       clearInterval(interval);
