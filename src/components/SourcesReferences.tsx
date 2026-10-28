@@ -58,6 +58,27 @@ interface StaticSourceItem {
 
 // 📚 مكتبة المراجع الهندسية الشاملة وقنوات تليجرام المعتمدة عالمياً
 const STATIC_DIRECTORY: StaticSourceItem[] = [
+  // 1. قنوات ومجموعات تليجرام المعتمدة
+  {
+    id: 'tg-bios-archive-tools',
+    name: 'BIOS ARCHIVE | BIOS |Laptop Firmware & Tools',
+    url: 'https://t.me/biosarchive',
+    category: 'telegram',
+    badge: 'تليجرام • أرشيف بيوس وفيرموير',
+    desc: 'المجموعة الهندسية الكبرى (BIOS ARCHIVE) لدامبات وفيرموير اللابتوب والمازربورد الأصلية والمعدلة، ملفات BIN مجربة، وأدوات تعديل وتنظيف ME Region وEC Firmware.',
+    icon: <HardDrive className="w-5 h-5 text-amber-400" />,
+    tags: ['BIOS ARCHIVE', 'BIOS', 'Laptop Firmware', 'Tools', 'Clear ME', 'BIN Dump', 'EC'],
+  },
+  {
+    id: 'tg-laptop-schematic-global',
+    name: 'Laptop schematic | بنك مخططات وبوردفيو اللابتوب',
+    url: 'https://t.me/Laptop_Schematic',
+    category: 'telegram',
+    badge: 'تليجرام • مخططات لابتوب',
+    desc: 'أضخم مجتمع هندسي وقناة تليجرام لمخططات اللابتوب (Laptop schematic) - آلاف المخططات الهندسية وملفات Boardview CAD وخرائط مسارات التغذية والجهود لجميع أجيال اللابتوب.',
+    icon: <Radio className="w-5 h-5 text-sky-400" />,
+    tags: ['Laptop schematic', 'Schematics', 'Boardview CAD', 'Power Rails', 'Signals', 'Dell', 'HP', 'Lenovo'],
+  },
   // 1. قنوات ومجموعات تليجرام
   {
     id: 'tg-laptop',

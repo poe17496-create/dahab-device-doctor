@@ -120,7 +120,8 @@ export async function POST(req: NextRequest) {
                 role: user.role || (user.username === 'D3V1N_X9_ADMIN' ? 'admin' : 'technician'),
                 active: true,
                 expiresAt: user.expires_at || undefined,
-                activeSessionToken: sessionToken, // إضافة activeSessionToken لتوحيد البيانات
+                activeSessionToken: sessionToken,
+                isGuest: false, // إضافة activeSessionToken لتوحيد البيانات
               },
               sessionToken: sessionToken,
               message: 'تم تسجيل الدخول بنجاح',

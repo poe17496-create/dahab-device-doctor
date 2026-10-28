@@ -104,6 +104,8 @@ export async function POST(req: NextRequest) {
               expiresAt: (user as any).expires_at || null,
               active: true,
               deviceId: effectiveDeviceId,
+              activeSessionToken: effectiveDeviceId,
+              isGuest: false,
             },
             sessionToken: effectiveDeviceId,
           });

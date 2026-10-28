@@ -14,6 +14,7 @@ import { callAIEngine, createStreamingResponse, AIEngine } from '@/lib/aiEngines
 import { buildExpertPromptContext } from '@/lib/expertKnowledge';
 import { checkRateLimit, sanitizeAndCheckTokenDrain } from '@/lib/securityRateLimiter';
 import { checkAndDeductGuestTrial, refundGuestTrial, setGuestCookie } from '@/lib/guestUsageServer';
+import { validateSessionToken } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
@@ -28,12 +29,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { prompt, specialty, deviceModel, readings, imageBase64, sessionId, preferredEngine, customKeys, isGuest } =
+    const { prompt, specialty, deviceModel, readings, imageBase64, sessionId, preferredEngine, customKeys, isGuest, username, sessionToken } =
       await req.json();
 
-    // 🛡️ التحقق من حالة الزائر وخصم المحاولة ذرياً (إذا كان زائراً)
+    // التحقق من هوية الفني المسجل (الفنيون معفون تماماً من أي قيود أو حدود)
+    let isUserLoggedIn = false;
+    if (username) {
+      try {
+        isUserLoggedIn = await validateSessionToken(username, sessionToken || '');
+      } catch (e) {
+        console.error('[Diagnose API] Auth validation error:', e);
+      }
+    }
+
+    // 🛡️ التحقق من حالة الزائر وخصم المحاولة ذرياً (فقط لمن ليس فنياً مسجلاً)
     let guestTrialInfo: { allowed: boolean; remaining: number; guestId: string; isNewCookie: boolean } | null = null;
-    if (isGuest === true) {
+    if (!isUserLoggedIn && isGuest !== false) {
       const trialCheck = await checkAndDeductGuestTrial(req);
       if (!trialCheck.allowed) {
         const errorHeaders = new Headers({ 'Content-Type': 'application/json' });

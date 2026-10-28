@@ -60,7 +60,8 @@ export default function LoginPage() {
         return;
       }
 
-      localStorage.setItem('dahab_current_user', JSON.stringify(data.user));
+      const safeUser = { ...data.user, isGuest: false, activeSessionToken: data.sessionToken || data.user.activeSessionToken };
+      localStorage.setItem('dahab_current_user', JSON.stringify(safeUser));
       if (data.sessionToken) {
         localStorage.setItem('dahab_session_token', data.sessionToken);
       }

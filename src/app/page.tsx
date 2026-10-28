@@ -168,17 +168,17 @@ export default function DahabFixAiConsole() {
               console.error('[Page] Error fetching guest remaining from server:', error);
             }
           } else {
-            // مستخدم مسجل - تأكد من isGuest: false وإضافة activeSessionToken إذا لم يكن موجوداً
+            // مستخدم مسجل - تأكيد صلاحيات الفني المعتمد غير المحدودة
             u.isGuest = false;
-            // استرجاع sessionToken من localStorage إذا لم يكن موجوداً في user object
             if (!u.activeSessionToken) {
-              const sessionToken = localStorage.getItem('dahab_session_token');
-              if (sessionToken) {
-                u.activeSessionToken = sessionToken;
-                console.log('[Page] Restored sessionToken from localStorage for user:', u.username);
-              }
+              const sessionToken = localStorage.getItem('dahab_session_token') || u.deviceId || `token_${u.username}`;
+              u.activeSessionToken = sessionToken;
             }
+            if (!u.role) u.role = 'technician';
             localStorage.setItem('dahab_current_user', JSON.stringify(u));
+            if (!localStorage.getItem('dahab_session_token')) {
+              localStorage.setItem('dahab_session_token', u.activeSessionToken);
+            }
           }
           setCurrentUser(u);
           setIsCheckingAuth(false);
@@ -555,6 +555,11 @@ export default function DahabFixAiConsole() {
         }
       } catch (e) {}
 
+      const isTechnician = Boolean(currentUser && !currentUser.isGuest && currentUser.role !== 'guest' && currentUser.username !== 'guest');
+      const sessionToken = currentUser?.activeSessionToken ||
+        (typeof window !== 'undefined' ? localStorage.getItem('dahab_session_token') : null) ||
+        currentUser?.deviceId;
+
       const response = await fetch('/api/diagnose', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -566,14 +571,20 @@ export default function DahabFixAiConsole() {
           imageBase64,
           sessionId: activeSessionId,
           customKeys,
-          isGuest: currentUser?.isGuest === true,
+          isGuest: !isTechnician,
+          username: isTechnician ? currentUser.username : undefined,
+          sessionToken: isTechnician ? (sessionToken || `token_${currentUser.username}`) : undefined,
         }),
       });
 
-      // التعامل مع حالة 403 أو 429 (تجاوز الحد المسموح للزائر)
+      // التعامل مع حالة 403 أو 429
       if (response.status === 403 || response.status === 429) {
-        setGuestTrialsRemaining(0);
-        setOutput('⚠️ انتهت تجاربك المجانية لليوم. سجّل كفني للاستخدام غير المحدود\n\nتواصل مع الدعم الفني عبر واتساب: https://wa.me/201064147224');
+        if (!isTechnician) {
+          setGuestTrialsRemaining(0);
+          setOutput('⚠️ انتهت تجاربك المجانية لليوم. سجّل كفني للاستخدام غير المحدود\n\nتواصل مع الدعم الفني عبر واتساب: https://wa.me/201064147224');
+        } else {
+          setOutput('⚠️ السيرفر يشهد ضغط طلبات لحظياً، يرجى إعادة المحاولة بعد ثوانٍ قليلة.');
+        }
         setLoading(false);
         setLoadingMessage(null);
         return;

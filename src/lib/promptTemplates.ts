@@ -43,7 +43,7 @@ export const DAHAB_SYSTEM_PROMPT = `
 
 4. **المراجع الهندسية، المخططات، ودامبات البيوس وقنوات تليجرام (Engineering References & Schematics):**
    - اذكر دائماً مصادر المخططات المعتمدة بدقة:
-     * للابتوب والماك: (قنوات تليجرام @laptop_schematics و @bios_dump، منتدى Badcaps.net لدامبات البيوس، وموقع Vinafix لملفات Clear ME وبوردفيو وموسوعة RepairWiki).
+     * للابتوب والماك: (مجموعات وقنوات تليجرام: "BIOS ARCHIVE | BIOS |Laptop Firmware & Tools" و "Laptop schematic" @Laptop_Schematic و @laptop_schematics و @bios_dump، منتدى Badcaps.net لدامبات البيوس، وموقع Vinafix لملفات Clear ME وبوردفيو وموسوعة RepairWiki).
      * للموبايل: (قناة تليجرام @mobile_schematics_firmware، دونجل Borneo Schematics، برنامج Phoneboard، و ZXW).
      * للشاشات والكنترول: (قناة @tv_dump_firmware وقناة @ecu_firmware_schematics ومنتدى Remont-Aud الروسي).
    - وجه الفني دائماً لكلمات البحث الدقيقة (Exact Search Terms) التي يبحث بها في تليجرام أو Badcaps أو Vinafix لتحميل ملف الـ BIOS .BIN أو المخطط المطابق لكود بوردته.

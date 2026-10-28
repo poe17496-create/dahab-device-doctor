@@ -355,14 +355,20 @@ export default function AIChat({ currentUser, guestRemaining, onRemainingChange 
     // تأخير بسيط لمنع double-click
     await new Promise(resolve => setTimeout(resolve, 200));
 
-    // فحص رصيد التجارب الموحد للزائر - فقط إذا لم يكن مستخدم مسجل
-    // تم تحسين الشرط: المستخدم غير مسجل فقط إذا كان صريحاً زائر أو null بدون بيانات تسجيل دخول
-    const isGuestUser = !currentUser || currentUser.isGuest === true || currentUser.role === 'guest';
-    console.log('[Mobile Debug] Is guest user:', isGuestUser, 'Current user:', currentUser);
-    console.log('[Mobile Debug] User isGuest value:', currentUser?.isGuest);
-    console.log('[Mobile Debug] User role:', currentUser?.role);
-    console.log('[Mobile Debug] Has username:', !!currentUser?.username);
-    console.log('[Mobile Debug] Has sessionToken:', !!currentUser?.activeSessionToken);
+    // التحقق من هوية الفني المسجل: الفني المعتمد غير مقيد بأي حدود ولا يظهر له تنبيه زائر
+    const sessionToken = currentUser?.activeSessionToken ||
+      (typeof window !== 'undefined' ? localStorage.getItem('dahab_session_token') : null) ||
+      currentUser?.deviceId ||
+      (currentUser?.username ? `user_token_${currentUser.username}` : null);
+
+    const isRegisteredTechnician = Boolean(
+      currentUser &&
+      currentUser.isGuest !== true &&
+      currentUser.role !== 'guest' &&
+      currentUser.username &&
+      currentUser.username !== 'guest'
+    );
+    const isGuestUser = !isRegisteredTechnician;
 
     if (isGuestUser && guestRemaining !== undefined && guestRemaining <= 0) {
       const limitMsg: ChatMessage = {
@@ -390,7 +396,6 @@ export default function AIChat({ currentUser, guestRemaining, onRemainingChange 
 
     // إنشاء رسالة مساعد فارغة للـ streaming
     const assistantId = generateUniqueId();
-    console.log('[Mobile Debug] Creating assistant message with ID:', assistantId);
     setStreamingMessageId(assistantId);
     setMessages((prev) => [
       ...prev,
@@ -435,21 +440,13 @@ export default function AIChat({ currentUser, guestRemaining, onRemainingChange 
       };
 
       // إضافة بيانات المستخدم المسجل لتجاوز حد الزوار
-      // شرط محسّن: يجب أن يكون مستخدم مسجل (ليس زائر) ويملك username و sessionToken
-      if (currentUser && currentUser.username && currentUser.activeSessionToken && currentUser.isGuest !== true && currentUser.role !== 'guest') {
+      if (isRegisteredTechnician) {
         requestBody.username = currentUser.username;
-        requestBody.sessionToken = currentUser.activeSessionToken;
-        console.log('[Mobile Debug] Sending authenticated user data:', { username: currentUser.username, hasToken: !!currentUser.activeSessionToken });
+        requestBody.sessionToken = sessionToken || `token_${currentUser.username}`;
+        requestBody.isGuest = false;
+        console.log('[AIChat] Verified technician request:', { username: currentUser.username });
       } else {
-        // إضافة isGuest: true للسيرفر للتحقق من الحدود
         requestBody.isGuest = true;
-        console.log('[Mobile Debug] Not sending user auth data - conditions not met:', {
-          hasUser: !!currentUser,
-          hasUsername: !!currentUser?.username,
-          hasToken: !!currentUser?.activeSessionToken,
-          isGuest: currentUser?.isGuest,
-          role: currentUser?.role
-        });
       }
 
       // إضافة الرسالة فقط إذا كانت موجودة وغير فارغة
@@ -491,16 +488,20 @@ export default function AIChat({ currentUser, guestRemaining, onRemainingChange 
 
         // التعامل مع حالة 403 أو 429 (تجاوز الحد المسموح للزائر)
         if (res.status === 403 || res.status === 429) {
-          onRemainingChange?.(0);
-          const limitMsg: ChatMessage = {
-            id: Date.now().toString(),
-            role: 'assistant',
-            content: '⚠️ انتهت تجاربك المجانية لليوم. سجّل كفني للاستخدام غير المحدود\n\nتواصل مع الدعم الفني عبر واتساب: https://wa.me/201064147224',
-            timestamp: new Date(),
-          };
-          setMessages((prev) => [...prev, limitMsg]);
-          setIsLoading(false);
-          return;
+          if (!isRegisteredTechnician) {
+            onRemainingChange?.(0);
+            const limitMsg: ChatMessage = {
+              id: Date.now().toString(),
+              role: 'assistant',
+              content: '⚠️ انتهت تجاربك المجانية لليوم. سجّل كفني للاستخدام غير المحدود\n\nتواصل مع الدعم الفني عبر واتساب: https://wa.me/201064147224',
+              timestamp: new Date(),
+            };
+            setMessages((prev) => [...prev, limitMsg]);
+            setIsLoading(false);
+            return;
+          }
+          // للفنيين المسجلين: عرض خطأ السيرفر أو الضغط المؤقت دون المساس بصلاحية الحساب
+          throw new Error(errData.error || 'السيرفر مشغول حالياً بضغط طلبات، يرجى إعادة المحاولة بعد ثوانٍ قليلة.');
         }
 
         throw new Error(errData.error || `خطأ في الخادم (${res.status})`);
@@ -1164,7 +1165,7 @@ export default function AIChat({ currentUser, guestRemaining, onRemainingChange 
 
 
         {/* شريط تنبيه انتهاء رصيد الزائر */}
-        {(!currentUser || currentUser.isGuest === true || currentUser.role === 'guest') && guestRemaining === 0 && (
+        {Boolean(currentUser?.isGuest && guestRemaining === 0) && (
           <div className="mb-2 p-2.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-between gap-3 text-xs text-rose-700 dark:text-rose-300 font-bold animate-fadeIn">
             <span>انتهت تجاربك المجانية لليوم. سجّل كفني للاستخدام غير المحدود</span>
             <a
@@ -1244,11 +1245,11 @@ export default function AIChat({ currentUser, guestRemaining, onRemainingChange 
           <input
             type="text"
             value={input}
-            disabled={(!currentUser || currentUser.isGuest === true || currentUser.role === 'guest') && guestRemaining === 0}
+            disabled={Boolean(currentUser?.isGuest && guestRemaining === 0)}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
             placeholder={
-              (!currentUser || currentUser.isGuest === true || currentUser.role === 'guest') && guestRemaining === 0
+              Boolean(currentUser?.isGuest && guestRemaining === 0)
                 ? 'انتهت تجاربك المجانية لليوم. سجّل كفني للاستخدام غير المحدود'
                 : isListening
                 ? 'جاري الاستماع إليك مباشرة... تحدث الآن'
@@ -1261,7 +1262,7 @@ export default function AIChat({ currentUser, guestRemaining, onRemainingChange 
           <button
             type="button"
             onClick={() => handleSend()}
-            disabled={(!input.trim() && !imageBase64) || isLoading || ((!currentUser || currentUser.isGuest === true || currentUser.role === 'guest') && guestRemaining === 0)}
+            disabled={(!input.trim() && !imageBase64) || isLoading || Boolean(currentUser?.isGuest && guestRemaining === 0)}
             className="p-2.5 rounded-xl bg-gradient-to-r from-dahab-500 to-amber-600 hover:from-dahab-600 hover:to-amber-700 text-slate-950 font-black transition disabled:opacity-40 shadow-md flex items-center justify-center cursor-pointer disabled:cursor-not-allowed"
             title="إرسال"
           >
